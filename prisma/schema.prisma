@@ -1829,3 +1829,20 @@ model WebChatMessage {
 
   @@index([sessionId, conversationId, createdAt])
 }
+
+model WebChatRuntimeSetting {
+  key                     String   @id
+  autonomousEnabled       Boolean  @default(false) @map("autonomous_enabled")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+  updatedByAdminSessionId String?  @map("updated_by_admin_session_id")
+}
+
+model WebChatRuntimeSettingAudit {
+  id                  String   @id @default(cuid())
+  oldValue            Boolean  @map("old_value")
+  newValue            Boolean  @map("new_value")
+  actorAdminSessionId String?  @map("actor_admin_session_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+}
