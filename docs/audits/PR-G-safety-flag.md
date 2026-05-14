@@ -1,3 +1,14 @@
+# PR-G Audit — Master Kill Switch For Autonomous Web Chat Replies
+
+**Date:** 2026-05-14  
+**Branch:** `feature/web-chat/pr-g-safety-flag`  
+**Base:** `main` @ `1013b8db25f4d947e8ae951ff9347768c5f450e3`
+
+## Inventory
+
+### 1. `cat src/app/api/web-chat/route.ts`
+
+```ts
 import { generateAdminDevOrganizerReplyWithLlm } from "@/sms-engine/conversation/adminDevLlmReplies";
 import { evaluateOrganizerIntakePolicy } from "@/sms-engine/conversation/organizerIntakePolicy";
 import { generateOrganizerReplyFromPlan } from "@/sms-engine/conversation/organizerReplyGenerator";
@@ -27,10 +38,8 @@ type ConversationState = {
 };
 
 type RouteLlmMode = "active_mock" | "live";
-type ReplyMode = "autonomous" | "holding";
 
 const conversations = new Map<string, ConversationState>();
-const HOLDING_REPLY = "Thanks - we've logged your message and will reply soon.";
 
 const LIVE_INSTRUCTIONS = [
   sagaLlmSystemPrompt,
@@ -52,10 +61,6 @@ function normalizeRouteLlmMode(value: string | undefined): RouteLlmMode {
     return "live";
   }
   return "active_mock";
-}
-
-function autonomousResponsesEnabled(value: string | undefined) {
-  return value?.trim().toLowerCase() === "true";
 }
 
 function toPriorMessage(
@@ -300,26 +305,6 @@ export async function POST(req: Request) {
     (entry) => entry.role === "assistant",
   ).length;
   const latestMessage = message.trim();
-  const autonomousEnabled = autonomousResponsesEnabled(
-    process.env.WEB_CHAT_AUTONOMOUS_RESPONSES_ENABLED,
-  );
-
-  if (!autonomousEnabled) {
-    // TODO: PR-H - enqueue for human review when autonomous responses are disabled.
-    state.messages.push(
-      { role: "user", content: latestMessage },
-      { role: "assistant", content: HOLDING_REPLY },
-    );
-    conversations.set(conversationId, state);
-
-    return json({
-      conversationId,
-      reply: HOLDING_REPLY,
-      turn: assistantTurn,
-      mode: "holding" satisfies ReplyMode,
-    });
-  }
-
   const mode = normalizeRouteLlmMode(process.env.LLM_MODE);
 
   try {
@@ -347,10 +332,283 @@ export async function POST(req: Request) {
       conversationId,
       reply: result.reply,
       turn: assistantTurn,
-      mode: "autonomous" satisfies ReplyMode,
     });
   } catch (error) {
     console.error("Web chat engine request failed", error);
     return json({ error: "Engine error" }, { status: 502 });
   }
 }
+```
+
+### 2. `cat .env.example`
+
+```text
+# Engine
+ADMIN_PASSWORD=
+APP_BASE_URL=
+CONVERSATION_ENGINE_ACTIVE=
+CONVERSATION_ENGINE_MODE=
+DATABASE_URL=
+INTERNAL_API_KEY=
+LLM_DAILY_CALL_CAP=
+LLM_LOG_OUTPUTS=
+LLM_LOG_PROMPTS=
+LLM_TIMEOUT_MS=
+MESSAGE_PROCESSING_MODE=
+MESSAGING_PROVIDER=
+NODE_ENV=
+# Required when LLM_MODE=live; ignored when LLM_MODE=active_mock
+OPENAI_API_KEY=
+OPENAI_BASE_URL=
+OPENAI_MODEL=
+PORT=
+RAILWAY_ENVIRONMENT=
+
+# Pilot
+PILOT_MAX_ACTIVE_PARTICIPANTS=
+PILOT_PRIVACY_URL=
+PILOT_REPLY_MODE=
+PILOT_STAGE=
+PILOT_SUPPORT_CONTACT=
+PILOT_TERMS_URL=
+PRIVATE_BETA_MAX_ACTIVE_PARTICIPANTS=
+
+# Public beta / launch
+PUBLIC_BETA_ENABLED=
+PUBLIC_BETA_LANDING_ENABLED=
+PUBLIC_BETA_MAX_ACTIVE_PARTICIPANTS=
+PUBLIC_BETA_NEW_USER_DAILY_CAP=
+PUBLIC_BETA_PUBLIC_NUMBER_VISIBLE=
+PUBLIC_BETA_REQUIRE_CONSENT=
+PUBLIC_BETA_REQUIRE_INVITE_CODE=
+PUBLIC_BETA_WAITLIST_ENABLED=
+PUBLIC_LAUNCH_ENABLED=
+
+# Public web research
+PUBLIC_WEB_RESEARCH_ALLOWED_DOMAINS=
+PUBLIC_WEB_RESEARCH_BLOCKED_DOMAINS=
+PUBLIC_WEB_RESEARCH_ENABLED=
+PUBLIC_WEB_RESEARCH_LIVE_DRY_RUN_ALLOWED=
+PUBLIC_WEB_RESEARCH_LIVE_DRY_RUN_MAX_QUERIES=
+PUBLIC_WEB_RESEARCH_LIVE_DRY_RUN_TAG=
+PUBLIC_WEB_RESEARCH_MAX_RESULTS=
+PUBLIC_WEB_RESEARCH_MODE=
+PUBLIC_WEB_RESEARCH_PROVIDER=
+PUBLIC_WEB_RESEARCH_REQUIRE_CITATIONS=
+PUBLIC_WEB_RESEARCH_STORE_RAW_RESULTS=
+
+# SMS safety / runtime
+SMS_ACCESS_MODE=
+SMS_ALLOWED_NUMBERS=
+SMS_AUTONOMOUS_REPLY_DAILY_CAP=
+SMS_COMPLIANCE_APPROVED=
+SMS_DAILY_INBOUND_CAP=
+SMS_DAILY_SEND_CAP=
+SMS_PER_NUMBER_DAILY_SEND_CAP=
+SMS_REQUIRE_ALLOWLIST=
+SMS_SENDS_DISABLED=
+
+# active_mock | live - defaults to active_mock if unset
+LLM_MODE=active_mock
+
+# Twilio
+TWILIO_ACCOUNT_SID=
+TWILIO_API_CALLS_FORBIDDEN=
+TWILIO_AUTH_TOKEN=
+TWILIO_CONVERSATIONS_SERVICE_SID=
+TWILIO_MESSAGING_SERVICE_SID=
+TWILIO_PHONE_NUMBER=
+TWILIO_STAGING_MODE=
+TWILIO_VALIDATE_WEBHOOKS=
+```
+
+### 3. `grep -rE "WEB_CHAT_AUTONOMOUS_RESPONSES_ENABLED" src 2>/dev/null`
+
+```text
+```
+
+### 4. `grep -rE "process\.env\." src/app/api/web-chat | sort -u`
+
+```text
+src/app/api/web-chat/route.ts:    baseUrl: process.env.OPENAI_BASE_URL || null,
+src/app/api/web-chat/route.ts:    const apiKey = process.env.OPENAI_API_KEY?.trim();
+src/app/api/web-chat/route.ts:    model: process.env.OPENAI_MODEL?.trim() || "gpt-5.4-mini",
+src/app/api/web-chat/route.ts:    timeoutMs: Number.parseInt(process.env.LLM_TIMEOUT_MS || "", 10) || 8000,
+src/app/api/web-chat/route.ts:  const mode = normalizeRouteLlmMode(process.env.LLM_MODE);
+```
+
+## Holding Reply Chosen
+
+Holding reply text:
+
+```text
+Thanks - we've logged your message and will reply soon.
+```
+
+Why:
+- concise and product-like
+- clearly acknowledges receipt
+- avoids implying an autonomous reply is underway
+- fits the current public app tone without sounding like internal tooling copy
+
+## Diff Summary
+
+### `src/app/api/web-chat/route.ts`
+
+Before:
+- validated input
+- always called the PR-F route logic after validation
+- always returned `{ conversationId, reply, turn }`
+
+After:
+- adds `autonomousResponsesEnabled()` helper
+- reads `WEB_CHAT_AUTONOMOUS_RESPONSES_ENABLED` once in the handler
+- gates *before* the engine call
+- when disabled:
+  - stores user message
+  - stores deterministic holding reply
+  - returns `{ conversationId, reply, turn, mode: "holding" }`
+- when enabled:
+  - preserves PR-F behavior
+  - returns `{ conversationId, reply, turn, mode: "autonomous" }`
+- leaves the `503` and `502` paths intact once autonomous mode is enabled
+- adds a TODO seam for future human-review queue wiring
+
+### `.env.example`
+
+Added:
+
+```text
+# Master kill switch for autonomous web chat replies.
+# When unset or any non-"true" value, the /api/web-chat endpoint accepts and stores
+# messages but returns a fixed holding reply WITHOUT calling the LLM/engine.
+# Leave disabled in production until human-in-the-loop review is in place.
+WEB_CHAT_AUTONOMOUS_RESPONSES_ENABLED=false
+```
+
+## Mode Field Contract
+
+Route responses now include:
+
+```ts
+mode: "autonomous" | "holding"
+```
+
+Semantics:
+- `"holding"`: endpoint accepted and stored the message, but skipped the engine and returned the deterministic holding reply
+- `"autonomous"`: endpoint ran the existing PR-F engine path and returned the autonomous organizer reply
+
+## Verification
+
+### Lint
+
+```text
+npm run lint
+PASS
+```
+
+### Build
+
+```text
+npm run build
+PASS
+```
+
+Build note:
+- existing Turbopack NFT tracing warning from `next.config.js` via `/api/health` still appears
+- no new warnings from PR-G beyond that
+
+### Disabled (default safe mode)
+
+Command:
+
+```bash
+WEB_CHAT_AUTONOMOUS_RESPONSES_ENABLED= npm run dev
+```
+
+HTTP codes:
+
+```text
+/ 200
+/explore 200
+/feed 200
+/my-events 200
+/post-project 200
+/profile 200
+/projects 200
+/relay 200
+/talent 200
+/web-chat-test 200
+/admin 200
+/admin/contacts 307
+/beta 200
+empty 400
+bad-json 400
+```
+
+Holding reply sample:
+
+```json
+{"conversationId":"d4665168-f9b4-41ba-a153-20a9953cd22e","reply":"Thanks - we've logged your message and will reply soon.","turn":0,"mode":"holding"}
+```
+
+Multi-turn while disabled:
+
+```text
+conversationId=7dbfb201-3e47-4d4d-a46e-a5fe76117d6b
+{"conversationId":"7dbfb201-3e47-4d4d-a46e-a5fe76117d6b","reply":"Thanks - we've logged your message and will reply soon.","turn":1,"mode":"holding"}
+```
+
+### Enabled (autonomous)
+
+Command:
+
+```bash
+WEB_CHAT_AUTONOMOUS_RESPONSES_ENABLED=true LLM_MODE=active_mock npm run dev
+```
+
+Autonomous sample:
+
+```json
+{"conversationId":"19570532-acf4-45fe-b932-e39280822235","reply":"Great. What city or general location are you thinking for this?","turn":0,"mode":"autonomous"}
+```
+
+### Enabled + live + no key
+
+Command:
+
+```bash
+WEB_CHAT_AUTONOMOUS_RESPONSES_ENABLED=true LLM_MODE=live OPENAI_API_KEY= npm run dev
+```
+
+Result:
+
+```text
+live-no-key 503
+```
+
+### Secret sweeps
+
+```text
+OK_AC
+OK_SK
+```
+
+## Still Deferred
+
+- no session or identity model (`PR-H`)
+- no DB persistence for chat turns (`PR-H`)
+- no human-review queue yet (`PR-H` or later)
+- no widget/test-page changes
+- no engine-library changes under `src/sms-engine/**`
+- no internal-demo UI or downstream operational flow (`PR-I`)
+
+## TODOs Surfaced
+
+- `route.ts` now includes:
+  - `TODO: PR-H - enqueue for human review when autonomous responses are disabled.`
+- Admin contact route still logs the existing `DATABASE_URL is required before using the database` server-side error before redirecting `307`; PR-G does not change that behavior.
+
+## Deviations
+
+- None functionally. The gate fit cleanly above the PR-F engine call, so no refactor of the engine wiring was needed.
