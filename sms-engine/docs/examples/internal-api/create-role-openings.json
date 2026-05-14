@@ -1,0 +1,17 @@
+{
+  "publish": true,
+  "roleOpenings": [
+    {
+      "roleType": "photographer",
+      "title": "Event Photographer",
+      "description": "Capture event recap and creator content.",
+      "skills": ["photography", "content"],
+      "fandoms": ["anime", "cosplay"],
+      "compensationType": "UNKNOWN",
+      "budgetRange": "TBD after producer review",
+      "quantityNeeded": 1,
+      "remoteAllowed": false,
+      "locationRequirement": "Los Angeles"
+    }
+  ]
+}

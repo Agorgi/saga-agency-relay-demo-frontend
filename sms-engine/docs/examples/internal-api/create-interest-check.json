@@ -1,0 +1,10 @@
+{
+  "creatorSagaUserId": "usr_123",
+  "title": "Maid Cafe Pop-Up Interest Check",
+  "description": "Would people attend a fandom-led maid cafe pop-up with performers and themed photo moments?",
+  "city": "Los Angeles",
+  "fandoms": ["anime", "cosplay", "maid cafe"],
+  "proposedTiming": "Late summer",
+  "thresholdType": "INTERESTED_COUNT",
+  "thresholdValue": 50
+}

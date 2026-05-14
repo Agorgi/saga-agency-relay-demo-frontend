@@ -1,0 +1,22 @@
+{
+  "edges": [
+    {
+      "fromSagaUserId": "usr_organizer_123",
+      "toSagaUserId": "usr_123",
+      "relationshipType": "FRIEND",
+      "strength": 1,
+      "metadata": {
+        "source": "friend_graph"
+      }
+    },
+    {
+      "fromSagaUserId": "usr_organizer_123",
+      "toSagaUserId": "usr_456",
+      "relationshipType": "SAME_COMMUNITY",
+      "strength": 0.8,
+      "metadata": {
+        "communityId": "community_anime_la"
+      }
+    }
+  ]
+}

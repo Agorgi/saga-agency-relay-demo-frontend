@@ -1,0 +1,16 @@
+{
+  "sagaUserId": "usr_123",
+  "name": "Mina Park",
+  "phone": "+14155550123",
+  "email": "mina@example.com",
+  "city": "Los Angeles",
+  "communities": ["anime", "cosplay"],
+  "profile": {
+    "displayName": "Mina Photo",
+    "roles": ["photographer"],
+    "skills": ["photography", "content"],
+    "fandoms": ["anime", "cosplay"],
+    "portfolioUrls": ["https://example.com/mina"],
+    "socialUrls": ["https://instagram.com/mina"]
+  }
+}
