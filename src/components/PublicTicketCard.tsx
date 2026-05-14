@@ -45,8 +45,8 @@ export function PublicTicketCard({
         isDark ? "brand-surface-deep" : "brand-surface-strong"
       }`}
     >
-      <div className={`pointer-events-none absolute left-[88px] top-1/2 z-10 hidden h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full sm:block ${isDark ? "bg-[var(--surface-deep)]" : "bg-[var(--app-bg)]"}`} />
-      <div className={`pointer-events-none absolute left-[88px] top-1/2 z-10 hidden h-7 w-7 translate-x-[124px] -translate-y-1/2 rounded-full sm:block ${isDark ? "bg-[var(--surface-deep)]" : "bg-[var(--app-bg)]"}`} />
+      <div className={`pointer-events-none absolute left-[88px] top-1/2 z-10 hidden h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full sm:block ${isDark ? "bg-(--surface-deep)" : "bg-(--app-bg)"}`} />
+      <div className={`pointer-events-none absolute left-[88px] top-1/2 z-10 hidden h-7 w-7 translate-x-[124px] -translate-y-1/2 rounded-full sm:block ${isDark ? "bg-(--surface-deep)" : "bg-(--app-bg)"}`} />
 
       <div className={`overflow-hidden rounded-[24px] sm:grid sm:grid-cols-[96px_1fr] ${isDark ? "bg-[#f6f4ee] text-[#131722]" : "bg-white text-[#131722]"}`}>
         <div

@@ -19,7 +19,7 @@ export function HeroTrendingCluster() {
       transition={{ duration: 1, delay: 0.25, ease: [0.23, 1, 0.32, 1] }}
       className="relative h-[430px] w-[420px]"
     >
-      <div className="pointer-events-none absolute left-[126px] top-[54px] z-[1] h-[340px] w-[240px] overflow-hidden">
+      <div className="pointer-events-none absolute left-[126px] top-[54px] z-1 h-[340px] w-[240px] overflow-hidden">
         <Image
           src="/branding/saga-san-hero.png"
           alt="Saga mascot"
@@ -77,7 +77,7 @@ export function HeroTrendingCluster() {
               onError={() => setHeroError(true)}
             />
           ) : (
-            <div className="h-full w-full bg-[linear-gradient(135deg,_#ddd5cb,_#f1efe9)]" />
+            <div className="h-full w-full bg-[linear-gradient(135deg,#ddd5cb,#f1efe9)]" />
           )}
           <div className="brand-chip-signal absolute left-2 top-2 rounded-pill px-2 py-1 text-[9px] font-medium uppercase tracking-[0.22em]">
             Real talent

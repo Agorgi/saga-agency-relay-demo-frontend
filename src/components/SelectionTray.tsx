@@ -51,7 +51,7 @@ export function SelectionTray() {
       </div>
 
       {selectedCreators.length > 0 && (
-        <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-ink">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-ink">
           {selectedCreators.length}
         </span>
       )}
@@ -97,7 +97,7 @@ function TrayThumb({ src, alt }: { src: string; alt: string }) {
         />
       ) : null}
       {(!loaded || imgError) && (
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,_#ddd5cb,_#f0ece6)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,#ddd5cb,#f0ece6)]" />
       )}
     </>
   );

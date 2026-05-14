@@ -705,7 +705,7 @@ const TalentCanvasCard = memo(function TalentCanvasCard({
           }}
         >
           <div
-            className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-1.5"
+            className="pointer-events-none absolute inset-x-0 top-0 z-1 h-1.5"
             style={{ background: `linear-gradient(90deg, ${roleAccent.edge}, transparent 82%)` }}
           />
           <button
@@ -727,7 +727,7 @@ const TalentCanvasCard = memo(function TalentCanvasCard({
           ) : null}
 
           {(!loaded || imgError) && (
-            <div className="absolute inset-0 bg-[linear-gradient(135deg,_#d7d2cb,_#f6f3ee)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(135deg,#d7d2cb,#f6f3ee)]" />
           )}
 
           <div
@@ -921,7 +921,7 @@ function TalentCanvasFocusOverlay({
                     {recommendation.primaryRole} · {recommendation.city}
                   </p>
                 </div>
-                <div className={`flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center rounded-full shadow-[0_16px_34px_rgba(124,199,255,0.16)] ${
+                <div className={`flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-full shadow-[0_16px_34px_rgba(124,199,255,0.16)] ${
                   dark ? "bg-[#7cc7ff]/30 text-[#d6eeff]" : "bg-[#7bc6ff]/24 text-[#163b68]"
                 }`}>
                   <span className="text-[1.65rem] font-semibold leading-none">{fitScore(recommendation)}</span>
@@ -1060,7 +1060,7 @@ function TalentCanvasFocusOverlay({
                                 : [...current, entry.id]
                           )
                         }
-                        className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border ${
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${
                           isSelected
                             ? "border-[#7cc7ff]/70 bg-[#7cc7ff] text-[#08111f]"
                             : dark

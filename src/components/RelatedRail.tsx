@@ -67,7 +67,7 @@ function RelatedCard({
         isSelected ? "border-accent" : "border-white/60"
       }`}
     >
-      <div className="relative h-20 w-16 flex-shrink-0 overflow-hidden rounded-[36%_64%_56%_44%/52%_48%_52%_48%] lg:h-[72px] lg:w-[58px]">
+      <div className="relative h-20 w-16 shrink-0 overflow-hidden rounded-[36%_64%_56%_44%/52%_48%_52%_48%] lg:h-[72px] lg:w-[58px]">
         {!imgError ? (
           <Image
             src={creator.imageUrl}
@@ -82,7 +82,7 @@ function RelatedCard({
           />
         ) : null}
         {(!loaded || imgError) && (
-          <div className="absolute inset-0 bg-[linear-gradient(135deg,_#ddd5cb,_#f0ece6)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(135deg,#ddd5cb,#f0ece6)]" />
         )}
       </div>
       <div className="min-w-0 flex-1">

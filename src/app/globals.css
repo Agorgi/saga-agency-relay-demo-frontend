@@ -1,126 +1,153 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&display=swap')
+layer(utilities);
 
-:root,
-html.theme-light {
-  --app-bg: #f7f2ff;
-  --app-bg-secondary: #fffaff;
-  --app-text: #181126;
-  --app-text-muted: #7c7394;
-  --surface: rgba(255, 255, 255, 0.74);
-  --surface-strong: rgba(255, 255, 255, 0.92);
-  --surface-soft: rgba(241, 235, 255, 0.88);
-  --surface-deep: rgba(232, 224, 255, 0.96);
-  --surface-border: rgba(84, 59, 172, 0.14);
-  --surface-border-strong: rgba(84, 59, 172, 0.24);
-  --surface-shadow: 0 26px 80px rgba(69, 42, 149, 0.12);
-  --brand-blue: #7ea4ff;
-  --brand-indigo: #4725ff;
-  --brand-pink: #ff4f9e;
-  --brand-yellow: #fff24a;
-  --brand-orange: #ffaf38;
-  --brand-ink: #0f0c18;
-  --selection-bg: #7ea4ff;
-  --selection-text: #171224;
-  --atmosphere-1: rgba(255, 79, 158, 0.18);
-  --atmosphere-2: rgba(126, 164, 255, 0.28);
-  --atmosphere-3: rgba(71, 37, 255, 0.1);
-  --background-art-opacity: 0.16;
-  --halftone-opacity: 0.38;
-}
+@layer utilities {
+  :root,
+  html.theme-light {
+    --app-bg: #f7f2ff;
+    --app-bg-secondary: #fffaff;
+    --app-text: #181126;
+    --app-text-muted: #7c7394;
+    --surface: rgba(255, 255, 255, 0.74);
+    --surface-strong: rgba(255, 255, 255, 0.92);
+    --surface-soft: rgba(241, 235, 255, 0.88);
+    --surface-deep: rgba(232, 224, 255, 0.96);
+    --surface-border: rgba(84, 59, 172, 0.14);
+    --surface-border-strong: rgba(84, 59, 172, 0.24);
+    --surface-shadow: 0 26px 80px rgba(69, 42, 149, 0.12);
+    --brand-blue: #7ea4ff;
+    --brand-indigo: #4725ff;
+    --brand-pink: #ff4f9e;
+    --brand-yellow: #fff24a;
+    --brand-orange: #ffaf38;
+    --brand-ink: #0f0c18;
+    --selection-bg: #7ea4ff;
+    --selection-text: #171224;
+    --atmosphere-1: rgba(255, 79, 158, 0.18);
+    --atmosphere-2: rgba(126, 164, 255, 0.28);
+    --atmosphere-3: rgba(71, 37, 255, 0.1);
+    --background-art-opacity: 0.16;
+    --halftone-opacity: 0.38;
+  }
 
-html.theme-dark {
-  --app-bg: #0b0914;
-  --app-bg-secondary: #131024;
-  --app-text: #f7f1ff;
-  --app-text-muted: #b6abd4;
-  --surface: rgba(22, 18, 38, 0.78);
-  --surface-strong: rgba(27, 22, 48, 0.92);
-  --surface-soft: rgba(18, 14, 34, 0.94);
-  --surface-deep: rgba(15, 11, 28, 0.98);
-  --surface-border: rgba(137, 150, 255, 0.18);
-  --surface-border-strong: rgba(137, 150, 255, 0.3);
-  --surface-shadow: 0 28px 70px rgba(0, 0, 0, 0.36);
-  --brand-blue: #82a9ff;
-  --brand-indigo: #6b63ff;
-  --brand-pink: #ff4f9e;
-  --brand-yellow: #fff24a;
-  --brand-orange: #ffaf38;
-  --brand-ink: #f7f1ff;
-  --selection-bg: #ff4f9e;
-  --selection-text: #fffaff;
-  --atmosphere-1: rgba(255, 79, 158, 0.22);
-  --atmosphere-2: rgba(97, 125, 255, 0.3);
-  --atmosphere-3: rgba(16, 12, 30, 0.82);
-  --background-art-opacity: 0.2;
-  --halftone-opacity: 0.48;
-}
+  html.theme-dark {
+    --app-bg: #0b0914;
+    --app-bg-secondary: #131024;
+    --app-text: #f7f1ff;
+    --app-text-muted: #b6abd4;
+    --surface: rgba(22, 18, 38, 0.78);
+    --surface-strong: rgba(27, 22, 48, 0.92);
+    --surface-soft: rgba(18, 14, 34, 0.94);
+    --surface-deep: rgba(15, 11, 28, 0.98);
+    --surface-border: rgba(137, 150, 255, 0.18);
+    --surface-border-strong: rgba(137, 150, 255, 0.3);
+    --surface-shadow: 0 28px 70px rgba(0, 0, 0, 0.36);
+    --brand-blue: #82a9ff;
+    --brand-indigo: #6b63ff;
+    --brand-pink: #ff4f9e;
+    --brand-yellow: #fff24a;
+    --brand-orange: #ffaf38;
+    --brand-ink: #f7f1ff;
+    --selection-bg: #ff4f9e;
+    --selection-text: #fffaff;
+    --atmosphere-1: rgba(255, 79, 158, 0.22);
+    --atmosphere-2: rgba(97, 125, 255, 0.3);
+    --atmosphere-3: rgba(16, 12, 30, 0.82);
+    --background-art-opacity: 0.2;
+    --halftone-opacity: 0.48;
+  }
 
-html,
-body {
-  margin: 0;
-  padding: 0;
-  min-height: 100%;
-  background: var(--app-bg);
-  color: var(--app-text);
-  overflow-x: hidden;
-  font-family: "Inter", system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  transition: background-color 180ms ease, color 180ms ease;
-}
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    background: var(--app-bg);
+    color: var(--app-text);
+    overflow-x: hidden;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition:
+      background-color 180ms ease,
+      color 180ms ease;
+  }
 
-body {
-  position: relative;
-  overscroll-behavior-y: none;
-  background-image:
-    radial-gradient(circle at 12% 14%, rgba(255, 79, 158, 0.1), transparent 28%),
-    radial-gradient(circle at 86% 18%, rgba(126, 164, 255, 0.12), transparent 24%),
-    linear-gradient(180deg, var(--app-bg-secondary), var(--app-bg));
-}
+  body {
+    position: relative;
+    overscroll-behavior-y: none;
+    background-image:
+      radial-gradient(
+        circle at 12% 14%,
+        rgba(255, 79, 158, 0.1),
+        transparent 28%
+      ),
+      radial-gradient(
+        circle at 86% 18%,
+        rgba(126, 164, 255, 0.12),
+        transparent 24%
+      ),
+      linear-gradient(180deg, var(--app-bg-secondary), var(--app-bg));
+  }
 
-html.canvas-scroll-lock,
-html.canvas-scroll-lock body {
-  overscroll-behavior-x: none;
-}
+  html.canvas-scroll-lock,
+  html.canvas-scroll-lock body {
+    overscroll-behavior-x: none;
+  }
 
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 18%),
-    url("/branding/saga-web-background.png") center/cover no-repeat;
-  opacity: var(--background-art-opacity);
-  z-index: 0;
-}
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 18%),
+      url('/branding/saga-web-background.png') center/cover no-repeat;
+    opacity: var(--background-art-opacity);
+    z-index: 0;
+  }
 
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    radial-gradient(circle at 18% 22%, var(--atmosphere-1), transparent 30%),
-    radial-gradient(circle at 82% 80%, var(--atmosphere-2), transparent 28%),
-    radial-gradient(circle at 50% 100%, var(--atmosphere-3), transparent 34%),
-    radial-gradient(rgba(255, 255, 255, 0.12) 0.65px, transparent 0.7px);
-  background-size: auto, auto, auto, 10px 10px;
-  background-position: center, center, center, center;
-  mix-blend-mode: normal;
-  opacity: var(--halftone-opacity);
-  z-index: 0;
-}
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      radial-gradient(circle at 18% 22%, var(--atmosphere-1), transparent 30%),
+      radial-gradient(circle at 82% 80%, var(--atmosphere-2), transparent 28%),
+      radial-gradient(circle at 50% 100%, var(--atmosphere-3), transparent 34%),
+      radial-gradient(rgba(255, 255, 255, 0.12) 0.65px, transparent 0.7px);
+    background-size:
+      auto,
+      auto,
+      auto,
+      10px 10px;
+    background-position: center, center, center, center;
+    mix-blend-mode: normal;
+    opacity: var(--halftone-opacity);
+    z-index: 0;
+  }
 
-.app-atmosphere {
-  background-image:
-    radial-gradient(circle at top left, rgba(255, 79, 158, 0.14), transparent 32%),
-    radial-gradient(circle at top right, rgba(126, 164, 255, 0.18), transparent 30%),
-    radial-gradient(circle at bottom left, rgba(71, 37, 255, 0.14), transparent 28%);
+  .app-atmosphere {
+    background-image:
+      radial-gradient(
+        circle at top left,
+        rgba(255, 79, 158, 0.14),
+        transparent 32%
+      ),
+      radial-gradient(
+        circle at top right,
+        rgba(126, 164, 255, 0.18),
+        transparent 30%
+      ),
+      radial-gradient(
+        circle at bottom left,
+        rgba(71, 37, 255, 0.14),
+        transparent 28%
+      );
+  }
 }
 
 @layer components {
