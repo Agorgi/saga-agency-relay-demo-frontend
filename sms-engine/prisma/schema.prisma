@@ -1,0 +1,1806 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProjectStatus {
+  NEW_INBOUND
+  INTAKE_IN_PROGRESS
+  BRIEF_READY_FOR_REVIEW
+  ROLE_MAPPING_READY
+  OUTREACH_DRAFTED
+  OUTREACH_IN_PROGRESS
+  SHORTLIST_READY
+  SHORTLIST_SENT
+  GROUPCHAT_PENDING
+  GROUPCHAT_ACTIVE
+  PRODUCTION_IN_PROGRESS
+  ARCHIVED
+  NEEDS_ADMIN
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageChannel {
+  SMS
+  GROUP_SMS
+  ADMIN
+}
+
+enum InboundProcessingJobStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  SKIPPED_DUPLICATE
+  BLOCKED
+}
+
+enum OutreachStatus {
+  DRAFTED
+  SENT
+  INTERESTED
+  NOT_INTERESTED
+  MAYBE
+  NO_RESPONSE
+  APPROVED_FOR_GROUPCHAT
+}
+
+enum GroupChatStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  BLOCKED
+}
+
+enum AuditActorType {
+  SYSTEM
+  ADMIN
+  USER
+  CONTACT
+  LLM
+}
+
+enum PersonSource {
+  SMS
+  APP
+  ADMIN
+  IMPORT
+  PUBLIC
+}
+
+enum ConsentStatus {
+  UNKNOWN
+  IMPLIED
+  EXPLICIT
+  OPTED_OUT
+}
+
+enum ProfileReviewStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  NEEDS_MORE_INFO
+}
+
+enum NetworkProjectSource {
+  SMS
+  MOBILE_APP
+  WEB_APP
+  ADMIN
+  INTEREST_CHECK
+  IMPORT
+}
+
+enum NetworkProjectStatus {
+  INTAKE
+  BRIEF_READY
+  ROLE_MAPPING
+  RECRUITING
+  SHORTLIST_READY
+  TEAM_FORMING
+  IN_PRODUCTION
+  ARCHIVED
+  NEEDS_ADMIN
+}
+
+enum CompensationType {
+  UNKNOWN
+  PAID
+  VOLUNTEER
+  COLLAB
+  TRADE
+}
+
+enum RoleOpeningStatus {
+  DRAFT
+  OPEN
+  RECOMMENDING
+  OUTREACHING
+  FILLED
+  ARCHIVED
+}
+
+enum OpportunityVisibility {
+  PRIVATE
+  FRIENDS
+  MUTUALS
+  COMMUNITY
+  PUBLIC
+}
+
+enum OpportunityApplicationMode {
+  INVITE_ONLY
+  APPLY_ONLY
+  INVITE_AND_APPLY
+}
+
+enum OpportunityStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  FILLED
+  ARCHIVED
+}
+
+enum ThresholdType {
+  INTERESTED_COUNT
+  TICKET_PLEDGE
+  ADMIN_APPROVAL
+}
+
+enum InterestCheckStatus {
+  DRAFT
+  ACTIVE
+  THRESHOLD_MET
+  CONVERTED_TO_PROJECT
+  ARCHIVED
+}
+
+enum ProximityTier {
+  FRIEND
+  MUTUAL
+  COMMUNITY
+  LOCAL
+  EXTENDED
+  PUBLIC
+  UNKNOWN
+}
+
+enum CandidateRecommendationStatus {
+  SUGGESTED
+  APPROVED
+  APPROVED_FOR_SHORTLIST
+  NEEDS_MORE_INFO
+  CONTACT_LATER
+  DO_NOT_CONTACT
+  CONTACTED
+  INTERESTED
+  DECLINED
+  SHORTLISTED
+  ADDED_TO_TEAM
+  REJECTED
+}
+
+enum ShortlistPacketStatus {
+  DRAFT
+  NEEDS_REVIEW
+  APPROVED
+  REJECTED
+  SENT
+}
+
+enum OutboundDraftType {
+  ORGANIZER_SHORTLIST
+  CANDIDATE_OUTREACH
+  ADMIN_MANUAL
+}
+
+enum OutboundDraftStatus {
+  DRAFT
+  NEEDS_REVIEW
+  APPROVED
+  REJECTED
+  BLOCKED
+  SENT
+}
+
+enum OutboundDraftSource {
+  PRODUCER_AGENT
+  ADMIN_MANUAL
+  CONVERSATION_ENGINE
+}
+
+enum OutboundDraftRecipientKind {
+  ORGANIZER
+  CANDIDATE
+  CONTACT
+}
+
+enum RelationshipType {
+  FRIEND
+  MUTUAL
+  SAME_COMMUNITY
+  ATTENDED_SAME_EVENT
+  COLLABORATED
+  FOLLOWING
+  IMPORTED_CONNECTION
+}
+
+enum TeamStatus {
+  FORMING
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum TeamMemberStatus {
+  INVITED
+  INTERESTED
+  CONFIRMED
+  REMOVED
+}
+
+enum ConversationProvider {
+  MOCK
+  TWILIO
+  APP_CHAT
+  APPLE_MESSAGES
+  WHATSAPP
+}
+
+enum ProductionConversationStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum PilotParticipantRole {
+  ORGANIZER
+  CREATOR
+  BOTH
+  OBSERVER
+  INTERNAL_TEST
+}
+
+enum PilotParticipantStatus {
+  INVITED
+  ACTIVE
+  PAUSED
+  WAITLISTED
+  REJECTED
+  OPTED_OUT
+  COMPLETED
+}
+
+enum BetaInviteCodeStatus {
+  ACTIVE
+  PAUSED
+  EXPIRED
+  EXHAUSTED
+}
+
+enum PublicBetaUseCase {
+  ORGANIZER
+  CREATOR
+  INTEREST_CHECK
+  OTHER
+  UNKNOWN
+}
+
+enum PublicBetaWaitlistStatus {
+  PENDING
+  INVITED
+  ADMITTED
+  REJECTED
+  PAUSED
+  DUPLICATE
+  OPTED_OUT
+}
+
+enum ConsentEventType {
+  SMS_PILOT
+  PUBLIC_BETA
+  TERMS
+  PRIVACY
+  MARKETING_OPTIONAL
+}
+
+enum ConsentEventSource {
+  ADMIN
+  WAITLIST_FORM
+  SMS
+  IMPORT
+}
+
+enum BetaCohortSimulationType {
+  DESIGN_PARTNER_10
+  PRIVATE_BETA_25
+  CAPPED_PUBLIC_BETA_100
+  OVER_CAPACITY
+  ROLLBACK_SIMULATION
+  INCIDENT_SIMULATION
+}
+
+enum BetaCohortSimulationStatus {
+  PASSED
+  FAILED
+  BLOCKED
+  COMPLETED
+}
+
+enum BetaCohortSimulationPersonaType {
+  ORGANIZER
+  CREATOR
+  INTEREST_CHECK
+  CONTACT_REPLY
+  EDGE_SAFETY
+  SPAMMY_UNKNOWN
+  OPTED_OUT
+  DUPLICATE
+  NON_ALLOWLISTED
+  WAITLIST_USER
+  SUPPORT_CONFUSION
+}
+
+enum LlmReviewStatus {
+  UNREVIEWED
+  GOOD
+  TOO_VERBOSE
+  WRONG_NEXT_QUESTION
+  UNSAFE
+  CONFUSING
+  BETTER_THAN_FALLBACK
+  WORSE_THAN_FALLBACK
+  NEEDS_PROMPT_TUNING
+}
+
+enum TalentSearchRunStatus {
+  DRAFT
+  RUNNING
+  COMPLETED
+  FAILED
+  NEEDS_REVIEW
+}
+
+enum TalentSearchSourceMode {
+  INTERNAL_ONLY
+  INTERNAL_PLUS_RESEARCH_PLAN
+  WEB_RESEARCH_SHADOW
+  WEB_RESEARCH_ACTIVE_ADMIN
+}
+
+enum TalentCandidateSource {
+  INTERNAL_DB
+  PUBLIC_WEB_RESEARCH
+  ADMIN_ADDED
+}
+
+enum TalentCandidateStatus {
+  SUGGESTED
+  APPROVED_FOR_SHORTLIST
+  REJECTED
+  NEEDS_MORE_INFO
+  DO_NOT_CONTACT
+}
+
+enum TalentResearchReviewStatus {
+  UNREVIEWED
+  APPROVED_FOR_SHORTLIST
+  NEEDS_MORE_RESEARCH
+  REJECTED
+  DO_NOT_CONTACT
+  NEEDS_ADMIN
+}
+
+enum TalentResearchReviewSourceMode {
+  INTERNAL_DB
+  PUBLIC_WEB_RESEARCH
+  MIXED
+  ADMIN_ADDED
+}
+
+enum TalentResearchSourceReliability {
+  HIGH
+  MEDIUM
+  LOW
+  UNKNOWN
+}
+
+enum PublicWebResearchRunStatus {
+  DRAFT
+  RUNNING
+  COMPLETED
+  FAILED
+  NEEDS_REVIEW
+  DISCARDED
+  ARCHIVED
+}
+
+enum PublicWebResearchRunMode {
+  SHADOW
+  LIVE_DRY_RUN
+  ADMIN_ACTIVE
+}
+
+enum PublicWebResearchResultStatus {
+  SHADOW_RESULT
+  NEEDS_REVIEW
+  IN_QUALITY_REVIEW
+  APPROVED_FOR_REVIEW
+  APPROVED_FOR_INTERNAL_REVIEW
+  REJECTED
+  DISCARDED
+  ARCHIVED
+  DUPLICATE
+  DO_NOT_CONTACT
+}
+
+enum PublicWebResearchJobStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  SKIPPED
+}
+
+enum ContactabilityChannel {
+  INTERNAL_CONTACT
+  PUBLIC_EMAIL
+  PUBLIC_CONTACT_FORM
+  PUBLIC_WEBSITE
+  INSTAGRAM_PROFILE
+  TIKTOK_PROFILE
+  YOUTUBE_PROFILE
+  LINKEDIN_PROFILE
+  BOOKING_LINK
+  AGENCY_OR_MANAGER_CONTACT
+  PUBLIC_BUSINESS_PHONE
+  OTHER_PUBLIC_PROFILE
+  UNKNOWN
+}
+
+enum ContactabilityOutreachRisk {
+  LOW
+  MEDIUM
+  HIGH
+  BLOCKED
+}
+
+enum ContactabilityReviewStatus {
+  UNREVIEWED
+  VERIFIED
+  UNSAFE
+  NEEDS_MORE_RESEARCH
+  DO_NOT_CONTACT
+}
+
+enum CandidateGraphEntityType {
+  PERSON
+  CREATOR_PROFILE
+  CONTACT
+  TALENT_CANDIDATE
+  CANDIDATE_RECOMMENDATION
+  PROJECT
+  PROJECT_BRIEF
+  ROLE_OPENING
+  OPPORTUNITY
+  INTEREST_CHECK
+  FANDOM_TAG
+  COMMUNITY_TAG
+  LOCATION
+  EVIDENCE_SOURCE
+  CONTACTABILITY_EVIDENCE
+}
+
+enum CandidateGraphEdgeType {
+  FRIEND
+  MUTUAL
+  REFERRED_BY
+  WORKED_TOGETHER
+  SAME_PROJECT
+  SAME_EVENT
+  SAME_COMMUNITY
+  SAME_FANDOM
+  SAME_CITY
+  SAME_METRO
+  SAME_ROLE
+  HAS_ROLE
+  HAS_SKILL
+  HAS_FANDOM
+  HAS_LOCATION
+  HAS_SOURCE
+  HAS_CONTACTABILITY
+  PUBLIC_PROFILE_MATCH
+  ADMIN_LINKED
+  DUPLICATE_OF
+  DO_NOT_CONTACT
+}
+
+enum CandidateVerificationStatus {
+  DISCOVERED
+  NEEDS_IDENTITY_REVIEW
+  NEEDS_CONTACTABILITY_REVIEW
+  NEEDS_QUALITY_REVIEW
+  APPROVED_FOR_INTERNAL_REVIEW
+  APPROVED_FOR_SHORTLIST
+  REJECTED
+  DUPLICATE
+  DO_NOT_CONTACT
+  ARCHIVED
+}
+
+enum CandidateGraphMatchRunStatus {
+  DRAFT
+  RUNNING
+  COMPLETED
+  FAILED
+  NEEDS_REVIEW
+}
+
+enum CandidateGraphMatchSourceMode {
+  INTERNAL_DB
+  PUBLIC_WEB_RESEARCH
+  MIXED
+  ADMIN_ADDED
+}
+
+enum CandidateGraphMatchReviewStatus {
+  SUGGESTED
+  NEEDS_REVIEW
+  APPROVED_FOR_SHORTLIST
+  REJECTED
+  DO_NOT_CONTACT
+}
+
+enum ConversationAutonomyMode {
+  MANUAL_REVIEW
+  AUTONOMOUS_UNTIL_OUTREACH
+  PAUSED
+}
+
+model User {
+  id                                String                 @id @default(cuid())
+  phone                             String                 @unique
+  name                              String?
+  hasCompletedFirstTimeHostQuestion Boolean                @default(false)
+  smsOptedOutAt                     DateTime?
+  createdAt                         DateTime               @default(now())
+  updatedAt                         DateTime               @updatedAt
+  messages                          Message[]
+  projectBriefs                     ProjectBrief[]
+  groupChatParticipants             GroupChatParticipant[]
+  inboundProcessingJobs             InboundProcessingJob[]
+}
+
+model ProjectBrief {
+  id                    String                 @id @default(cuid())
+  userId                String
+  projectId             String?                @unique
+  status                ProjectStatus          @default(NEW_INBOUND)
+  previousStatus        ProjectStatus?
+  escalationReason      String?
+  escalationFlags       Json                   @default("[]")
+  escalationResolvedAt  DateTime?
+  firstTimeHost         Boolean?
+  city                  String?
+  projectType           String?
+  title                 String?
+  description           String?
+  targetDate            String?
+  budgetRange           String?
+  expectedAudienceSize  String?
+  scope                 String?
+  vibe                  String?
+  helpNeeded            String?
+  requiredRoles         Json                   @default("[]")
+  adminNotes            String?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project               Project?               @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  messages              Message[]
+  outreaches            Outreach[]
+  groupChats            GroupChat[]
+  tasks                 Task[]
+  pilotFeedback         PilotFeedback[]
+  pilotParticipants     PilotParticipant[]
+  shortlistPackets      ShortlistPacket[]
+  outboundDrafts        OutboundDraft[]
+  llmReviewItems        LlmReviewItem[]
+  inboundProcessingJobs InboundProcessingJob[]
+  talentSearchRuns      TalentSearchRun[]
+  talentResearchReviews TalentResearchReview[]
+  publicWebResearchRuns PublicWebResearchRun[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model Message {
+  id                    String                 @id @default(cuid())
+  direction             MessageDirection
+  channel               MessageChannel
+  userId                String?
+  projectBriefId        String?
+  contactId             String?
+  twilioMessageSid      String?                @unique
+  body                  String
+  metadata              Json?
+  createdAt             DateTime               @default(now())
+  user                  User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  projectBrief          ProjectBrief?          @relation(fields: [projectBriefId], references: [id], onDelete: SetNull)
+  contact               Contact?               @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  llmReviewItems        LlmReviewItem[]
+  inboundProcessingJobs InboundProcessingJob[]
+
+  @@index([userId])
+  @@index([projectBriefId])
+  @@index([contactId])
+  @@index([createdAt])
+}
+
+model InboundProcessingJob {
+  id                       String                     @id @default(cuid())
+  inboundMessageId         String?
+  inboundTwilioMessageSid  String?                    @unique
+  projectBriefId           String?
+  userId                   String?
+  contactId                String?
+  normalizedSenderHash     String?
+  status                   InboundProcessingJobStatus @default(PENDING)
+  processingMode           String                     @default("sync")
+  attempts                 Int                        @default(0)
+  maxAttempts              Int                        @default(3)
+  lockedAt                 DateTime?
+  lockedBy                 String?
+  runAfter                 DateTime?
+  lastErrorCategory        String?
+  lastErrorMessageRedacted String?
+  resultSummary            Json?
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+  completedAt              DateTime?
+  inboundMessage           Message?                   @relation(fields: [inboundMessageId], references: [id], onDelete: SetNull)
+  projectBrief             ProjectBrief?              @relation(fields: [projectBriefId], references: [id], onDelete: SetNull)
+  user                     User?                      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  contact                  Contact?                   @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([runAfter])
+  @@index([inboundMessageId])
+  @@index([createdAt])
+  @@index([processingMode])
+  @@index([projectBriefId])
+  @@index([userId])
+  @@index([contactId])
+  @@index([status, runAfter, createdAt])
+}
+
+model Contact {
+  id                           String                        @id @default(cuid())
+  personId                     String?                       @unique
+  name                         String
+  phone                        String                        @unique
+  email                        String?
+  city                         String?
+  roles                        String[]
+  tags                         String[]
+  portfolioUrl                 String?
+  instagramUrl                 String?
+  notes                        String?
+  smsOptedOutAt                DateTime?
+  createdAt                    DateTime                      @default(now())
+  updatedAt                    DateTime                      @updatedAt
+  person                       Person?                       @relation(fields: [personId], references: [id], onDelete: SetNull)
+  messages                     Message[]
+  outreaches                   Outreach[]
+  groupChatParticipants        GroupChatParticipant[]
+  outboundDrafts               OutboundDraft[]
+  inboundProcessingJobs        InboundProcessingJob[]
+  talentCandidates             TalentCandidate[]
+  conversationAutonomySettings ConversationAutonomySetting[]
+
+  @@index([city])
+  @@index([city, name])
+}
+
+model Outreach {
+  id                        String                   @id @default(cuid())
+  projectBriefId            String
+  contactId                 String
+  opportunityId             String?
+  candidateRecommendationId String?
+  status                    OutreachStatus           @default(DRAFTED)
+  draftedMessage            String
+  sentMessage               String?
+  lastResponse              String?
+  adminApproved             Boolean                  @default(false)
+  consentToGroupChat        Boolean                  @default(false)
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
+  projectBrief              ProjectBrief             @relation(fields: [projectBriefId], references: [id], onDelete: Cascade)
+  contact                   Contact                  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  opportunity               Opportunity?             @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  candidateRecommendation   CandidateRecommendation? @relation(fields: [candidateRecommendationId], references: [id], onDelete: SetNull)
+
+  @@unique([projectBriefId, contactId])
+  @@index([status])
+  @@index([projectBriefId])
+  @@index([contactId])
+  @@index([opportunityId])
+  @@index([candidateRecommendationId])
+  @@index([updatedAt])
+}
+
+model GroupChat {
+  id                       String                  @id @default(cuid())
+  projectBriefId           String
+  productionConversationId String?                 @unique
+  twilioConversationSid    String?                 @unique
+  status                   GroupChatStatus         @default(DRAFT)
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
+  projectBrief             ProjectBrief            @relation(fields: [projectBriefId], references: [id], onDelete: Cascade)
+  productionConversation   ProductionConversation? @relation(fields: [productionConversationId], references: [id], onDelete: SetNull)
+  participants             GroupChatParticipant[]
+  tasks                    Task[]
+
+  @@index([projectBriefId])
+  @@index([status])
+  @@index([updatedAt])
+}
+
+model GroupChatParticipant {
+  id               String    @id @default(cuid())
+  groupChatId      String
+  userId           String?
+  contactId        String?
+  role             String
+  phone            String
+  consentConfirmed Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  groupChat        GroupChat @relation(fields: [groupChatId], references: [id], onDelete: Cascade)
+  user             User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  contact          Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([groupChatId])
+  @@index([userId])
+  @@index([contactId])
+}
+
+model Task {
+  id                       String                  @id @default(cuid())
+  projectBriefId           String?
+  projectId                String?
+  groupChatId              String?
+  productionConversationId String?
+  ownerName                String?
+  ownerPhone               String?
+  title                    String
+  description              String?
+  dueDate                  DateTime?
+  status                   TaskStatus              @default(TODO)
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
+  projectBrief             ProjectBrief?           @relation(fields: [projectBriefId], references: [id], onDelete: Cascade)
+  project                  Project?                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  groupChat                GroupChat?              @relation(fields: [groupChatId], references: [id], onDelete: SetNull)
+  productionConversation   ProductionConversation? @relation(fields: [productionConversationId], references: [id], onDelete: SetNull)
+
+  @@index([projectBriefId])
+  @@index([projectId])
+  @@index([groupChatId])
+  @@index([productionConversationId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([status, dueDate, updatedAt])
+}
+
+model AuditLog {
+  id         String         @id @default(cuid())
+  actorType  AuditActorType
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json           @default("{}")
+  createdAt  DateTime       @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model PilotFeedback {
+  id                 String            @id @default(cuid())
+  projectBriefId     String?
+  personId           String?
+  pilotParticipantId String?
+  category           String
+  rating             Int?
+  notes              String
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  projectBrief       ProjectBrief?     @relation(fields: [projectBriefId], references: [id], onDelete: SetNull)
+  person             Person?           @relation(fields: [personId], references: [id], onDelete: SetNull)
+  pilotParticipant   PilotParticipant? @relation(fields: [pilotParticipantId], references: [id], onDelete: SetNull)
+
+  @@index([projectBriefId])
+  @@index([personId])
+  @@index([pilotParticipantId])
+  @@index([category])
+  @@index([createdAt])
+}
+
+model PilotParticipant {
+  id                           String                        @id @default(cuid())
+  personId                     String?
+  projectBriefId               String?
+  inviteCodeId                 String?
+  phoneHash                    String?
+  redactedPhone                String?
+  name                         String?
+  email                        String?
+  role                         PilotParticipantRole          @default(INTERNAL_TEST)
+  cohort                       String                        @default("internal")
+  status                       PilotParticipantStatus        @default(INVITED)
+  consentSource                String?
+  consentTimestamp             DateTime?
+  joinedAt                     DateTime?
+  lastActiveAt                 DateTime?
+  notes                        String?
+  createdAt                    DateTime                      @default(now())
+  updatedAt                    DateTime                      @updatedAt
+  person                       Person?                       @relation(fields: [personId], references: [id], onDelete: SetNull)
+  projectBrief                 ProjectBrief?                 @relation(fields: [projectBriefId], references: [id], onDelete: SetNull)
+  inviteCode                   BetaInviteCode?               @relation(fields: [inviteCodeId], references: [id], onDelete: SetNull)
+  pilotFeedback                PilotFeedback[]
+  consentEvents                ConsentEvent[]
+  conversationAutonomySettings ConversationAutonomySetting[]
+
+  @@index([personId])
+  @@index([projectBriefId])
+  @@index([inviteCodeId])
+  @@index([phoneHash])
+  @@index([email])
+  @@index([role])
+  @@index([cohort])
+  @@index([status])
+  @@index([status, cohort])
+  @@index([updatedAt])
+}
+
+model BetaInviteCode {
+  id                        String                    @id @default(cuid())
+  codeHash                  String                    @unique
+  label                     String?
+  cohort                    String
+  maxUses                   Int                       @default(1)
+  uses                      Int                       @default(0)
+  expiresAt                 DateTime?
+  createdBy                 String?
+  status                    BetaInviteCodeStatus      @default(ACTIVE)
+  metadata                  Json                      @default("{}")
+  createdAt                 DateTime                  @default(now())
+  updatedAt                 DateTime                  @updatedAt
+  pilotParticipants         PilotParticipant[]
+  publicBetaWaitlistEntries PublicBetaWaitlistEntry[]
+
+  @@index([cohort])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([createdAt])
+}
+
+model PublicBetaWaitlistEntry {
+  id                 String                   @id @default(cuid())
+  email              String?
+  emailHash          String?
+  phoneHash          String?
+  redactedPhone      String?
+  name               String?
+  desiredUseCase     PublicBetaUseCase        @default(UNKNOWN)
+  city               String?
+  fandoms            Json                     @default("[]")
+  source             String?
+  status             PublicBetaWaitlistStatus @default(PENDING)
+  inviteCodeId       String?
+  consentCaptured    Boolean                  @default(false)
+  consentTextVersion String?
+  consentCapturedAt  DateTime?
+  notes              String?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  inviteCode         BetaInviteCode?          @relation(fields: [inviteCodeId], references: [id], onDelete: SetNull)
+  consentEvents      ConsentEvent[]
+
+  @@index([emailHash])
+  @@index([phoneHash])
+  @@index([desiredUseCase])
+  @@index([status])
+  @@index([inviteCodeId])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model ConsentEvent {
+  id                 String                   @id @default(cuid())
+  participantId      String?
+  waitlistEntryId    String?
+  phoneHash          String?
+  emailHash          String?
+  consentType        ConsentEventType
+  consentTextVersion String
+  consentText        String
+  source             ConsentEventSource
+  capturedAt         DateTime
+  revokedAt          DateTime?
+  metadata           Json                     @default("{}")
+  createdAt          DateTime                 @default(now())
+  participant        PilotParticipant?        @relation(fields: [participantId], references: [id], onDelete: SetNull)
+  waitlistEntry      PublicBetaWaitlistEntry? @relation(fields: [waitlistEntryId], references: [id], onDelete: SetNull)
+
+  @@index([participantId])
+  @@index([waitlistEntryId])
+  @@index([phoneHash])
+  @@index([emailHash])
+  @@index([consentType])
+  @@index([source])
+  @@index([capturedAt])
+  @@index([createdAt])
+}
+
+model BetaCohortSimulationRun {
+  id                 String                             @id @default(cuid())
+  cohortType         BetaCohortSimulationType
+  status             BetaCohortSimulationStatus
+  simulatedUserCount Int
+  allowedCount       Int                                @default(0)
+  waitlistedCount    Int                                @default(0)
+  blockedCount       Int                                @default(0)
+  escalatedCount     Int                                @default(0)
+  transcriptPassRate Float                              @default(0)
+  averageScore       Float                              @default(0)
+  riskLevel          String
+  blockers           Json                               @default("[]")
+  warnings           Json                               @default("[]")
+  resultSummary      Json                               @default("{}")
+  createdAt          DateTime                           @default(now())
+  updatedAt          DateTime                           @updatedAt
+  memberResults      BetaCohortSimulationMemberResult[]
+
+  @@index([cohortType])
+  @@index([status])
+  @@index([riskLevel])
+  @@index([createdAt])
+}
+
+model BetaCohortSimulationMemberResult {
+  id                 String                          @id @default(cuid())
+  runId              String
+  personaType        BetaCohortSimulationPersonaType
+  expectedFlow       String
+  actualFlow         String
+  accessStatus       String
+  conversationStatus String
+  score              Float                           @default(0)
+  riskLevel          String
+  blockers           Json                            @default("[]")
+  warnings           Json                            @default("[]")
+  createdAt          DateTime                        @default(now())
+  run                BetaCohortSimulationRun         @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId])
+  @@index([personaType])
+  @@index([accessStatus])
+  @@index([riskLevel])
+  @@index([createdAt])
+}
+
+model Person {
+  id                           String                        @id @default(cuid())
+  sagaUserId                   String?                       @unique
+  phone                        String?                       @unique
+  email                        String?                       @unique
+  name                         String?
+  city                         String?
+  state                        String?
+  country                      String?
+  source                       PersonSource                  @default(ADMIN)
+  optedOut                     Boolean                       @default(false)
+  consentStatus                ConsentStatus                 @default(UNKNOWN)
+  createdAt                    DateTime                      @default(now())
+  updatedAt                    DateTime                      @updatedAt
+  creatorProfile               CreatorProfile?
+  legacyContact                Contact?
+  organizedProjects            Project[]                     @relation("ProjectOrganizer")
+  interestChecks               InterestCheck[]               @relation("InterestCheckCreator")
+  recommendations              CandidateRecommendation[]
+  relationshipEdgesFrom        RelationshipEdge[]            @relation("RelationshipFrom")
+  relationshipEdgesTo          RelationshipEdge[]            @relation("RelationshipTo")
+  teamMemberships              TeamMember[]
+  pilotFeedback                PilotFeedback[]
+  pilotParticipants            PilotParticipant[]
+  outboundDrafts               OutboundDraft[]
+  llmReviewItems               LlmReviewItem[]
+  talentCandidates             TalentCandidate[]
+  conversationAutonomySettings ConversationAutonomySetting[]
+
+  @@index([city])
+  @@index([source])
+  @@index([consentStatus])
+  @@index([updatedAt])
+}
+
+model CreatorProfile {
+  id                        String              @id @default(cuid())
+  personId                  String              @unique
+  displayName               String?
+  bio                       String?
+  city                      String?
+  roles                     String[]
+  skills                    String[]
+  fandoms                   String[]
+  communities               String[]
+  portfolioUrls             String[]
+  socialUrls                String[]
+  availabilityNotes         String?
+  rateNotes                 String?
+  preferredOpportunityTypes String[]
+  reviewStatus              ProfileReviewStatus @default(PENDING_REVIEW)
+  internalNotes             String?
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+  person                    Person              @relation(fields: [personId], references: [id], onDelete: Cascade)
+  talentCandidates          TalentCandidate[]
+
+  @@index([city])
+  @@index([reviewStatus])
+  @@index([updatedAt])
+}
+
+model Project {
+  id                      String                   @id @default(cuid())
+  source                  NetworkProjectSource     @default(ADMIN)
+  existingSagaEventId     String?                  @unique
+  existingSagaCommunityId String?
+  legacyProjectBriefId    String?                  @unique
+  organizerPersonId       String?
+  title                   String?
+  description             String?
+  city                    String?
+  targetDate              String?
+  budgetRange             String?
+  audience                String?
+  fandoms                 String[]
+  status                  NetworkProjectStatus     @default(INTAKE)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  organizerPerson         Person?                  @relation("ProjectOrganizer", fields: [organizerPersonId], references: [id], onDelete: SetNull)
+  projectBrief            ProjectBrief?
+  roleOpenings            RoleOpening[]
+  convertedInterestCheck  InterestCheck?           @relation("InterestCheckProject")
+  team                    Team?
+  conversations           ProductionConversation[]
+  tasks                   Task[]
+  shortlistPackets        ShortlistPacket[]
+  outboundDrafts          OutboundDraft[]
+  talentSearchRuns        TalentSearchRun[]
+  talentResearchReviews   TalentResearchReview[]
+  publicWebResearchRuns   PublicWebResearchRun[]
+
+  @@index([source])
+  @@index([status])
+  @@index([city])
+  @@index([existingSagaCommunityId])
+  @@index([organizerPersonId])
+  @@index([updatedAt])
+}
+
+model RoleOpening {
+  id                    String                 @id @default(cuid())
+  projectId             String
+  roleType              String
+  title                 String
+  description           String?
+  requiredSkills        String[]
+  preferredFandoms      String[]
+  locationRequirement   String?
+  remoteAllowed         Boolean                @default(false)
+  compensationType      CompensationType       @default(UNKNOWN)
+  budgetRange           String?
+  quantityNeeded        Int                    @default(1)
+  status                RoleOpeningStatus      @default(DRAFT)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  project               Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  opportunities         Opportunity[]
+  teamMembers           TeamMember[]
+  talentSearchRuns      TalentSearchRun[]
+  publicWebResearchRuns PublicWebResearchRun[]
+
+  @@index([projectId])
+  @@index([roleType])
+  @@index([status])
+  @@index([updatedAt])
+}
+
+model Opportunity {
+  id               String                     @id @default(cuid())
+  roleOpeningId    String
+  visibility       OpportunityVisibility      @default(PRIVATE)
+  applicationMode  OpportunityApplicationMode @default(INVITE_ONLY)
+  status           OpportunityStatus          @default(DRAFT)
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+  roleOpening      RoleOpening                @relation(fields: [roleOpeningId], references: [id], onDelete: Cascade)
+  recommendations  CandidateRecommendation[]
+  legacyOutreaches Outreach[]
+
+  @@index([roleOpeningId])
+  @@index([status])
+  @@index([visibility])
+  @@index([updatedAt])
+}
+
+model InterestCheck {
+  id                   String              @id @default(cuid())
+  creatorPersonId      String?
+  title                String
+  description          String
+  city                 String?
+  fandoms              String[]
+  proposedTiming       String?
+  thresholdType        ThresholdType       @default(INTERESTED_COUNT)
+  thresholdValue       Int?
+  currentInterestCount Int                 @default(0)
+  status               InterestCheckStatus @default(DRAFT)
+  convertedProjectId   String?             @unique
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  creatorPerson        Person?             @relation("InterestCheckCreator", fields: [creatorPersonId], references: [id], onDelete: SetNull)
+  convertedProject     Project?            @relation("InterestCheckProject", fields: [convertedProjectId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([city])
+  @@index([creatorPersonId])
+  @@index([updatedAt])
+}
+
+model CandidateRecommendation {
+  id                             String                        @id @default(cuid())
+  opportunityId                  String
+  personId                       String
+  score                          Float
+  scoreBreakdown                 Json                          @default("{}")
+  proximityTier                  ProximityTier                 @default(UNKNOWN)
+  matchingReasons                String[]
+  risks                          String[]
+  status                         CandidateRecommendationStatus @default(SUGGESTED)
+  adminReviewNotes               String?
+  reviewedAt                     DateTime?
+  reviewedBy                     String?
+  shortlistReasonOverride        String?
+  organizerFacingSummaryOverride String?
+  createdAt                      DateTime                      @default(now())
+  updatedAt                      DateTime                      @updatedAt
+  opportunity                    Opportunity                   @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  person                         Person                        @relation(fields: [personId], references: [id], onDelete: Cascade)
+  legacyOutreaches               Outreach[]
+  outboundDrafts                 OutboundDraft[]
+  talentCandidates               TalentCandidate[]
+  talentResearchReviews          TalentResearchReview[]
+
+  @@unique([opportunityId, personId])
+  @@index([opportunityId])
+  @@index([personId])
+  @@index([status])
+  @@index([score])
+  @@index([opportunityId, score, updatedAt])
+  @@index([personId, status, updatedAt])
+  @@index([reviewedAt])
+}
+
+model TalentSearchRun {
+  id                    String                 @id @default(cuid())
+  projectBriefId        String?
+  projectId             String?
+  roleOpeningId         String?
+  status                TalentSearchRunStatus  @default(DRAFT)
+  sourceMode            TalentSearchSourceMode @default(INTERNAL_ONLY)
+  querySummary          String
+  rolesSearched         Json                   @default("[]")
+  resultCount           Int                    @default(0)
+  warnings              Json                   @default("[]")
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  projectBrief          ProjectBrief?          @relation(fields: [projectBriefId], references: [id], onDelete: SetNull)
+  project               Project?               @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  roleOpening           RoleOpening?           @relation(fields: [roleOpeningId], references: [id], onDelete: SetNull)
+  candidates            TalentCandidate[]
+  researchReviews       TalentResearchReview[]
+  publicWebResearchRuns PublicWebResearchRun[]
+
+  @@index([projectBriefId])
+  @@index([projectId])
+  @@index([roleOpeningId])
+  @@index([status])
+  @@index([sourceMode])
+  @@index([createdAt])
+}
+
+model TalentCandidate {
+  id                        String                      @id @default(cuid())
+  searchRunId               String
+  publicWebResearchResultId String?
+  personId                  String?
+  creatorProfileId          String?
+  contactId                 String?
+  candidateRecommendationId String?
+  source                    TalentCandidateSource       @default(INTERNAL_DB)
+  displayName               String
+  role                      String
+  city                      String?
+  fandoms                   Json                        @default("[]")
+  skills                    Json                        @default("[]")
+  portfolioUrls             Json                        @default("[]")
+  publicSourceUrls          Json                        @default("[]")
+  evidence                  Json                        @default("{}")
+  score                     Float                       @default(0)
+  scoreBreakdown            Json                        @default("{}")
+  status                    TalentCandidateStatus       @default(SUGGESTED)
+  verificationStatus        CandidateVerificationStatus @default(DISCOVERED)
+  risks                     Json                        @default("[]")
+  missingInfo               Json                        @default("[]")
+  adminNotes                String?
+  createdAt                 DateTime                    @default(now())
+  updatedAt                 DateTime                    @updatedAt
+  searchRun                 TalentSearchRun             @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
+  publicWebResearchResult   PublicWebResearchResult?    @relation(fields: [publicWebResearchResultId], references: [id], onDelete: SetNull)
+  person                    Person?                     @relation(fields: [personId], references: [id], onDelete: SetNull)
+  creatorProfile            CreatorProfile?             @relation(fields: [creatorProfileId], references: [id], onDelete: SetNull)
+  contact                   Contact?                    @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  candidateRecommendation   CandidateRecommendation?    @relation(fields: [candidateRecommendationId], references: [id], onDelete: SetNull)
+  researchReviews           TalentResearchReview[]
+  contactabilityEvidence    ContactabilityEvidence[]
+
+  @@index([searchRunId])
+  @@index([publicWebResearchResultId])
+  @@index([personId])
+  @@index([creatorProfileId])
+  @@index([contactId])
+  @@index([candidateRecommendationId])
+  @@index([source])
+  @@index([status])
+  @@index([verificationStatus])
+  @@index([score])
+  @@index([createdAt])
+}
+
+model PublicWebResearchRun {
+  id                String                     @id @default(cuid())
+  projectBriefId    String?
+  projectId         String?
+  roleOpeningId     String?
+  talentSearchRunId String?
+  status            PublicWebResearchRunStatus @default(DRAFT)
+  mode              PublicWebResearchRunMode   @default(SHADOW)
+  provider          String
+  sourceTag         String?
+  queryPlan         Json                       @default("[]")
+  roleTargets       Json                       @default("[]")
+  allowedDomains    Json?
+  blockedDomains    Json?
+  resultCount       Int                        @default(0)
+  citationCount     Int                        @default(0)
+  warnings          Json                       @default("[]")
+  errorCategory     String?
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+  completedAt       DateTime?
+  projectBrief      ProjectBrief?              @relation(fields: [projectBriefId], references: [id], onDelete: SetNull)
+  project           Project?                   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  roleOpening       RoleOpening?               @relation(fields: [roleOpeningId], references: [id], onDelete: SetNull)
+  talentSearchRun   TalentSearchRun?           @relation(fields: [talentSearchRunId], references: [id], onDelete: SetNull)
+  results           PublicWebResearchResult[]
+  jobs              PublicWebResearchJob[]
+
+  @@index([projectBriefId])
+  @@index([projectId])
+  @@index([roleOpeningId])
+  @@index([talentSearchRunId])
+  @@index([status])
+  @@index([mode])
+  @@index([provider])
+  @@index([sourceTag])
+  @@index([createdAt])
+}
+
+model PublicWebResearchJob {
+  id                       String                     @id @default(cuid())
+  researchRunId            String?
+  projectBriefId           String?
+  projectId                String?
+  role                     String?
+  querySummary             String?
+  mode                     PublicWebResearchRunMode   @default(LIVE_DRY_RUN)
+  status                   PublicWebResearchJobStatus @default(PENDING)
+  attempts                 Int                        @default(0)
+  maxAttempts              Int                        @default(2)
+  lockedAt                 DateTime?
+  lockedBy                 String?
+  runAfter                 DateTime?
+  errorCategory            String?
+  lastErrorMessageRedacted String?
+  resultSummary            Json?
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+  completedAt              DateTime?
+  researchRun              PublicWebResearchRun?      @relation(fields: [researchRunId], references: [id], onDelete: SetNull)
+
+  @@index([researchRunId])
+  @@index([status])
+  @@index([runAfter])
+  @@index([createdAt])
+  @@index([mode])
+}
+
+model PublicWebResearchResult {
+  id                     String                          @id @default(cuid())
+  researchRunId          String
+  role                   String
+  displayName            String
+  city                   String?
+  publicProfileUrls      Json                            @default("[]")
+  sourceUrls             Json                            @default("[]")
+  sourceTitles           Json?
+  evidence               Json                            @default("{}")
+  candidateCard          Json                            @default("{}")
+  status                 PublicWebResearchResultStatus   @default(SHADOW_RESULT)
+  confidence             Float                           @default(0)
+  sourceReliability      TalentResearchSourceReliability @default(UNKNOWN)
+  sourceQualityScore     Float?
+  sourceQualityBand      String?
+  duplicateStatus        String?
+  duplicateMatchedType   String?
+  duplicateMatchedId     String?
+  reviewNotes            String?
+  riskFlags              Json                            @default("[]")
+  missingEvidence        Json                            @default("[]")
+  createdAt              DateTime                        @default(now())
+  updatedAt              DateTime                        @updatedAt
+  researchRun            PublicWebResearchRun            @relation(fields: [researchRunId], references: [id], onDelete: Cascade)
+  talentCandidates       TalentCandidate[]
+  contactabilityEvidence ContactabilityEvidence[]
+
+  @@index([researchRunId])
+  @@index([role])
+  @@index([status])
+  @@index([confidence])
+  @@index([sourceReliability])
+  @@index([sourceQualityBand])
+  @@index([duplicateStatus])
+  @@index([createdAt])
+}
+
+model ContactabilityEvidence {
+  id                           String                     @id @default(cuid())
+  publicWebResearchResultId    String?
+  talentCandidateId            String?
+  channel                      ContactabilityChannel      @default(UNKNOWN)
+  valueRedacted                String?
+  rawValueEncryptedOrAdminOnly String?
+  sourceUrl                    String?
+  sourceTitle                  String?
+  evidenceTextSummary          String?
+  isPubliclyVisible            Boolean                    @default(false)
+  isBusinessFacing             Boolean                    @default(false)
+  isPersonalContact            Boolean                    @default(false)
+  requiresHumanReview          Boolean                    @default(true)
+  outreachAllowed              Boolean                    @default(false)
+  outreachRisk                 ContactabilityOutreachRisk @default(HIGH)
+  reviewStatus                 ContactabilityReviewStatus @default(UNREVIEWED)
+  complianceNotes              String?
+  createdAt                    DateTime                   @default(now())
+  updatedAt                    DateTime                   @updatedAt
+  publicWebResearchResult      PublicWebResearchResult?   @relation(fields: [publicWebResearchResultId], references: [id], onDelete: SetNull)
+  talentCandidate              TalentCandidate?           @relation(fields: [talentCandidateId], references: [id], onDelete: SetNull)
+
+  @@index([publicWebResearchResultId])
+  @@index([talentCandidateId])
+  @@index([channel])
+  @@index([outreachRisk])
+  @@index([reviewStatus])
+  @@index([createdAt])
+}
+
+model TalentResearchReview {
+  id                        String                          @id @default(cuid())
+  candidateRecommendationId String?
+  talentCandidateId         String?
+  searchRunId               String?
+  projectBriefId            String?
+  projectId                 String?
+  sourceMode                TalentResearchReviewSourceMode  @default(INTERNAL_DB)
+  reviewStatus              TalentResearchReviewStatus      @default(UNREVIEWED)
+  totalScore                Float                           @default(0)
+  scoreBreakdown            Json                            @default("{}")
+  evidenceChecklist         Json                            @default("{}")
+  sourceReliability         TalentResearchSourceReliability @default(UNKNOWN)
+  identityConfidence        Float                           @default(0)
+  riskFlags                 Json                            @default("[]")
+  reviewerNotes             String?
+  organizerFacingSummary    String?
+  privateReviewNotes        String?
+  reviewedAt                DateTime?
+  reviewedBy                String?
+  createdAt                 DateTime                        @default(now())
+  updatedAt                 DateTime                        @updatedAt
+  candidateRecommendation   CandidateRecommendation?        @relation(fields: [candidateRecommendationId], references: [id], onDelete: SetNull)
+  talentCandidate           TalentCandidate?                @relation(fields: [talentCandidateId], references: [id], onDelete: SetNull)
+  searchRun                 TalentSearchRun?                @relation(fields: [searchRunId], references: [id], onDelete: SetNull)
+  projectBrief              ProjectBrief?                   @relation(fields: [projectBriefId], references: [id], onDelete: SetNull)
+  project                   Project?                        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([candidateRecommendationId])
+  @@index([talentCandidateId])
+  @@index([searchRunId])
+  @@index([projectBriefId])
+  @@index([projectId])
+  @@index([sourceMode])
+  @@index([reviewStatus])
+  @@index([totalScore])
+  @@index([createdAt])
+}
+
+model ShortlistPacket {
+  id                     String                @id @default(cuid())
+  projectBriefId         String?
+  projectId              String?
+  status                 ShortlistPacketStatus @default(NEEDS_REVIEW)
+  organizerFacingSummary String
+  rolesCovered           Json                  @default("[]")
+  rolesMissing           Json                  @default("[]")
+  candidateSummaries     Json                  @default("[]")
+  adminNotes             String?
+  approvedAt             DateTime?
+  approvedBy             String?
+  sentAt                 DateTime?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  projectBrief           ProjectBrief?         @relation(fields: [projectBriefId], references: [id], onDelete: SetNull)
+  project                Project?              @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  outboundDrafts         OutboundDraft[]
+
+  @@index([projectBriefId])
+  @@index([projectId])
+  @@index([status])
+  @@index([updatedAt])
+}
+
+model OutboundDraft {
+  id                        String                     @id @default(cuid())
+  type                      OutboundDraftType
+  status                    OutboundDraftStatus        @default(NEEDS_REVIEW)
+  body                      String
+  editedBody                String?
+  source                    OutboundDraftSource        @default(PRODUCER_AGENT)
+  projectBriefId            String?
+  projectId                 String?
+  shortlistPacketId         String?
+  candidateRecommendationId String?
+  contactId                 String?
+  personId                  String?
+  recipientKind             OutboundDraftRecipientKind
+  adminNotes                String?
+  approvedAt                DateTime?
+  approvedBy                String?
+  rejectedAt                DateTime?
+  sentAt                    DateTime?
+  blockReason               String?
+  metadata                  Json                       @default("{}")
+  createdAt                 DateTime                   @default(now())
+  updatedAt                 DateTime                   @updatedAt
+  projectBrief              ProjectBrief?              @relation(fields: [projectBriefId], references: [id], onDelete: SetNull)
+  project                   Project?                   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  shortlistPacket           ShortlistPacket?           @relation(fields: [shortlistPacketId], references: [id], onDelete: SetNull)
+  candidateRecommendation   CandidateRecommendation?   @relation(fields: [candidateRecommendationId], references: [id], onDelete: SetNull)
+  contact                   Contact?                   @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  person                    Person?                    @relation(fields: [personId], references: [id], onDelete: SetNull)
+
+  @@index([type])
+  @@index([status])
+  @@index([source])
+  @@index([projectBriefId])
+  @@index([projectId])
+  @@index([shortlistPacketId])
+  @@index([candidateRecommendationId])
+  @@index([contactId])
+  @@index([personId])
+  @@index([updatedAt])
+}
+
+model LlmReviewItem {
+  id                      String          @id @default(cuid())
+  operation               String
+  flow                    String
+  projectBriefId          String?
+  personId                String?
+  messageId               String?
+  provider                String
+  model                   String
+  mode                    String
+  deterministicText       String?
+  llmText                 String?
+  selectedText            String?
+  selectedReplySource     String?
+  validationStatus        String
+  safetyFlags             Json            @default("[]")
+  forbiddenClaimsDetected Boolean         @default(false)
+  fallbackUsed            Boolean         @default(false)
+  fallbackReason          String?
+  toneReviewStatus        String?
+  needsReview             Boolean         @default(true)
+  reviewStatus            LlmReviewStatus @default(UNREVIEWED)
+  reviewerNotes           String?
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+  projectBrief            ProjectBrief?   @relation(fields: [projectBriefId], references: [id], onDelete: SetNull)
+  person                  Person?         @relation(fields: [personId], references: [id], onDelete: SetNull)
+  message                 Message?        @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  @@index([operation])
+  @@index([flow])
+  @@index([projectBriefId])
+  @@index([personId])
+  @@index([messageId])
+  @@index([reviewStatus])
+  @@index([createdAt])
+}
+
+model ConversationAutonomySetting {
+  id                    String                   @id @default(cuid())
+  phoneHash             String                   @unique
+  redactedPhone         String
+  personId              String?
+  contactId             String?
+  pilotParticipantId    String?
+  mode                  ConversationAutonomyMode @default(MANUAL_REVIEW)
+  enabled               Boolean                  @default(false)
+  reason                String?
+  updatedBy             String?
+  lastAutonomousReplyAt DateTime?
+  lastHandoffAt         DateTime?
+  notes                 String?
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  person                Person?                  @relation(fields: [personId], references: [id], onDelete: SetNull)
+  contact               Contact?                 @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  pilotParticipant      PilotParticipant?        @relation(fields: [pilotParticipantId], references: [id], onDelete: SetNull)
+
+  @@index([mode])
+  @@index([enabled])
+  @@index([personId])
+  @@index([contactId])
+  @@index([pilotParticipantId])
+  @@index([updatedAt])
+  @@index([lastHandoffAt])
+}
+
+model CandidateGraphEdge {
+  id              String                   @id @default(cuid())
+  fromEntityType  CandidateGraphEntityType
+  fromEntityId    String
+  toEntityType    CandidateGraphEntityType
+  toEntityId      String
+  edgeType        CandidateGraphEdgeType
+  strength        Float                    @default(0)
+  confidence      Float                    @default(0)
+  sourceType      String
+  sourceId        String?
+  evidenceSummary String?
+  isInferred      Boolean                  @default(false)
+  lastVerifiedAt  DateTime?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  @@index([fromEntityType, fromEntityId])
+  @@index([toEntityType, toEntityId])
+  @@index([edgeType])
+  @@index([sourceType, sourceId])
+  @@index([isInferred])
+  @@index([createdAt])
+}
+
+model CandidateSearchProfile {
+  id                   String                      @id @default(cuid())
+  personId             String?
+  creatorProfileId     String?
+  contactId            String?
+  talentCandidateId    String?
+  displayName          String
+  roleTags             Json                        @default("[]")
+  skillTags            Json                        @default("[]")
+  fandomTags           Json                        @default("[]")
+  communityTags        Json                        @default("[]")
+  city                 String?
+  metro                String?
+  locationConfidence   Float                       @default(0)
+  reviewStatus         CandidateVerificationStatus @default(DISCOVERED)
+  sourceMode           String
+  evidenceQualityScore Float                       @default(0)
+  contactabilityScore  Float                       @default(0)
+  doNotContact         Boolean                     @default(false)
+  optedOut             Boolean                     @default(false)
+  lastIndexedAt        DateTime                    @default(now())
+  createdAt            DateTime                    @default(now())
+  updatedAt            DateTime                    @updatedAt
+
+  @@index([personId])
+  @@index([creatorProfileId])
+  @@index([contactId])
+  @@index([talentCandidateId])
+  @@index([reviewStatus])
+  @@index([sourceMode])
+  @@index([city])
+  @@index([metro])
+  @@index([doNotContact])
+  @@index([optedOut])
+  @@index([lastIndexedAt])
+}
+
+model CandidateGraphMatchRun {
+  id                  String                       @id @default(cuid())
+  projectBriefId      String?
+  projectId           String?
+  roleOpeningId       String?
+  requestedByPersonId String?
+  requestedByUserId   String?
+  status              CandidateGraphMatchRunStatus @default(DRAFT)
+  roleTargets         Json                         @default("[]")
+  candidatePoolSize   Int                          @default(0)
+  resultCount         Int                          @default(0)
+  filtersApplied      Json                         @default("{}")
+  scoringVersion      String
+  warnings            Json                         @default("[]")
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+  completedAt         DateTime?
+  results             CandidateGraphMatchResult[]
+
+  @@index([projectBriefId])
+  @@index([projectId])
+  @@index([roleOpeningId])
+  @@index([requestedByPersonId])
+  @@index([requestedByUserId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model CandidateGraphMatchResult {
+  id                        String                          @id @default(cuid())
+  matchRunId                String
+  candidateSearchProfileId  String?
+  personId                  String?
+  creatorProfileId          String?
+  contactId                 String?
+  talentCandidateId         String?
+  candidateRecommendationId String?
+  publicWebResearchResultId String?
+  role                      String
+  totalScore                Float                           @default(0)
+  scoreBreakdown            Json                            @default("{}")
+  proximityTier             String
+  relationshipPath          Json?
+  matchReasons              Json                            @default("[]")
+  riskFlags                 Json                            @default("[]")
+  missingEvidence           Json                            @default("[]")
+  contactabilitySummary     Json                            @default("{}")
+  sourceMode                CandidateGraphMatchSourceMode
+  reviewStatus              CandidateGraphMatchReviewStatus @default(SUGGESTED)
+  organizerSafeSummary      String?
+  adminNotes                String?
+  createdAt                 DateTime                        @default(now())
+  updatedAt                 DateTime                        @updatedAt
+  matchRun                  CandidateGraphMatchRun          @relation(fields: [matchRunId], references: [id], onDelete: Cascade)
+
+  @@index([matchRunId])
+  @@index([candidateSearchProfileId])
+  @@index([personId])
+  @@index([creatorProfileId])
+  @@index([contactId])
+  @@index([talentCandidateId])
+  @@index([candidateRecommendationId])
+  @@index([publicWebResearchResultId])
+  @@index([role])
+  @@index([totalScore])
+  @@index([proximityTier])
+  @@index([sourceMode])
+  @@index([reviewStatus])
+  @@index([createdAt])
+}
+
+model RelationshipEdge {
+  id               String           @id @default(cuid())
+  fromPersonId     String
+  toPersonId       String
+  relationshipType RelationshipType
+  strength         Float            @default(1)
+  metadata         Json?
+  createdAt        DateTime         @default(now())
+  fromPerson       Person           @relation("RelationshipFrom", fields: [fromPersonId], references: [id], onDelete: Cascade)
+  toPerson         Person           @relation("RelationshipTo", fields: [toPersonId], references: [id], onDelete: Cascade)
+
+  @@unique([fromPersonId, toPersonId, relationshipType])
+  @@index([fromPersonId])
+  @@index([toPersonId])
+  @@index([relationshipType])
+  @@index([fromPersonId, relationshipType])
+  @@index([toPersonId, relationshipType])
+}
+
+model Team {
+  id        String       @id @default(cuid())
+  projectId String       @unique
+  status    TeamStatus   @default(FORMING)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  project   Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  members   TeamMember[]
+
+  @@index([status])
+}
+
+model TeamMember {
+  id            String           @id @default(cuid())
+  teamId        String
+  personId      String
+  roleOpeningId String?
+  status        TeamMemberStatus @default(INVITED)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  team          Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  person        Person           @relation(fields: [personId], references: [id], onDelete: Cascade)
+  roleOpening   RoleOpening?     @relation(fields: [roleOpeningId], references: [id], onDelete: SetNull)
+
+  @@unique([teamId, personId, roleOpeningId])
+  @@index([teamId])
+  @@index([personId])
+  @@index([roleOpeningId])
+  @@index([status])
+}
+
+model ProductionConversation {
+  id                     String                       @id @default(cuid())
+  projectId              String
+  provider               ConversationProvider         @default(MOCK)
+  externalConversationId String?
+  status                 ProductionConversationStatus @default(DRAFT)
+  createdAt              DateTime                     @default(now())
+  updatedAt              DateTime                     @updatedAt
+  project                Project                      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  legacyGroupChat        GroupChat?
+  tasks                  Task[]
+
+  @@index([projectId])
+  @@index([provider])
+  @@index([provider, externalConversationId])
+  @@index([status])
+  @@index([updatedAt])
+}
