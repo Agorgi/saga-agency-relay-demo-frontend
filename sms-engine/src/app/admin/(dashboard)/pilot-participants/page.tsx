@@ -8,19 +8,19 @@ import {
   adminContactLabel,
   redactPhoneForDisplay,
   redactSensitiveTextForDisplay,
-} from "@/lib/adminPrivacy";
-import { getDb } from "@/lib/db";
+} from "@/sms-engine/adminPrivacy";
+import { getDb } from "@/sms-engine/db";
 import {
   conversationAutonomyModeLabel,
   conversationAutonomyModes,
   serializeConversationAutonomySettingForAdmin,
-} from "@/lib/conversation/conversationAutonomy";
+} from "@/sms-engine/conversation/conversationAutonomy";
 import {
   PILOT_COHORTS,
   pilotParticipantRoleOptions,
   pilotParticipantStatusOptions,
-} from "@/lib/pilotReadiness";
-import { briefTitle } from "@/lib/workflow";
+} from "@/sms-engine/pilotReadiness";
+import { briefTitle } from "@/sms-engine/workflow";
 
 export const dynamic = "force-dynamic";
 

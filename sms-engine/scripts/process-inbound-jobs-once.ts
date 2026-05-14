@@ -1,4 +1,4 @@
-import { processPendingInboundJobsOnce } from "@/lib/messagingPipeline";
+import { processPendingInboundJobsOnce } from "@/sms-engine/messagingPipeline";
 
 function limitFromEnv() {
   const parsed = Number.parseInt(process.env.JOB_PROCESS_LIMIT || "10", 10);

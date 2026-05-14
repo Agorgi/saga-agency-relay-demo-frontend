@@ -1,6 +1,6 @@
-import { getDb } from "@/lib/db";
-import { redactForLog } from "@/lib/safeLogging";
-import { getPublicWebResearchHealthSnapshot } from "@/lib/sourcing/publicWebResearchProvider";
+import { getDb } from "@/sms-engine/db";
+import { redactForLog } from "@/sms-engine/safeLogging";
+import { getPublicWebResearchHealthSnapshot } from "@/sms-engine/sourcing/publicWebResearchProvider";
 
 async function main() {
   const health = await getPublicWebResearchHealthSnapshot();

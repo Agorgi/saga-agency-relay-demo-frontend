@@ -3,10 +3,10 @@ import {
   detectCapabilityFaq,
   evaluateCapabilityFaqPolicy,
   generateCapabilityResponse,
-} from "@/lib/conversation/capabilityResponses";
-import type { ConversationContext } from "@/lib/conversation/conversationTypes";
-import { classifyConversationIntent } from "@/lib/conversation/intentRouter";
-import { redactForLog } from "@/lib/safeLogging";
+} from "@/sms-engine/conversation/capabilityResponses";
+import type { ConversationContext } from "@/sms-engine/conversation/conversationTypes";
+import { classifyConversationIntent } from "@/sms-engine/conversation/intentRouter";
+import { redactForLog } from "@/sms-engine/safeLogging";
 
 process.on("uncaughtException", (error) => {
   console.error(redactForLog(error));

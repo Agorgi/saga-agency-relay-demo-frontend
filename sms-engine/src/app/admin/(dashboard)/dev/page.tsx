@@ -3,11 +3,11 @@ import { MessageCircle, Plus, RotateCcw, Send, Sparkles } from "lucide-react";
 import { DemoSummaryButton } from "@/components/admin/DemoSummaryButton";
 import { MessageThread } from "@/components/admin/MessageThread";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { getConversationEngineRuntime } from "@/lib/conversation/conversationEngineMode";
-import { redactPhoneForDisplay } from "@/lib/adminPrivacy";
-import { getDb } from "@/lib/db";
-import { normalizePhone } from "@/lib/phone";
-import { briefTitle } from "@/lib/workflow";
+import { getConversationEngineRuntime } from "@/sms-engine/conversation/conversationEngineMode";
+import { redactPhoneForDisplay } from "@/sms-engine/adminPrivacy";
+import { getDb } from "@/sms-engine/db";
+import { normalizePhone } from "@/sms-engine/phone";
+import { briefTitle } from "@/sms-engine/workflow";
 import {
   resetSimulationAction,
   simulateInboundAction,

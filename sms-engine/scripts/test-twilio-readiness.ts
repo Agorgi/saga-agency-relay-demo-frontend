@@ -6,19 +6,19 @@ import { GET as healthGet } from "@/app/api/health/route";
 import {
   classifyOutreachReplyState,
   detectContactReplyIntent,
-} from "@/lib/contactReplies";
+} from "@/sms-engine/contactReplies";
 import {
   getMessagingProvider,
   TwilioMessagingProvider,
-} from "@/lib/messagingProvider";
+} from "@/sms-engine/messagingProvider";
 import {
   shouldSkipDuplicateTwilioMessageSid,
-} from "@/lib/messages";
-import { normalizePhone, isStartMessage, isStopMessage } from "@/lib/phone";
-import { isInboundRateLimited } from "@/lib/rateLimit";
-import { redactForLog } from "@/lib/safeLogging";
-import { getSmsSafetyHealth } from "@/lib/smsSafety";
-import { formDataToRecord, validateTwilioWebhookRequest } from "@/lib/twilioWebhook";
+} from "@/sms-engine/messages";
+import { normalizePhone, isStartMessage, isStopMessage } from "@/sms-engine/phone";
+import { isInboundRateLimited } from "@/sms-engine/rateLimit";
+import { redactForLog } from "@/sms-engine/safeLogging";
+import { getSmsSafetyHealth } from "@/sms-engine/smsSafety";
+import { formDataToRecord, validateTwilioWebhookRequest } from "@/sms-engine/twilioWebhook";
 
 const fakeTwilioEnv = {
   MESSAGING_PROVIDER: "MOCK",

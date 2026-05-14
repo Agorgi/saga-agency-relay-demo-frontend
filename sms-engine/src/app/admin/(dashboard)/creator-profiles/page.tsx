@@ -1,7 +1,7 @@
 import { Save } from "lucide-react";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { adminContactLabel } from "@/lib/adminPrivacy";
-import { getDb } from "@/lib/db";
+import { adminContactLabel } from "@/sms-engine/adminPrivacy";
+import { getDb } from "@/sms-engine/db";
 import { updateCreatorProfileReviewAction } from "@/app/admin/(dashboard)/network-actions";
 
 export const dynamic = "force-dynamic";

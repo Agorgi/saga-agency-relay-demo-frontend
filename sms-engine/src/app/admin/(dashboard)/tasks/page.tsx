@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { Bell, Plus, Save, Trash2 } from "lucide-react";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { getDb } from "@/lib/db";
-import { briefTitle } from "@/lib/workflow";
+import { getDb } from "@/sms-engine/db";
+import { briefTitle } from "@/sms-engine/workflow";
 import {
   createTaskAction,
   deleteTaskAction,

@@ -3,11 +3,11 @@ import {
   pauseBetaInviteCodeAction,
   updateBetaParticipantStatusAction,
 } from "@/app/admin/(dashboard)/actions";
-import { getPublicBetaAccessAdminSnapshot } from "@/lib/access/accessControl";
+import { getPublicBetaAccessAdminSnapshot } from "@/sms-engine/access/accessControl";
 import {
   PILOT_COHORTS,
   pilotParticipantStatusOptions,
-} from "@/lib/pilotReadiness";
+} from "@/sms-engine/pilotReadiness";
 
 export const dynamic = "force-dynamic";
 

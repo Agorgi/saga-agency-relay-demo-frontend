@@ -5,8 +5,8 @@ import { redirect } from "next/navigation";
 import {
   runInternalTalentSearchForProjectBrief,
   updateTalentCandidateStatus,
-} from "@/lib/sourcing/internalTalentSearch";
-import { talentCandidateStatusSchema } from "@/lib/sourcing/talentTypes";
+} from "@/sms-engine/sourcing/internalTalentSearch";
+import { talentCandidateStatusSchema } from "@/sms-engine/sourcing/talentTypes";
 
 export async function runInternalTalentSearchAction(formData: FormData) {
   const projectBriefId = String(formData.get("projectBriefId") || "").trim();

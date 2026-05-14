@@ -3,12 +3,12 @@ import { existsSync, readFileSync } from "node:fs";
 import {
   getCommandCenterSummary,
   safeCommandCenterSummary,
-} from "@/lib/commandCenter/commandCenterSummary";
-import { assertNoRawPiiOrSecrets } from "@/lib/dataOps/dataClassification";
+} from "@/sms-engine/commandCenter/commandCenterSummary";
+import { assertNoRawPiiOrSecrets } from "@/sms-engine/dataOps/dataClassification";
 import {
   evaluateLaunchReadinessDrill,
   getLaunchDrillDocumentStatus,
-} from "@/lib/launchDrill/launchReadinessDrill";
+} from "@/sms-engine/launchDrill/launchReadinessDrill";
 
 const originalEnv = { ...process.env };
 const docs = {

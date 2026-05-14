@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { getDb } from "@/lib/db";
-import { getCandidateGraphHealthSnapshot } from "@/lib/graph/candidateGraphHealth";
+import { getDb } from "@/sms-engine/db";
+import { getCandidateGraphHealthSnapshot } from "@/sms-engine/graph/candidateGraphHealth";
 import {
   runRelationshipAwareMatchingAction,
   updateMatchResultReviewAction,

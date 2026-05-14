@@ -2,7 +2,7 @@ import { joinPublicBetaWaitlistAction } from "@/app/beta/actions";
 import {
   getCappedPublicBetaConfig,
   PUBLIC_BETA_CONSENT_TEXT,
-} from "@/lib/publicBeta/publicBetaConfig";
+} from "@/sms-engine/publicBeta/publicBetaConfig";
 
 export const dynamic = "force-dynamic";
 

@@ -1,8 +1,8 @@
 import { Send } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { redactPhoneForDisplay } from "@/lib/adminPrivacy";
-import { getDb } from "@/lib/db";
+import { redactPhoneForDisplay } from "@/sms-engine/adminPrivacy";
+import { getDb } from "@/sms-engine/db";
 import {
   approveMockRecommendationOutreachAction,
   simulateCandidateReplyAction,

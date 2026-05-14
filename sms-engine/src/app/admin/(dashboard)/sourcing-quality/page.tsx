@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { getDb } from "@/lib/db";
+import { getDb } from "@/sms-engine/db";
 import {
   getTalentResearchQualityHealthSnapshot,
   sanitizeOrganizerFacingText,
-} from "@/lib/sourcing/talentResearchQuality";
+} from "@/sms-engine/sourcing/talentResearchQuality";
 import {
   runTalentQualityReviewAction,
   updateTalentQualityReviewAction,

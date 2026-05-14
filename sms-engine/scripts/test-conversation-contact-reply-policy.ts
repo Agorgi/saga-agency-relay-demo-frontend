@@ -3,11 +3,11 @@ import type {
   ContactReplyKind,
   ContactReplyStage,
   ConversationContext,
-} from "@/lib/conversation/conversationTypes";
-import { generateContactReplyFromPlan } from "@/lib/conversation/contactReplyGenerator";
-import { evaluateContactReplyPolicy } from "@/lib/conversation/contactReplyPolicy";
-import { classifyConversationIntent } from "@/lib/conversation/intentRouter";
-import { redactForLog } from "@/lib/safeLogging";
+} from "@/sms-engine/conversation/conversationTypes";
+import { generateContactReplyFromPlan } from "@/sms-engine/conversation/contactReplyGenerator";
+import { evaluateContactReplyPolicy } from "@/sms-engine/conversation/contactReplyPolicy";
+import { classifyConversationIntent } from "@/sms-engine/conversation/intentRouter";
+import { redactForLog } from "@/sms-engine/safeLogging";
 
 process.on("uncaughtException", (error) => {
   console.error(redactForLog(error));

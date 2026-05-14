@@ -8,7 +8,7 @@ import {
   nextInviteCodeUsageState,
   shouldContinueInboundConversation,
   type EvaluateInboundAccessInput,
-} from "@/lib/access/accessControl";
+} from "@/sms-engine/access/accessControl";
 
 const originalEnv = { ...process.env };
 const phone = "+15551234567";

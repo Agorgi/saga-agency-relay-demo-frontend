@@ -13,8 +13,8 @@ import {
 import {
   getPilotDataOpsAdminSnapshot,
   getTranscriptExportForProject,
-} from "@/lib/dataOps/pilotExport";
-import { redactSensitiveJson } from "@/lib/dataOps/dataClassification";
+} from "@/sms-engine/dataOps/pilotExport";
+import { redactSensitiveJson } from "@/sms-engine/dataOps/dataClassification";
 
 export const dynamic = "force-dynamic";
 

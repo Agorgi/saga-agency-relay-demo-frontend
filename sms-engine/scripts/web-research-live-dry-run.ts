@@ -1,9 +1,9 @@
-import { createOpenAiWebResearchProvider } from "@/lib/sourcing/openaiWebResearchProvider";
+import { createOpenAiWebResearchProvider } from "@/sms-engine/sourcing/openaiWebResearchProvider";
 import {
   processPublicWebResearchJob,
   queuePublicWebResearchLiveDryRun,
-} from "@/lib/sourcing/publicWebResearchProvider";
-import { redactForLog } from "@/lib/safeLogging";
+} from "@/sms-engine/sourcing/publicWebResearchProvider";
+import { redactForLog } from "@/sms-engine/safeLogging";
 
 async function main() {
   const queue = await queuePublicWebResearchLiveDryRun();

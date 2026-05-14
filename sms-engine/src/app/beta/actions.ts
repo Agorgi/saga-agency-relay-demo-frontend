@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createPublicBetaWaitlistEntry } from "@/lib/publicBeta/publicBetaWaitlist";
+import { createPublicBetaWaitlistEntry } from "@/sms-engine/publicBeta/publicBetaWaitlist";
 
 function text(formData: FormData, key: string) {
   const value = formData.get(key);

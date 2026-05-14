@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
-import { createOpenAiWebResearchProvider } from "@/lib/sourcing/openaiWebResearchProvider";
-import { buildPublicWebLiveDryRunRequest } from "@/lib/sourcing/publicWebLiveDryRunFixture";
+import { createOpenAiWebResearchProvider } from "@/sms-engine/sourcing/openaiWebResearchProvider";
+import { buildPublicWebLiveDryRunRequest } from "@/sms-engine/sourcing/publicWebLiveDryRunFixture";
 import {
   publicWebResearchErrorCategory,
   runPublicWebResearch,
-} from "@/lib/sourcing/publicWebResearchProvider";
-import type { PublicResearchCandidateCard } from "@/lib/sourcing/talentTypes";
+} from "@/sms-engine/sourcing/publicWebResearchProvider";
+import type { PublicResearchCandidateCard } from "@/sms-engine/sourcing/talentTypes";
 
 const originalEnv = { ...process.env };
 

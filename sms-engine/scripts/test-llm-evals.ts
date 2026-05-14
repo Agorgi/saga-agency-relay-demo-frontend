@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { checkProducerDraftSafety } from "@/lib/producer/outboundDrafts";
+import { checkProducerDraftSafety } from "@/sms-engine/producer/outboundDrafts";
 import {
   briefFieldExtractionSchema,
   candidateFitExplanationSchema,
@@ -8,7 +8,7 @@ import {
   organizerReplyLanguageSchema,
   producerRoleMapRefinementSchema,
   shortlistOutreachDraftLanguageSchema,
-} from "@/lib/llm/llmTypes";
+} from "@/sms-engine/llm/llmTypes";
 
 function assertSafeText(text: string) {
   const safety = checkProducerDraftSafety({

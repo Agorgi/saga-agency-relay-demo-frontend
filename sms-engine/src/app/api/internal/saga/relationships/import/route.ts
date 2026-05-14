@@ -1,6 +1,6 @@
-import { requireInternalApiKey } from "@/lib/internalApiAuth";
-import { internalError, internalOk } from "@/lib/internalRoute";
-import { importRelationshipEdges } from "@/lib/internalSagaApi";
+import { requireInternalApiKey } from "@/sms-engine/internalApiAuth";
+import { internalError, internalOk } from "@/sms-engine/internalRoute";
+import { importRelationshipEdges } from "@/sms-engine/internalSagaApi";
 
 export async function POST(request: Request) {
   const unauthorized = await requireInternalApiKey(request);

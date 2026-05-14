@@ -1,7 +1,7 @@
 import {
   formatBetaCohortSimulationReport,
   runAllBetaCohortSimulations,
-} from "@/lib/cohortSimulation/runCohortSimulation";
+} from "@/sms-engine/cohortSimulation/runCohortSimulation";
 
 async function main() {
   const results = await runAllBetaCohortSimulations({

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { safeLlmHealth } from "@/lib/llm/llmProvider";
+import { safeLlmHealth } from "@/sms-engine/llm/llmProvider";
 
 const originalEnv = { ...process.env };
 

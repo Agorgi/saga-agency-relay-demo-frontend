@@ -8,8 +8,8 @@ import {
   launchDrillAuditEvents,
   simulateIncidentDrill,
   simulateRollbackDrill,
-} from "@/lib/launchDrill/launchReadinessDrill";
-import { assertNoRawPiiOrSecrets } from "@/lib/dataOps/dataClassification";
+} from "@/sms-engine/launchDrill/launchReadinessDrill";
+import { assertNoRawPiiOrSecrets } from "@/sms-engine/dataOps/dataClassification";
 
 const originalEnv = { ...process.env };
 const rawPhone = "+15551234567";

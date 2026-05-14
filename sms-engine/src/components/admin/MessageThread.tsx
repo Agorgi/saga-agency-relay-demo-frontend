@@ -2,7 +2,7 @@ import type { Message } from "@prisma/client";
 import { clsx } from "clsx";
 import { RefreshCcw } from "lucide-react";
 import { retryMessageAction } from "@/app/admin/(dashboard)/actions";
-import { metadataObject } from "@/lib/messages";
+import { metadataObject } from "@/sms-engine/messages";
 
 export function MessageThread({ messages }: { messages: Message[] }) {
   if (messages.length === 0) {

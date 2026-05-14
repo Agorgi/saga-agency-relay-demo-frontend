@@ -1,16 +1,16 @@
 import assert from "node:assert/strict";
-import { sanitizeAuditMetadata } from "@/lib/audit";
+import { sanitizeAuditMetadata } from "@/sms-engine/audit";
 import {
   autonomyAuditEvents,
   evaluateConversationAutonomy,
   serializeConversationAutonomySettingForAdmin,
-} from "@/lib/conversation/conversationAutonomy";
+} from "@/sms-engine/conversation/conversationAutonomy";
 import {
   evaluateAndExecuteLiveReply,
   type LiveReplyConfigInput,
-} from "@/lib/conversation/liveReplyExecutor";
-import { buildNeedsAttentionSummary } from "@/lib/admin/needsAttention";
-import { assertNoRawPiiOrSecrets } from "@/lib/dataOps/dataClassification";
+} from "@/sms-engine/conversation/liveReplyExecutor";
+import { buildNeedsAttentionSummary } from "@/sms-engine/admin/needsAttention";
+import { assertNoRawPiiOrSecrets } from "@/sms-engine/dataOps/dataClassification";
 
 const allowedPhone = "+14155550123";
 const otherPhone = "+14155550999";

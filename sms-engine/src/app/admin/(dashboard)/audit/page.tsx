@@ -1,5 +1,5 @@
-import { safeAuditLogForDisplay } from "@/lib/audit";
-import { getDb } from "@/lib/db";
+import { safeAuditLogForDisplay } from "@/sms-engine/audit";
+import { getDb } from "@/sms-engine/db";
 
 export const dynamic = "force-dynamic";
 

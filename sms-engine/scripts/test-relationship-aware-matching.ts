@@ -1,16 +1,16 @@
 import assert from "node:assert/strict";
-import type { ProjectUnderstanding, RoleMap } from "@/lib/producer/producerAgentTypes";
-import type { CandidatePoolProfile } from "@/lib/graph/candidateRetrieval";
-import { retrieveCandidatePoolForProject } from "@/lib/graph/candidateRetrieval";
-import { computeFandomCommunityFit } from "@/lib/graph/fandomCommunityFit";
-import { computeRoleAwareLocationFit } from "@/lib/graph/roleLocationRequirements";
-import { explainRelationshipPath } from "@/lib/graph/relationshipPathExplain";
+import type { ProjectUnderstanding, RoleMap } from "@/sms-engine/producer/producerAgentTypes";
+import type { CandidatePoolProfile } from "@/sms-engine/graph/candidateRetrieval";
+import { retrieveCandidatePoolForProject } from "@/sms-engine/graph/candidateRetrieval";
+import { computeFandomCommunityFit } from "@/sms-engine/graph/fandomCommunityFit";
+import { computeRoleAwareLocationFit } from "@/sms-engine/graph/roleLocationRequirements";
+import { explainRelationshipPath } from "@/sms-engine/graph/relationshipPathExplain";
 import {
   canPromoteMatchResultToReview,
   scoreCandidateForRole,
-} from "@/lib/graph/relationshipAwareScoring";
-import { rankCandidatesForProject } from "@/lib/graph/projectCandidateMatcher";
-import type { RelationshipGraphEdge } from "@/lib/graph/relationshipProximity";
+} from "@/sms-engine/graph/relationshipAwareScoring";
+import { rankCandidatesForProject } from "@/sms-engine/graph/projectCandidateMatcher";
+import type { RelationshipGraphEdge } from "@/sms-engine/graph/relationshipProximity";
 
 const projectUnderstanding: ProjectUnderstanding = {
   title: "Anime picnic in Silver Lake",

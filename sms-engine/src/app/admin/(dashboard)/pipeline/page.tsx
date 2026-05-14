@@ -3,7 +3,7 @@ import {
   retryInboundProcessingJobAction,
 } from "@/app/admin/(dashboard)/actions";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { getMessagingPipelineAdminSnapshot } from "@/lib/messagingPipeline";
+import { getMessagingPipelineAdminSnapshot } from "@/sms-engine/messagingPipeline";
 
 export const dynamic = "force-dynamic";
 

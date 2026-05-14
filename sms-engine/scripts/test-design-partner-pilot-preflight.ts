@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { GET as healthGet } from "@/app/api/health/route";
-import { getDesignPartnerPilotReadinessSnapshot } from "@/lib/pilotReadiness";
-import { redactForLog } from "@/lib/safeLogging";
+import { getDesignPartnerPilotReadinessSnapshot } from "@/sms-engine/pilotReadiness";
+import { redactForLog } from "@/sms-engine/safeLogging";
 
 type HealthShape = {
   sms?: {

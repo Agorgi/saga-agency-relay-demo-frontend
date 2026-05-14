@@ -1,7 +1,7 @@
 import {
   evaluateLaunchReadinessDrill,
   formatLaunchDrillReport,
-} from "@/lib/launchDrill/launchReadinessDrill";
+} from "@/sms-engine/launchDrill/launchReadinessDrill";
 
 async function main() {
   const result = await evaluateLaunchReadinessDrill();

@@ -5,8 +5,8 @@ import {
   getCommandCenterHealthSnapshot,
   getCommandCenterSummary,
   safeCommandCenterSummary,
-} from "@/lib/commandCenter/commandCenterSummary";
-import { assertNoRawPiiOrSecrets } from "@/lib/dataOps/dataClassification";
+} from "@/sms-engine/commandCenter/commandCenterSummary";
+import { assertNoRawPiiOrSecrets } from "@/sms-engine/dataOps/dataClassification";
 
 const originalEnv = { ...process.env };
 const rawPhone = "+15551234567";

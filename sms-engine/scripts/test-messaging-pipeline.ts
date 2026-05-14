@@ -7,7 +7,7 @@ import {
   processInboundProcessingJob,
   recordInboundProcessingDuplicate,
   upsertInboundProcessingJob,
-} from "@/lib/messagingPipeline";
+} from "@/sms-engine/messagingPipeline";
 
 async function withEnv<T>(
   updates: Record<string, string | undefined>,

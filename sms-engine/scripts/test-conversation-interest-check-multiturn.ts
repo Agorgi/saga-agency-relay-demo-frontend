@@ -2,16 +2,16 @@ import assert from "node:assert/strict";
 import type {
   ConversationContext,
   InterestCheckKnownFields,
-} from "@/lib/conversation/conversationTypes";
-import { getConversationEngineRuntime } from "@/lib/conversation/conversationEngineMode";
-import { evaluateInterestCheckPolicy } from "@/lib/conversation/interestCheckPolicy";
+} from "@/sms-engine/conversation/conversationTypes";
+import { getConversationEngineRuntime } from "@/sms-engine/conversation/conversationEngineMode";
+import { evaluateInterestCheckPolicy } from "@/sms-engine/conversation/interestCheckPolicy";
 import {
   buildInterestCheckDraft,
   shouldApplyInterestCheckMockActive,
-} from "@/lib/conversation/interestCheckPreparation";
-import { generateInterestCheckReplyFromPlan } from "@/lib/conversation/interestCheckReplyGenerator";
-import { classifyConversationIntent } from "@/lib/conversation/intentRouter";
-import { redactForLog } from "@/lib/safeLogging";
+} from "@/sms-engine/conversation/interestCheckPreparation";
+import { generateInterestCheckReplyFromPlan } from "@/sms-engine/conversation/interestCheckReplyGenerator";
+import { classifyConversationIntent } from "@/sms-engine/conversation/intentRouter";
+import { redactForLog } from "@/sms-engine/safeLogging";
 
 process.on("uncaughtException", (error) => {
   console.error(redactForLog(error));

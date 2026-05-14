@@ -6,7 +6,7 @@ import { z } from "zod";
 import {
   createTalentResearchReviewForCandidate,
   updateTalentResearchReviewStatus,
-} from "@/lib/sourcing/talentResearchQuality";
+} from "@/sms-engine/sourcing/talentResearchQuality";
 
 const reviewStatusSchema = z.enum([
   "UNREVIEWED",

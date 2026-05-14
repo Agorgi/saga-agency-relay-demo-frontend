@@ -3,7 +3,7 @@ import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import {
   getNeedsAttentionSummary,
   type NeedsAttentionSeverity,
-} from "@/lib/admin/needsAttention";
+} from "@/sms-engine/admin/needsAttention";
 
 export const dynamic = "force-dynamic";
 

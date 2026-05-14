@@ -1,9 +1,9 @@
 import "dotenv/config";
 import assert from "node:assert/strict";
 import { z } from "zod";
-import { callOpenAiStructured } from "@/lib/llm/openaiProvider";
-import { safeLlmHealth } from "@/lib/llm/llmProvider";
-import { redactForLog } from "@/lib/safeLogging";
+import { callOpenAiStructured } from "@/sms-engine/llm/openaiProvider";
+import { safeLlmHealth } from "@/sms-engine/llm/llmProvider";
+import { redactForLog } from "@/sms-engine/safeLogging";
 
 const defaultModel = "gpt-5.4-mini";
 

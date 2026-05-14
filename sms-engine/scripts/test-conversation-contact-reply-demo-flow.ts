@@ -1,9 +1,9 @@
-import { getDb } from "@/lib/db";
+import { getDb } from "@/sms-engine/db";
 import {
   approveMockRecommendationOutreach,
   createFullDemoScenario,
   simulateCandidateReply,
-} from "@/lib/networkCore";
+} from "@/sms-engine/networkCore";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);

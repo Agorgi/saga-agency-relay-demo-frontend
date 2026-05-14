@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { redactPhoneForDisplay } from "@/lib/adminPrivacy";
-import { getDb } from "@/lib/db";
-import { briefTitle } from "@/lib/workflow";
+import { redactPhoneForDisplay } from "@/sms-engine/adminPrivacy";
+import { getDb } from "@/sms-engine/db";
+import { briefTitle } from "@/sms-engine/workflow";
 
 export const dynamic = "force-dynamic";
 

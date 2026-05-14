@@ -3,11 +3,11 @@ import {
   runStructuredLlmTask,
   safeLlmHealth,
   type LlmStructuredProvider,
-} from "@/lib/llm/llmProvider";
+} from "@/sms-engine/llm/llmProvider";
 import {
   organizerReplyLanguageSchema,
   shortlistOutreachDraftLanguageSchema,
-} from "@/lib/llm/llmTypes";
+} from "@/sms-engine/llm/llmTypes";
 
 const originalEnv = { ...process.env };
 

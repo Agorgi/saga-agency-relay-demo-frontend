@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { createOpenAiWebResearchProvider } from "@/lib/sourcing/openaiWebResearchProvider";
-import { buildPublicWebLiveDryRunRequest } from "@/lib/sourcing/publicWebLiveDryRunFixture";
-import { evaluatePublicWebResearchSafety } from "@/lib/sourcing/publicWebResearchSafety";
+import { createOpenAiWebResearchProvider } from "@/sms-engine/sourcing/openaiWebResearchProvider";
+import { buildPublicWebLiveDryRunRequest } from "@/sms-engine/sourcing/publicWebLiveDryRunFixture";
+import { evaluatePublicWebResearchSafety } from "@/sms-engine/sourcing/publicWebResearchSafety";
 
 async function main() {
   const shouldRun =

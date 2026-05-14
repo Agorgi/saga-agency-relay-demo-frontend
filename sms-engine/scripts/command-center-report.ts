@@ -1,7 +1,7 @@
 import {
   formatCommandCenterReport,
   getCommandCenterSummary,
-} from "@/lib/commandCenter/commandCenterSummary";
+} from "@/sms-engine/commandCenter/commandCenterSummary";
 
 async function main() {
   const summary = await getCommandCenterSummary();

@@ -6,12 +6,12 @@ import {
   recordPublicBetaWaitlistConsentAction,
   updatePublicBetaWaitlistStatusAction,
 } from "@/app/admin/(dashboard)/actions";
-import { evaluateCappedPublicBetaReadiness } from "@/lib/publicBeta/publicBetaAdmission";
+import { evaluateCappedPublicBetaReadiness } from "@/sms-engine/publicBeta/publicBetaAdmission";
 import {
   getPublicBetaAdminSnapshot,
   publicBetaUseCaseOptions,
   publicBetaWaitlistStatusOptions,
-} from "@/lib/publicBeta/publicBetaWaitlist";
+} from "@/sms-engine/publicBeta/publicBetaWaitlist";
 
 export const dynamic = "force-dynamic";
 

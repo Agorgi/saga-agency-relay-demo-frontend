@@ -1,36 +1,36 @@
-import { getDb } from "@/lib/db";
+import { getDb } from "@/sms-engine/db";
 import {
   getDeploymentInfo,
   getTwilioConfigPresence,
-} from "@/lib/env";
-import { getConversationEngineRuntime } from "@/lib/conversation/conversationEngineMode";
-import { getPublicBetaAccessHealthSnapshot } from "@/lib/access/accessControl";
+} from "@/sms-engine/env";
+import { getConversationEngineRuntime } from "@/sms-engine/conversation/conversationEngineMode";
+import { getPublicBetaAccessHealthSnapshot } from "@/sms-engine/access/accessControl";
 import {
   getLiveReplyExecutionReadinessSnapshot,
   safeLiveReplyHealthSummary,
-} from "@/lib/conversation/liveReplyExecutor";
-import { getConversationAutonomyHealthSnapshot } from "@/lib/conversation/conversationAutonomy";
-import { safeLlmHealth } from "@/lib/llm/llmProvider";
-import { logServerError } from "@/lib/safeLogging";
-import { getDesignPartnerPilotReadinessSnapshot } from "@/lib/pilotReadiness";
+} from "@/sms-engine/conversation/liveReplyExecutor";
+import { getConversationAutonomyHealthSnapshot } from "@/sms-engine/conversation/conversationAutonomy";
+import { safeLlmHealth } from "@/sms-engine/llm/llmProvider";
+import { logServerError } from "@/sms-engine/safeLogging";
+import { getDesignPartnerPilotReadinessSnapshot } from "@/sms-engine/pilotReadiness";
 import {
   getOutboundSelfTestReadinessSnapshot,
   safeOutboundSelfTestHealthSummary,
-} from "@/lib/producer/outboundSelfTestReadiness";
-import { getLlmQualityReviewHealthSnapshot } from "@/lib/llm/qualityReview";
-import { getMessagingPipelineHealthSnapshot } from "@/lib/messagingPipeline";
-import { getObservabilityHealthSnapshot } from "@/lib/observability/observabilitySummary";
-import { getPilotDataOpsHealthSnapshot } from "@/lib/dataOps/pilotExport";
-import { getLaunchDrillHealthSnapshot } from "@/lib/launchDrill/launchReadinessDrill";
-import { getCommandCenterHealthSnapshot } from "@/lib/commandCenter/commandCenterSummary";
-import { getBetaCohortSimulationHealthSnapshot } from "@/lib/cohortSimulation/runCohortSimulation";
-import { evaluateCappedPublicBetaReadiness } from "@/lib/publicBeta/publicBetaAdmission";
-import { getCappedPublicBetaHealthSnapshot } from "@/lib/publicBeta/publicBetaConfig";
-import { getSmsSafetyHealth } from "@/lib/smsSafety";
-import { getTalentDiscoveryHealthSnapshot } from "@/lib/sourcing/talentDiscoveryHealth";
-import { getTalentResearchQualityHealthSnapshot } from "@/lib/sourcing/talentResearchQuality";
-import { getCandidateGraphHealthSnapshot } from "@/lib/graph/candidateGraphHealth";
-import { getMatchingEvaluationHealthSnapshot } from "@/lib/matchingEval/matchingEvaluationHealth";
+} from "@/sms-engine/producer/outboundSelfTestReadiness";
+import { getLlmQualityReviewHealthSnapshot } from "@/sms-engine/llm/qualityReview";
+import { getMessagingPipelineHealthSnapshot } from "@/sms-engine/messagingPipeline";
+import { getObservabilityHealthSnapshot } from "@/sms-engine/observability/observabilitySummary";
+import { getPilotDataOpsHealthSnapshot } from "@/sms-engine/dataOps/pilotExport";
+import { getLaunchDrillHealthSnapshot } from "@/sms-engine/launchDrill/launchReadinessDrill";
+import { getCommandCenterHealthSnapshot } from "@/sms-engine/commandCenter/commandCenterSummary";
+import { getBetaCohortSimulationHealthSnapshot } from "@/sms-engine/cohortSimulation/runCohortSimulation";
+import { evaluateCappedPublicBetaReadiness } from "@/sms-engine/publicBeta/publicBetaAdmission";
+import { getCappedPublicBetaHealthSnapshot } from "@/sms-engine/publicBeta/publicBetaConfig";
+import { getSmsSafetyHealth } from "@/sms-engine/smsSafety";
+import { getTalentDiscoveryHealthSnapshot } from "@/sms-engine/sourcing/talentDiscoveryHealth";
+import { getTalentResearchQualityHealthSnapshot } from "@/sms-engine/sourcing/talentResearchQuality";
+import { getCandidateGraphHealthSnapshot } from "@/sms-engine/graph/candidateGraphHealth";
+import { getMatchingEvaluationHealthSnapshot } from "@/sms-engine/matchingEval/matchingEvaluationHealth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

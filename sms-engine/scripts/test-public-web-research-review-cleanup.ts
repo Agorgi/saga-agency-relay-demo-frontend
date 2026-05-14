@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
-import { generateCandidateOutreachDraft } from "@/lib/producer/outboundDrafts";
+import { generateCandidateOutreachDraft } from "@/sms-engine/producer/outboundDrafts";
 import {
   canMarkContactableForAdminReview,
   evaluateContactabilityEvidence,
-} from "@/lib/sourcing/contactabilityEvidence";
+} from "@/sms-engine/sourcing/contactabilityEvidence";
 import {
   detectPublicWebDuplicateFromCandidates,
-} from "@/lib/sourcing/publicWebDeduplication";
+} from "@/sms-engine/sourcing/publicWebDeduplication";
 import {
   archiveResearchRun,
   canPromotePublicWebResult,
@@ -18,20 +18,20 @@ import {
   markNeedsMoreContactResearch,
   markResultDuplicate,
   summarizeCleanupImpact,
-} from "@/lib/sourcing/publicWebResearchCleanup";
-import { getPublicWebResearchHealthSnapshot } from "@/lib/sourcing/publicWebResearchProvider";
-import { evaluatePublicWebResearchSafety } from "@/lib/sourcing/publicWebResearchSafety";
+} from "@/sms-engine/sourcing/publicWebResearchCleanup";
+import { getPublicWebResearchHealthSnapshot } from "@/sms-engine/sourcing/publicWebResearchProvider";
+import { evaluatePublicWebResearchSafety } from "@/sms-engine/sourcing/publicWebResearchSafety";
 import {
   canonicalizeProfileUrl,
   normalizeSourceUrl,
   validateCitationSet,
-} from "@/lib/sourcing/sourceNormalization";
-import { scorePublicWebSourceQuality } from "@/lib/sourcing/sourceQuality";
+} from "@/sms-engine/sourcing/sourceNormalization";
+import { scorePublicWebSourceQuality } from "@/sms-engine/sourcing/sourceQuality";
 import {
   contactabilityAuditEvents,
   publicWebReviewAuditEvents,
   type PublicResearchCandidateCard,
-} from "@/lib/sourcing/talentTypes";
+} from "@/sms-engine/sourcing/talentTypes";
 
 const originalEnv = { ...process.env };
 

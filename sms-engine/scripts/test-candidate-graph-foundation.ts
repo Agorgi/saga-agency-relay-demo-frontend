@@ -1,25 +1,25 @@
 import assert from "node:assert/strict";
-import { normalizeLocationText, computeLocationFit } from "@/lib/graph/locationNormalization";
+import { normalizeLocationText, computeLocationFit } from "@/sms-engine/graph/locationNormalization";
 import {
   computeFandomFit,
   computeRoleFitFromTags,
   expandTagAliases,
   explainTagMatch,
   normalizeTag,
-} from "@/lib/graph/tagTaxonomy";
+} from "@/sms-engine/graph/tagTaxonomy";
 import {
   computeProximityTier,
   computeRelationshipScore,
   explainProximity,
   findRelationshipPath,
-} from "@/lib/graph/relationshipProximity";
+} from "@/sms-engine/graph/relationshipProximity";
 import {
   buildCandidateSearchProfile,
   canPromotePersistedCandidate,
-} from "@/lib/graph/candidateSearchProfile";
-import { persistIdentifiedCandidate } from "@/lib/graph/candidatePersistence";
-import { evaluateContactabilityEvidence } from "@/lib/sourcing/contactabilityEvidence";
-import { detectPublicWebDuplicateFromCandidates } from "@/lib/sourcing/publicWebDeduplication";
+} from "@/sms-engine/graph/candidateSearchProfile";
+import { persistIdentifiedCandidate } from "@/sms-engine/graph/candidatePersistence";
+import { evaluateContactabilityEvidence } from "@/sms-engine/sourcing/contactabilityEvidence";
+import { detectPublicWebDuplicateFromCandidates } from "@/sms-engine/sourcing/publicWebDeduplication";
 
 const originalEnv = { ...process.env };
 

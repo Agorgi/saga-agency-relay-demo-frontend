@@ -9,7 +9,7 @@ import {
   talentResearchQualityAuditEvents,
   validateTalentResearchQualityLlmReview,
   type TalentResearchQualityCandidate,
-} from "@/lib/sourcing/talentResearchQuality";
+} from "@/sms-engine/sourcing/talentResearchQuality";
 
 const originalEnv = { ...process.env };
 

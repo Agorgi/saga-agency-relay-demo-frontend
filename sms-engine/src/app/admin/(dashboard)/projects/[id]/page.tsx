@@ -17,12 +17,12 @@ import { StatusBadge } from "@/components/admin/StatusBadge";
 import {
   redactPhoneForDisplay,
   redactSensitiveTextForDisplay,
-} from "@/lib/adminPrivacy";
-import { getDb } from "@/lib/db";
-import { findContactMatches } from "@/lib/contactMatching";
-import { PILOT_FEEDBACK_CATEGORIES } from "@/lib/pilotReadiness";
-import { briefTitle, parseRequiredRoles } from "@/lib/workflow";
-import { buildShortlistMessage } from "@/lib/outreach";
+} from "@/sms-engine/adminPrivacy";
+import { getDb } from "@/sms-engine/db";
+import { findContactMatches } from "@/sms-engine/contactMatching";
+import { PILOT_FEEDBACK_CATEGORIES } from "@/sms-engine/pilotReadiness";
+import { briefTitle, parseRequiredRoles } from "@/sms-engine/workflow";
+import { buildShortlistMessage } from "@/sms-engine/outreach";
 import {
   approveSelectedOutreachAction,
   approveOutboundDraftAction,
@@ -54,7 +54,7 @@ import {
   sendShortlistAction,
   updateProjectBriefAction,
 } from "@/app/admin/(dashboard)/actions";
-import { candidateReviewStatuses } from "@/lib/producer/approvalQueue";
+import { candidateReviewStatuses } from "@/sms-engine/producer/approvalQueue";
 
 export const dynamic = "force-dynamic";
 

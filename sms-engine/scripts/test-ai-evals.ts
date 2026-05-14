@@ -3,17 +3,17 @@ import type { Contact, Prisma, ProjectBrief, User } from "@prisma/client";
 import {
   classifyOutreachReplyState,
   detectContactReplyIntent,
-} from "@/lib/contactReplies";
-import { getLlmConfigPresence } from "@/lib/env";
-import { extractCreatorOnboardingFields } from "@/lib/networkCore";
+} from "@/sms-engine/contactReplies";
+import { getLlmConfigPresence } from "@/sms-engine/env";
+import { extractCreatorOnboardingFields } from "@/sms-engine/networkCore";
 import {
   extractBriefFields,
   generateIntakeReply,
   suggestRequiredRoles,
   summarizeShortlist,
-} from "@/lib/producerAgent";
-import { redactForLog } from "@/lib/safeLogging";
-import { assessMessageSafety } from "@/lib/safety";
+} from "@/sms-engine/producerAgent";
+import { redactForLog } from "@/sms-engine/safeLogging";
+import { assessMessageSafety } from "@/sms-engine/safety";
 
 const now = new Date("2026-05-07T12:00:00.000Z");
 

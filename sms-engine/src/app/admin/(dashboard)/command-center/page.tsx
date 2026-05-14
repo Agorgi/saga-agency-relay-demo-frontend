@@ -7,9 +7,9 @@ import {
   recordCommandCenterViewed,
   type CommandCenterSummary,
   type GoNoGoStatus,
-} from "@/lib/commandCenter/commandCenterSummary";
+} from "@/sms-engine/commandCenter/commandCenterSummary";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
-import { getNeedsAttentionSummary } from "@/lib/admin/needsAttention";
+import { getNeedsAttentionSummary } from "@/sms-engine/admin/needsAttention";
 
 export const dynamic = "force-dynamic";
 

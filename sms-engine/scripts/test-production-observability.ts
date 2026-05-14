@@ -3,12 +3,12 @@ import {
   evaluateObservabilityRisk,
   serializedObservabilityContainsSensitiveValue,
   type ObservabilityRiskInput,
-} from "@/lib/observability/observabilityInvariants";
+} from "@/sms-engine/observability/observabilityInvariants";
 import {
   formatObservabilityDailyReport,
   getObservabilitySummary,
   safeObservabilitySummaryForAdmin,
-} from "@/lib/observability/observabilitySummary";
+} from "@/sms-engine/observability/observabilitySummary";
 
 const originalEnv = { ...process.env };
 

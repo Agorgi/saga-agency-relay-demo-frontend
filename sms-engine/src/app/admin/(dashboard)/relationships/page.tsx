@@ -1,6 +1,6 @@
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { adminContactLabel } from "@/lib/adminPrivacy";
-import { getDb } from "@/lib/db";
+import { adminContactLabel } from "@/sms-engine/adminPrivacy";
+import { getDb } from "@/sms-engine/db";
 
 export const dynamic = "force-dynamic";
 

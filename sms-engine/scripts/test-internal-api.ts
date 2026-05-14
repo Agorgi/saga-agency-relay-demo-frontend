@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { redactForLog } from "@/lib/safeLogging";
+import { redactForLog } from "@/sms-engine/safeLogging";
 
 type ApiEnvelope<T> =
   | {

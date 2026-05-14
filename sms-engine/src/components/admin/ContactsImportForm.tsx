@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Upload } from "lucide-react";
-import { parseContactCsv } from "@/lib/contactCsv";
+import { parseContactCsv } from "@/sms-engine/contactCsv";
 
 const inputClass =
   "mt-1 w-full rounded-md border border-zinc-800 bg-black px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-zinc-500";

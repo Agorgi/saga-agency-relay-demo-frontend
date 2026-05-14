@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
-import { getObservabilitySummary } from "@/lib/observability/observabilitySummary";
+import { getObservabilitySummary } from "@/sms-engine/observability/observabilitySummary";
 
 export const dynamic = "force-dynamic";
 

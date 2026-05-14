@@ -1,55 +1,55 @@
-import { logAudit } from "@/lib/audit";
+import { logAudit } from "@/sms-engine/audit";
 import {
   evaluateAndApplyInboundAccess,
   safeAccessDecisionForAudit,
-} from "@/lib/access/accessControl";
-import { handleContactInbound } from "@/lib/contactReplies";
-import { getDb } from "@/lib/db";
+} from "@/sms-engine/access/accessControl";
+import { handleContactInbound } from "@/sms-engine/contactReplies";
+import { getDb } from "@/sms-engine/db";
 import {
   findOrCreateActiveProject,
   findOrCreateUser,
   handleOrganizerInbound,
-} from "@/lib/intake";
-import { redactPhoneForDisplay } from "@/lib/adminPrivacy";
-import { loadConversationContext } from "@/lib/conversation/conversationContext";
-import { getConversationEngineRuntime } from "@/lib/conversation/conversationEngineMode";
-import { evaluateCapabilityFaqPolicy } from "@/lib/conversation/capabilityResponses";
-import { evaluateContactReplyPolicy } from "@/lib/conversation/contactReplyPolicy";
-import { evaluateGigSeekerOnboardingPolicy } from "@/lib/conversation/gigSeekerOnboardingPolicy";
-import { evaluateInterestCheckPolicy } from "@/lib/conversation/interestCheckPolicy";
-import { evaluateOrganizerIntakePolicy } from "@/lib/conversation/organizerIntakePolicy";
-import { classifyConversationIntent } from "@/lib/conversation/intentRouter";
+} from "@/sms-engine/intake";
+import { redactPhoneForDisplay } from "@/sms-engine/adminPrivacy";
+import { loadConversationContext } from "@/sms-engine/conversation/conversationContext";
+import { getConversationEngineRuntime } from "@/sms-engine/conversation/conversationEngineMode";
+import { evaluateCapabilityFaqPolicy } from "@/sms-engine/conversation/capabilityResponses";
+import { evaluateContactReplyPolicy } from "@/sms-engine/conversation/contactReplyPolicy";
+import { evaluateGigSeekerOnboardingPolicy } from "@/sms-engine/conversation/gigSeekerOnboardingPolicy";
+import { evaluateInterestCheckPolicy } from "@/sms-engine/conversation/interestCheckPolicy";
+import { evaluateOrganizerIntakePolicy } from "@/sms-engine/conversation/organizerIntakePolicy";
+import { classifyConversationIntent } from "@/sms-engine/conversation/intentRouter";
 import type {
   ConversationIntentResult,
   ReplyPlan,
-} from "@/lib/conversation/conversationTypes";
+} from "@/sms-engine/conversation/conversationTypes";
 import {
   createInboundMessage,
   messageExistsForTwilioSid,
   shouldSkipDuplicateTwilioMessageSid,
-} from "@/lib/messages";
-import { normalizePhone } from "@/lib/phone";
+} from "@/sms-engine/messages";
+import { normalizePhone } from "@/sms-engine/phone";
 import {
   logServerError,
   logStructuredEvent,
   requestCorrelationId,
-} from "@/lib/safeLogging";
+} from "@/sms-engine/safeLogging";
 import {
   completeInboundProcessingJob,
   findInboundMessageForPipeline,
   getMessageProcessingMode,
   recordInboundProcessingDuplicate,
   upsertInboundProcessingJob,
-} from "@/lib/messagingPipeline";
+} from "@/sms-engine/messagingPipeline";
 import {
   getSmsSafetyConfig,
-} from "@/lib/smsSafety";
-import { resolveLlmExecutionContext } from "@/lib/llm/llmProvider";
+} from "@/sms-engine/smsSafety";
+import { resolveLlmExecutionContext } from "@/sms-engine/llm/llmProvider";
 import {
   forbiddenTwilioResponse,
   formDataToRecord,
   validateTwilioWebhookRequest,
-} from "@/lib/twilioWebhook";
+} from "@/sms-engine/twilioWebhook";
 
 export const runtime = "nodejs";
 

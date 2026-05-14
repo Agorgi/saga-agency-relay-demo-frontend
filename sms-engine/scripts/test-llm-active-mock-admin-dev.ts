@@ -3,18 +3,18 @@ import {
   adminDevDeterministicLlmUnavailableMetadata,
   generateAdminDevOrganizerReplyWithLlm,
   resolveAdminDevLlmExecution,
-} from "@/lib/conversation/adminDevLlmReplies";
-import { generateContactReplyFromPlan } from "@/lib/conversation/contactReplyGenerator";
+} from "@/sms-engine/conversation/adminDevLlmReplies";
+import { generateContactReplyFromPlan } from "@/sms-engine/conversation/contactReplyGenerator";
 import type {
   ConversationContext,
   ReplyPlan,
-} from "@/lib/conversation/conversationTypes";
+} from "@/sms-engine/conversation/conversationTypes";
 import {
   resolveLlmExecutionContext,
   runStructuredLlmTask,
   type LlmStructuredProvider,
-} from "@/lib/llm/llmProvider";
-import { intakeReplySchema } from "@/lib/producerAgent";
+} from "@/sms-engine/llm/llmProvider";
+import { intakeReplySchema } from "@/sms-engine/producerAgent";
 
 const originalEnv = { ...process.env };
 

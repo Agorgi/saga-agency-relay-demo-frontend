@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import { zodTextFormat } from "openai/helpers/zod";
-import { sanitizeAuditMetadata } from "@/lib/audit";
+import { sanitizeAuditMetadata } from "@/sms-engine/audit";
 import {
   buildLlmCallFailedMetadata,
   runStructuredLlmTask,
   type LlmStructuredProvider,
-} from "@/lib/llm/llmProvider";
-import { categorizeOpenAiProviderError } from "@/lib/llm/openaiProvider";
-import { containsForbiddenLlmClaim } from "@/lib/llm/llmTypes";
-import { intakeReplySchema } from "@/lib/producerAgent";
+} from "@/sms-engine/llm/llmProvider";
+import { categorizeOpenAiProviderError } from "@/sms-engine/llm/openaiProvider";
+import { containsForbiddenLlmClaim } from "@/sms-engine/llm/llmTypes";
+import { intakeReplySchema } from "@/sms-engine/producerAgent";
 
 const originalEnv = { ...process.env };
 

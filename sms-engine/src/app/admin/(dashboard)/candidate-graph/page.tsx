@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { getDb } from "@/lib/db";
-import { getCandidateGraphHealthSnapshot } from "@/lib/graph/candidateGraphHealth";
-import { computeProximityTier, explainProximity } from "@/lib/graph/relationshipProximity";
+import { getDb } from "@/sms-engine/db";
+import { getCandidateGraphHealthSnapshot } from "@/sms-engine/graph/candidateGraphHealth";
+import { computeProximityTier, explainProximity } from "@/sms-engine/graph/relationshipProximity";
 
 export const dynamic = "force-dynamic";
 

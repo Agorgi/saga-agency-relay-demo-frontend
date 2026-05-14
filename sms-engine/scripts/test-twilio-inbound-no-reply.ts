@@ -3,12 +3,12 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import twilio from "twilio";
 import { POST as inboundPost } from "@/app/api/twilio/inbound/route";
-import { safeAuditLogForDisplay } from "@/lib/audit";
-import { getDb } from "@/lib/db";
-import { TwilioMessagingProvider } from "@/lib/messagingProvider";
-import { normalizePhone } from "@/lib/phone";
-import { redactForLog } from "@/lib/safeLogging";
-import { shouldBlockInboundSmsForAllowlist } from "@/lib/smsSafety";
+import { safeAuditLogForDisplay } from "@/sms-engine/audit";
+import { getDb } from "@/sms-engine/db";
+import { TwilioMessagingProvider } from "@/sms-engine/messagingProvider";
+import { normalizePhone } from "@/sms-engine/phone";
+import { redactForLog } from "@/sms-engine/safeLogging";
+import { shouldBlockInboundSmsForAllowlist } from "@/sms-engine/smsSafety";
 
 const fakeEnv = {
   MESSAGING_PROVIDER: "TWILIO",

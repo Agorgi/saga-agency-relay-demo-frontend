@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { getDb } from "@/lib/db";
+import { getDb } from "@/sms-engine/db";
 import { createNetworkProjectAction } from "@/app/admin/(dashboard)/network-actions";
 
 export const dynamic = "force-dynamic";

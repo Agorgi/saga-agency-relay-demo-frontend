@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
-import type { ConversationContext } from "@/lib/conversation/conversationTypes";
-import { getConversationEngineRuntime } from "@/lib/conversation/conversationEngineMode";
-import { classifyConversationIntent } from "@/lib/conversation/intentRouter";
-import { evaluateOrganizerIntakePolicy } from "@/lib/conversation/organizerIntakePolicy";
-import { generateOrganizerReplyFromPlan } from "@/lib/conversation/organizerReplyGenerator";
-import { redactForLog } from "@/lib/safeLogging";
+import type { ConversationContext } from "@/sms-engine/conversation/conversationTypes";
+import { getConversationEngineRuntime } from "@/sms-engine/conversation/conversationEngineMode";
+import { classifyConversationIntent } from "@/sms-engine/conversation/intentRouter";
+import { evaluateOrganizerIntakePolicy } from "@/sms-engine/conversation/organizerIntakePolicy";
+import { generateOrganizerReplyFromPlan } from "@/sms-engine/conversation/organizerReplyGenerator";
+import { redactForLog } from "@/sms-engine/safeLogging";
 
 process.on("uncaughtException", (error) => {
   console.error(redactForLog(error));

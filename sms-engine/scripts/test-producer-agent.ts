@@ -3,11 +3,11 @@ import {
   extractBriefFields,
   generateIntakeReply,
   suggestRequiredRoles,
-} from "@/lib/producerAgent";
-import { getLlmConfigPresence } from "@/lib/env";
-import { redactForLog } from "@/lib/safeLogging";
-import { assessMessageSafety } from "@/lib/safety";
-import { mergeBriefPatch } from "@/lib/workflow";
+} from "@/sms-engine/producerAgent";
+import { getLlmConfigPresence } from "@/sms-engine/env";
+import { redactForLog } from "@/sms-engine/safeLogging";
+import { assessMessageSafety } from "@/sms-engine/safety";
+import { mergeBriefPatch } from "@/sms-engine/workflow";
 
 const now = new Date("2026-05-06T12:00:00.000Z");
 

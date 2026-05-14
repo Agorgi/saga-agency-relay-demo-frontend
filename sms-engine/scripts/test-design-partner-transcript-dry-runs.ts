@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import type { z } from "zod";
-import { designPartnerTranscriptScenarios } from "@/lib/dryRuns/designPartnerTranscriptScenarios";
+import { designPartnerTranscriptScenarios } from "@/sms-engine/dryRuns/designPartnerTranscriptScenarios";
 import {
   runDesignPartnerTranscriptDryRuns,
   summarizeDesignPartnerTranscriptDryRuns,
-} from "@/lib/dryRuns/runDesignPartnerTranscript";
+} from "@/sms-engine/dryRuns/runDesignPartnerTranscript";
 import type {
   LlmRuntimeConfig,
   LlmStructuredProvider,
-} from "@/lib/llm/llmProvider";
+} from "@/sms-engine/llm/llmProvider";
 
 const originalEnv = { ...process.env };
 

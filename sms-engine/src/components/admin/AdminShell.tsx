@@ -5,9 +5,9 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import {
   getNeedsAttentionSidebarBadges,
   getNeedsAttentionSummary,
-} from "@/lib/admin/needsAttention";
-import { getPilotModeBanners } from "@/lib/pilotReadiness";
-import { getAdminSmsSafetyBanners } from "@/lib/smsSafety";
+} from "@/sms-engine/admin/needsAttention";
+import { getPilotModeBanners } from "@/sms-engine/pilotReadiness";
+import { getAdminSmsSafetyBanners } from "@/sms-engine/smsSafety";
 
 export async function AdminShell({ children }: { children: React.ReactNode }) {
   const smsSafetyBanners = [

@@ -1,7 +1,7 @@
 import {
   formatObservabilityDailyReport,
   getObservabilitySummary,
-} from "@/lib/observability/observabilitySummary";
+} from "@/sms-engine/observability/observabilitySummary";
 
 async function main() {
   const summary = await getObservabilitySummary();

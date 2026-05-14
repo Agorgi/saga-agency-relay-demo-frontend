@@ -5,7 +5,7 @@ import {
   clearAdminSession,
   setAdminSession,
   verifyAdminPassword,
-} from "@/lib/adminAuth";
+} from "@/sms-engine/adminAuth";
 
 export async function loginAdmin(formData: FormData) {
   const password = String(formData.get("password") || "");

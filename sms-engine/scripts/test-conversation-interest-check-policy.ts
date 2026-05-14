@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import type { ConversationContext } from "@/lib/conversation/conversationTypes";
-import { classifyConversationIntent } from "@/lib/conversation/intentRouter";
-import { evaluateInterestCheckPolicy } from "@/lib/conversation/interestCheckPolicy";
-import { redactForLog } from "@/lib/safeLogging";
+import type { ConversationContext } from "@/sms-engine/conversation/conversationTypes";
+import { classifyConversationIntent } from "@/sms-engine/conversation/intentRouter";
+import { evaluateInterestCheckPolicy } from "@/sms-engine/conversation/interestCheckPolicy";
+import { redactForLog } from "@/sms-engine/safeLogging";
 
 process.on("uncaughtException", (error) => {
   console.error(redactForLog(error));

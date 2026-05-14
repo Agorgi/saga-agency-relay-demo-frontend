@@ -5,13 +5,13 @@ import {
   recordLlmReviewItem,
   safeLlmReviewItemForDisplay,
   suggestLlmToneReviewStatus,
-} from "@/lib/llm/qualityReview";
+} from "@/sms-engine/llm/qualityReview";
 import {
   runStructuredLlmTask,
   safeLlmHealth,
   type LlmStructuredProvider,
-} from "@/lib/llm/llmProvider";
-import { intakeReplySchema } from "@/lib/producerAgent";
+} from "@/sms-engine/llm/llmProvider";
+import { intakeReplySchema } from "@/sms-engine/producerAgent";
 
 const originalEnv = { ...process.env };
 

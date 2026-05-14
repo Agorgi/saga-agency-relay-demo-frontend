@@ -23,6 +23,9 @@
       }
     ],
     "paths": {
+      "@/sms-engine/*": [
+        "./src/sms-engine/*"
+      ],
       "@/*": [
         "./src/*"
       ]

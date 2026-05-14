@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdminForAction } from "@/lib/adminAuth";
-import { updateLlmReviewItem } from "@/lib/llm/qualityReview";
+import { requireAdminForAction } from "@/sms-engine/adminAuth";
+import { updateLlmReviewItem } from "@/sms-engine/llm/qualityReview";
 
 function text(formData: FormData, key: string) {
   const value = formData.get(key);

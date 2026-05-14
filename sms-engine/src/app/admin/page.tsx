@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { loginAdmin } from "@/app/admin/actions";
-import { isAdminAuthenticated } from "@/lib/adminAuth";
+import { isAdminAuthenticated } from "@/sms-engine/adminAuth";
 
 export const dynamic = "force-dynamic";
 
