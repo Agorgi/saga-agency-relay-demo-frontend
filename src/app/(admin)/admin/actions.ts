@@ -11,6 +11,7 @@ export async function loginAdmin(formData: FormData) {
   const password = String(formData.get("password") || "");
 
   if (!verifyAdminPassword(password)) {
+    await new Promise((resolve) => setTimeout(resolve, 300));
     redirect("/admin?error=1");
   }
 

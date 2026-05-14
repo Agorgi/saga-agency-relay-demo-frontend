@@ -16,10 +16,12 @@ import {
   sagaVoiceGuidelines,
 } from "@/sms-engine/llm/prompts";
 import { intakeReplySchema } from "@/sms-engine/producerAgent";
-import { getDb } from "@/sms-engine/db";
 import {
   appendTurn,
+  getExistingSession,
   getOrCreateSession,
+  loadConversationMessages,
+  loadLatestConversationForSession,
   WEB_SESSION_COOKIE_MAX_AGE,
   WEB_SESSION_COOKIE_NAME,
 } from "@/lib/webChatSessionStore";
@@ -291,16 +293,43 @@ async function loadConversationHistory({
   sessionId: string;
   conversationId: string;
 }) {
-  const messages = await getDb().webChatMessage.findMany({
-    where: { sessionId, conversationId },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    select: { role: true, content: true },
-  });
+  const messages = await loadConversationMessages({ sessionId, conversationId });
 
   return messages.map((message) => ({
     role: message.role === "assistant" ? "assistant" : "user",
     content: message.content,
   })) satisfies ChatMessage[];
+}
+
+export async function GET(req: NextRequest) {
+  const session = await getExistingSession(req);
+  if (!session) {
+    return json({ conversationId: null, messages: [] });
+  }
+
+  const requestedConversationId =
+    req.nextUrl.searchParams.get("conversationId")?.trim() || null;
+
+  if (requestedConversationId) {
+    const messages = await loadConversationMessages({
+      sessionId: session.id,
+      conversationId: requestedConversationId,
+    });
+
+    if (messages.length > 0) {
+      return json({
+        conversationId: requestedConversationId,
+        messages,
+      });
+    }
+  }
+
+  const latestConversation = await loadLatestConversationForSession(session.id);
+  if (!latestConversation) {
+    return json({ conversationId: null, messages: [] });
+  }
+
+  return json(latestConversation);
 }
 
 export async function POST(req: NextRequest) {

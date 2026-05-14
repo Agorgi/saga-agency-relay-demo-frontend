@@ -5,6 +5,16 @@ export const WEB_SESSION_COOKIE_NAME = "web_session_id";
 export const WEB_SESSION_COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
 
 type ReplyMode = "autonomous" | "holding";
+type ChatRole = "user" | "assistant";
+
+export type StoredWebChatMessage = {
+  id: string;
+  role: ChatRole;
+  content: string;
+  mode: ReplyMode | null;
+  turn: number;
+  createdAt: string;
+};
 
 function normalizedUserAgent(req: NextRequest) {
   const value = req.headers.get("user-agent")?.trim();
@@ -39,6 +49,17 @@ export async function getOrCreateSession(req: NextRequest) {
     },
   });
   return { session, isNew: true as const };
+}
+
+export async function getExistingSession(req: NextRequest) {
+  const sessionId = req.cookies.get(WEB_SESSION_COOKIE_NAME)?.value?.trim();
+  if (!sessionId) {
+    return null;
+  }
+
+  return getDb().webSession.findUnique({
+    where: { id: sessionId },
+  });
 }
 
 export async function appendTurn({
@@ -81,4 +102,54 @@ export async function appendTurn({
     });
     return turn;
   });
+}
+
+export async function loadConversationMessages({
+  sessionId,
+  conversationId,
+}: {
+  sessionId: string;
+  conversationId: string;
+}) {
+  const messages = await getDb().webChatMessage.findMany({
+    where: { sessionId, conversationId },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      role: true,
+      content: true,
+      mode: true,
+      turn: true,
+      createdAt: true,
+    },
+  });
+
+  return messages.map((message) => ({
+    id: message.id,
+    role: message.role === "assistant" ? "assistant" : "user",
+    content: message.content,
+    mode: message.mode === "autonomous" || message.mode === "holding" ? message.mode : null,
+    turn: message.turn,
+    createdAt: message.createdAt.toISOString(),
+  })) satisfies StoredWebChatMessage[];
+}
+
+export async function loadLatestConversationForSession(sessionId: string) {
+  const latestMessage = await getDb().webChatMessage.findFirst({
+    where: { sessionId },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: { conversationId: true },
+  });
+
+  if (!latestMessage) {
+    return null;
+  }
+
+  return {
+    conversationId: latestMessage.conversationId,
+    messages: await loadConversationMessages({
+      sessionId,
+      conversationId: latestMessage.conversationId,
+    }),
+  };
 }

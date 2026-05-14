@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type ChatRole = "user" | "assistant";
 type ChatMode = "autonomous" | "holding";
@@ -19,27 +19,143 @@ type WebChatResponse = {
   mode: ChatMode;
 };
 
-const INITIAL_MESSAGES: ChatEntry[] = [
-  {
-    id: "assistant-welcome",
-    role: "assistant",
-    content: "Stubbed web chat is ready. Send a message to test the endpoint.",
-  },
-];
+type WebChatHistoryResponse = {
+  conversationId: null | string;
+  messages: Array<{
+    id: string;
+    role: ChatRole;
+    content: string;
+    mode: ChatMode | null;
+    turn: number;
+    createdAt: string;
+  }>;
+};
 
-export function ChatWidget() {
+type ChatWidgetProps = {
+  eyebrow?: string;
+  description?: string;
+  placeholder?: string;
+  welcomeMessage?: string;
+};
+
+const CONVERSATION_STORAGE_KEY = "saga-web-chat-conversation-id";
+const DEFAULT_DESCRIPTION =
+  "Tell Saga what you're producing, where it's happening, and the creative help you need.";
+const DEFAULT_PLACEHOLDER =
+  "Tell Saga what you're making, where it's happening, and the kind of help you need...";
+const DEFAULT_WELCOME_MESSAGE =
+  "Hi - I'm Saga. Tell me what you're producing, where it's happening, and the kind of creative help you need.";
+
+function createInitialMessages(welcomeMessage: string): ChatEntry[] {
+  return [
+    {
+      id: "assistant-welcome",
+      role: "assistant",
+      content: welcomeMessage,
+    },
+  ];
+}
+
+export function ChatWidget({
+  eyebrow = "Project concierge",
+  description = DEFAULT_DESCRIPTION,
+  placeholder = DEFAULT_PLACEHOLDER,
+  welcomeMessage = DEFAULT_WELCOME_MESSAGE,
+}: ChatWidgetProps) {
   const formRef = useRef<HTMLFormElement | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isRestoring, setIsRestoring] = useState(true);
   const [isSending, setIsSending] = useState(false);
-  const [messages, setMessages] = useState<ChatEntry[]>(INITIAL_MESSAGES);
+  const [messages, setMessages] = useState<ChatEntry[]>(() =>
+    createInitialMessages(welcomeMessage),
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function restoreConversation(preferredConversationId?: string | null) {
+      const query = preferredConversationId
+        ? `?conversationId=${encodeURIComponent(preferredConversationId)}`
+        : "";
+      const response = await fetch(`/api/web-chat${query}`, {
+        cache: "no-store",
+      });
+      const data = (await response.json().catch(() => null)) as
+        | WebChatHistoryResponse
+        | null;
+
+      if (
+        !response.ok ||
+        !data ||
+        typeof data !== "object" ||
+        !Array.isArray(data.messages)
+      ) {
+        return false;
+      }
+
+      if (!cancelled) {
+        if (data.conversationId) {
+          window.localStorage.setItem(CONVERSATION_STORAGE_KEY, data.conversationId);
+          setConversationId(data.conversationId);
+        } else {
+          window.localStorage.removeItem(CONVERSATION_STORAGE_KEY);
+          setConversationId(null);
+        }
+
+        if (data.messages.length > 0) {
+          setMessages(
+            data.messages.map((message, index) => ({
+              id: `${message.id}-${message.turn}-${message.role}-${index}`,
+              role: message.role,
+              content: message.content,
+              mode: message.role === "assistant" ? message.mode ?? undefined : undefined,
+            })),
+          );
+        } else {
+          setMessages(createInitialMessages(welcomeMessage));
+        }
+      }
+
+      return data.messages.length > 0;
+    }
+
+    async function bootstrap() {
+      try {
+        const storedConversationId = window.localStorage.getItem(
+          CONVERSATION_STORAGE_KEY,
+        );
+        const restoredStoredThread = storedConversationId
+          ? await restoreConversation(storedConversationId)
+          : false;
+
+        if (!restoredStoredThread) {
+          await restoreConversation();
+        }
+      } catch {
+        if (!cancelled) {
+          setMessages(createInitialMessages(welcomeMessage));
+        }
+      } finally {
+        if (!cancelled) {
+          setIsRestoring(false);
+        }
+      }
+    }
+
+    void bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [welcomeMessage]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const message = draft.trim();
-    if (!message || isSending) {
+    if (!message || isSending || isRestoring) {
       return;
     }
 
@@ -76,11 +192,12 @@ export function ChatWidget() {
         return;
       }
 
+      window.localStorage.setItem(CONVERSATION_STORAGE_KEY, data.conversationId);
       setConversationId(data.conversationId);
       setMessages((current) => [
         ...current,
         {
-          id: `assistant-${data.turn}`,
+          id: `assistant-${data.turn}-${Date.now()}`,
           role: "assistant",
           content: data.reply,
           mode: data.mode,
@@ -98,11 +215,9 @@ export function ChatWidget() {
       <div className="flex items-center justify-between gap-3 border-b border-[color:var(--surface-border)] pb-3">
         <div>
           <p className="text-[10px] font-medium uppercase tracking-[0.24em] text-ink-light">
-            Web chat
+            {eyebrow}
           </p>
-          <p className="mt-1 text-sm text-ink-light">
-            In-memory stub replies only for this test page.
-          </p>
+          <p className="mt-1 text-sm text-ink-light">{description}</p>
         </div>
         <span className="rounded-pill bg-canvas px-3 py-1 text-[11px] font-medium text-ink-light">
           {conversationId ? "Live thread" : "New thread"}
@@ -160,22 +275,25 @@ export function ChatWidget() {
                 formRef.current?.requestSubmit();
               }
             }}
-            placeholder="Type a message to test the stubbed chat endpoint..."
-            disabled={isSending}
+            placeholder={placeholder}
+            disabled={isSending || isRestoring}
             rows={4}
             className="brand-surface-inset min-h-[112px] w-full rounded-[24px] px-4 py-3 text-sm leading-6 text-ink outline-none transition placeholder:text-ink-light/80 disabled:cursor-not-allowed disabled:opacity-70"
           />
 
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs text-ink-light" aria-live="polite">
-              {error ?? "Press Enter to send. Use Shift+Enter for a new line."}
+              {error ??
+                (isRestoring
+                  ? "Restoring your conversation..."
+                  : "Press Enter to send. Use Shift+Enter for a new line.")}
             </p>
             <button
               type="submit"
-              disabled={isSending || draft.trim().length === 0}
+              disabled={isSending || isRestoring || draft.trim().length === 0}
               className="brand-button-primary rounded-pill px-4 py-2.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSending ? "Sending..." : "Send"}
+              {isRestoring ? "Loading..." : isSending ? "Sending..." : "Send"}
             </button>
           </div>
         </form>

@@ -1817,6 +1817,16 @@ model WebSession {
   @@index([createdAt])
 }
 
+model AdminSession {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @updatedAt
+  revokedAt  DateTime?
+
+  @@index([createdAt])
+  @@index([revokedAt])
+}
+
 model WebChatMessage {
   id             String     @id @default(cuid())
   sessionId      String

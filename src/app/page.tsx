@@ -3,8 +3,8 @@ import { LandingHero } from "@/components/LandingHero";
 
 export default function HomePage() {
   return (
-    <AppFrame>
-      <div className="absolute inset-0">
+    <AppFrame composer={false}>
+      <div className="relative z-10 h-full overflow-y-auto">
         <LandingHero />
       </div>
     </AppFrame>

@@ -34,7 +34,7 @@ export default async function AdminLoginPage({
               name="password"
               type="password"
               required
-              placeholder="Enter staging admin password"
+              placeholder="Enter admin password"
               className="mt-2 w-full rounded-md border border-zinc-600 bg-zinc-900 px-3 py-2 text-zinc-50 outline-none ring-0 transition placeholder:text-zinc-500 focus:border-zinc-300 focus:ring-2 focus:ring-zinc-400/30"
             />
           </label>
