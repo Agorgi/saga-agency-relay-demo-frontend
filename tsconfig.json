@@ -39,8 +39,6 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "sms-engine",
-    "sms-engine/**"
+    "node_modules"
   ]
 }
