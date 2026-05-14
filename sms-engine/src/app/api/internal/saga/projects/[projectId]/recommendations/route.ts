@@ -1,6 +1,6 @@
-import { requireInternalApiKey } from "@/lib/internalApiAuth";
-import { internalError, internalOk } from "@/lib/internalRoute";
-import { recommendationsForProject } from "@/lib/internalSagaApi";
+import { requireInternalApiKey } from "@/sms-engine/internalApiAuth";
+import { internalError, internalOk } from "@/sms-engine/internalRoute";
+import { recommendationsForProject } from "@/sms-engine/internalSagaApi";
 
 export async function GET(
   request: Request,

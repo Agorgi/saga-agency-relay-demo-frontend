@@ -2,16 +2,16 @@ import assert from "node:assert/strict";
 import type {
   ConversationContext,
   GigSeekerKnownFields,
-} from "@/lib/conversation/conversationTypes";
-import { getConversationEngineRuntime } from "@/lib/conversation/conversationEngineMode";
-import { evaluateGigSeekerOnboardingPolicy } from "@/lib/conversation/gigSeekerOnboardingPolicy";
+} from "@/sms-engine/conversation/conversationTypes";
+import { getConversationEngineRuntime } from "@/sms-engine/conversation/conversationEngineMode";
+import { evaluateGigSeekerOnboardingPolicy } from "@/sms-engine/conversation/gigSeekerOnboardingPolicy";
 import {
   buildGigSeekerProfileDraft,
   shouldApplyGigSeekerMockActive,
-} from "@/lib/conversation/gigSeekerProfilePreparation";
-import { generateGigSeekerReplyFromPlan } from "@/lib/conversation/gigSeekerReplyGenerator";
-import { classifyConversationIntent } from "@/lib/conversation/intentRouter";
-import { redactForLog } from "@/lib/safeLogging";
+} from "@/sms-engine/conversation/gigSeekerProfilePreparation";
+import { generateGigSeekerReplyFromPlan } from "@/sms-engine/conversation/gigSeekerReplyGenerator";
+import { classifyConversationIntent } from "@/sms-engine/conversation/intentRouter";
+import { redactForLog } from "@/sms-engine/safeLogging";
 
 process.on("uncaughtException", (error) => {
   console.error(redactForLog(error));

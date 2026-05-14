@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { getDb } from "@/lib/db";
-import { evaluateContactabilityEvidence } from "@/lib/sourcing/contactabilityEvidence";
+import { getDb } from "@/sms-engine/db";
+import { evaluateContactabilityEvidence } from "@/sms-engine/sourcing/contactabilityEvidence";
 import {
   canPromotePublicWebResult,
   evaluatePublicWebResearchResultForReview,
-} from "@/lib/sourcing/publicWebResearchCleanup";
+} from "@/sms-engine/sourcing/publicWebResearchCleanup";
 import {
   archivePublicWebResearchRunAction,
   cleanupTestTaggedPublicWebResultsAction,

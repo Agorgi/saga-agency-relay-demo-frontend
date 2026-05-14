@@ -4,13 +4,13 @@ import {
   adminContactLabel,
   redactPhoneForDisplay,
   redactSensitiveTextForDisplay,
-} from "@/lib/adminPrivacy";
-import { getDb } from "@/lib/db";
+} from "@/sms-engine/adminPrivacy";
+import { getDb } from "@/sms-engine/db";
 import {
   normalizePilotFeedbackCategory,
   PILOT_FEEDBACK_CATEGORIES,
-} from "@/lib/pilotReadiness";
-import { briefTitle } from "@/lib/workflow";
+} from "@/sms-engine/pilotReadiness";
+import { briefTitle } from "@/sms-engine/workflow";
 
 export const dynamic = "force-dynamic";
 

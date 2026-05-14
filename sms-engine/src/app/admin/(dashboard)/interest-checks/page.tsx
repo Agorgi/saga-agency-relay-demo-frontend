@@ -1,6 +1,6 @@
 import { Plus, TrendingUp } from "lucide-react";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { getDb } from "@/lib/db";
+import { getDb } from "@/sms-engine/db";
 import {
   addInterestAction,
   convertInterestCheckAction,

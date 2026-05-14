@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
-import { formatMatchingEvaluationReport, runMatchingEvaluation } from "@/lib/matchingEval/runMatchingEvaluation";
-import { matchingEvalCandidates } from "@/lib/matchingEval/matchingEvalCandidates";
-import { matchingEvalFixtures } from "@/lib/matchingEval/matchingEvalFixtures";
-import { matchingGoldenExpectations } from "@/lib/matchingEval/goldenExpectations";
-import { getRelationshipAwareMatchingWeights } from "@/lib/graph/matchingWeights";
-import { scoreCandidateForRole } from "@/lib/graph/relationshipAwareScoring";
-import { computeRoleAwareLocationFit } from "@/lib/graph/roleLocationRequirements";
+import { formatMatchingEvaluationReport, runMatchingEvaluation } from "@/sms-engine/matchingEval/runMatchingEvaluation";
+import { matchingEvalCandidates } from "@/sms-engine/matchingEval/matchingEvalCandidates";
+import { matchingEvalFixtures } from "@/sms-engine/matchingEval/matchingEvalFixtures";
+import { matchingGoldenExpectations } from "@/sms-engine/matchingEval/goldenExpectations";
+import { getRelationshipAwareMatchingWeights } from "@/sms-engine/graph/matchingWeights";
+import { scoreCandidateForRole } from "@/sms-engine/graph/relationshipAwareScoring";
+import { computeRoleAwareLocationFit } from "@/sms-engine/graph/roleLocationRequirements";
 
 function candidate(id: string) {
   const found = matchingEvalCandidates.find((item) => item.id === id);

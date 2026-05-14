@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { buildPublicWebLiveDryRunRequest } from "@/lib/sourcing/publicWebLiveDryRunFixture";
+import { buildPublicWebLiveDryRunRequest } from "@/sms-engine/sourcing/publicWebLiveDryRunFixture";
 import {
   getPublicWebResearchHealthSnapshot,
   processNextPublicWebResearchJobs,
@@ -7,11 +7,11 @@ import {
   publicWebResearchErrorCategory,
   queuePublicWebResearchLiveDryRun,
   runPublicWebResearch,
-} from "@/lib/sourcing/publicWebResearchProvider";
+} from "@/sms-engine/sourcing/publicWebResearchProvider";
 import {
   publicWebResearchAuditEvents,
   type PublicResearchCandidateCard,
-} from "@/lib/sourcing/talentTypes";
+} from "@/sms-engine/sourcing/talentTypes";
 
 const originalEnv = { ...process.env };
 

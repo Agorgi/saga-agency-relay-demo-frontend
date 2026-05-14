@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {
   evaluateApprovedDraftSendReadiness,
   producerDraftSendReadinessAuditEvent,
-} from "@/lib/producer/sendReadiness";
+} from "@/sms-engine/producer/sendReadiness";
 
 const validConfig = {
   providerMode: "TWILIO",

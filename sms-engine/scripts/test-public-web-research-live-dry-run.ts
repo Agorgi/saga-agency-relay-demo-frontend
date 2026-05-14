@@ -1,20 +1,20 @@
 import assert from "node:assert/strict";
-import { buildPublicWebLiveDryRunRequest } from "@/lib/sourcing/publicWebLiveDryRunFixture";
+import { buildPublicWebLiveDryRunRequest } from "@/sms-engine/sourcing/publicWebLiveDryRunFixture";
 import {
   evaluatePublicWebResearchLiveDryRunReadiness,
   getPublicWebResearchConfig,
   runPublicWebResearch,
-} from "@/lib/sourcing/publicWebResearchProvider";
+} from "@/sms-engine/sourcing/publicWebResearchProvider";
 import {
   evaluatePublicWebResearchSafety,
   sanitizePublicResearchCandidateCard,
-} from "@/lib/sourcing/publicWebResearchSafety";
-import { evaluateTalentResearchQuality } from "@/lib/sourcing/talentResearchQuality";
+} from "@/sms-engine/sourcing/publicWebResearchSafety";
+import { evaluateTalentResearchQuality } from "@/sms-engine/sourcing/talentResearchQuality";
 import {
   publicResearchCandidateCardSchema,
   publicWebResearchAuditEvents,
   type PublicResearchCandidateCard,
-} from "@/lib/sourcing/talentTypes";
+} from "@/sms-engine/sourcing/talentTypes";
 
 const originalEnv = { ...process.env };
 

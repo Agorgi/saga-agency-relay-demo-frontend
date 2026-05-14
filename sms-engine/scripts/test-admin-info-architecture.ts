@@ -11,8 +11,8 @@ import {
   isAdminNavSectionActive,
   sidebarRendersItemDescriptions,
 } from "@/components/admin/adminNavigation";
-import { buildNeedsAttentionSummary } from "@/lib/admin/needsAttention";
-import { assertNoRawPiiOrSecrets } from "@/lib/dataOps/dataClassification";
+import { buildNeedsAttentionSummary } from "@/sms-engine/admin/needsAttention";
+import { assertNoRawPiiOrSecrets } from "@/sms-engine/dataOps/dataClassification";
 
 const root = process.cwd();
 const adminAppDir = join(root, "src/app/admin");

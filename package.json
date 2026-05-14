@@ -2,6 +2,9 @@
   "name": "saga-visual-talent-demo",
   "version": "0.1.0",
   "private": true,
+  "prisma": {
+    "schema": "prisma/schema.prisma"
+  },
   "scripts": {
     "dev": "next dev",
     "demo": "next dev -H 0.0.0.0 -p 3000",
@@ -9,7 +12,11 @@
     "start": "next start",
     "start:demo": "next start -H 0.0.0.0 -p 3000",
     "demo:prod": "npm run build && npm run start:demo",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "postinstall": "prisma generate",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:studio": "prisma studio"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

@@ -2,24 +2,24 @@ import assert from "node:assert/strict";
 import {
   type ProjectUnderstanding,
   type RoleMap,
-} from "@/lib/producer/producerAgentTypes";
-import { generatePublicResearchPlan } from "@/lib/sourcing/publicResearchPlan";
+} from "@/sms-engine/producer/producerAgentTypes";
+import { generatePublicResearchPlan } from "@/sms-engine/sourcing/publicResearchPlan";
 import {
   getPublicWebResearchConfig,
   runPublicWebResearch,
-} from "@/lib/sourcing/publicWebResearchProvider";
-import { buildPublicWebQueryPlan } from "@/lib/sourcing/publicWebQueryBuilder";
+} from "@/sms-engine/sourcing/publicWebResearchProvider";
+import { buildPublicWebQueryPlan } from "@/sms-engine/sourcing/publicWebQueryBuilder";
 import {
   evaluatePublicWebResearchSafety,
   sanitizePublicResearchCandidateCard,
-} from "@/lib/sourcing/publicWebResearchSafety";
-import { generateSourcingStrategy } from "@/lib/sourcing/sourcingStrategy";
-import { evaluateTalentResearchQuality } from "@/lib/sourcing/talentResearchQuality";
+} from "@/sms-engine/sourcing/publicWebResearchSafety";
+import { generateSourcingStrategy } from "@/sms-engine/sourcing/sourcingStrategy";
+import { evaluateTalentResearchQuality } from "@/sms-engine/sourcing/talentResearchQuality";
 import {
   publicResearchCandidateCardSchema,
   publicWebResearchAuditEvents,
   type PublicResearchCandidateCard,
-} from "@/lib/sourcing/talentTypes";
+} from "@/sms-engine/sourcing/talentTypes";
 
 const originalEnv = { ...process.env };
 

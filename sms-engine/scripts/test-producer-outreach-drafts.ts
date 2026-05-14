@@ -5,7 +5,7 @@ import {
   generateOrganizerShortlistMessageDraft,
   producerOutboundDraftAuditEvents,
   validateOutboundDraftForApproval,
-} from "@/lib/producer/outboundDrafts";
+} from "@/sms-engine/producer/outboundDrafts";
 
 const approvedCandidateSummaries = [
   {

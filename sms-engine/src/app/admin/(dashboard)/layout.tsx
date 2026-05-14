@@ -1,5 +1,5 @@
 import { AdminShell } from "@/components/admin/AdminShell";
-import { requireAdmin } from "@/lib/adminAuth";
+import { requireAdmin } from "@/sms-engine/adminAuth";
 
 export const dynamic = "force-dynamic";
 

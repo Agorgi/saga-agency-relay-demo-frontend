@@ -3,21 +3,21 @@ import type {
   ProducerRole,
   ProjectUnderstanding,
   RoleMap,
-} from "@/lib/producer/producerAgentTypes";
+} from "@/sms-engine/producer/producerAgentTypes";
 import {
   canPromoteTalentCandidateToShortlist,
   searchInternalTalentForProject,
-} from "@/lib/sourcing/internalTalentSearch";
-import { generatePublicResearchPlan } from "@/lib/sourcing/publicResearchPlan";
-import { runPublicWebResearch } from "@/lib/sourcing/publicWebResearchProvider";
-import { generateSourcingStrategy } from "@/lib/sourcing/sourcingStrategy";
-import { scoreTalentCandidate } from "@/lib/sourcing/talentScoring";
+} from "@/sms-engine/sourcing/internalTalentSearch";
+import { generatePublicResearchPlan } from "@/sms-engine/sourcing/publicResearchPlan";
+import { runPublicWebResearch } from "@/sms-engine/sourcing/publicWebResearchProvider";
+import { generateSourcingStrategy } from "@/sms-engine/sourcing/sourcingStrategy";
+import { scoreTalentCandidate } from "@/sms-engine/sourcing/talentScoring";
 import {
   candidateCardSchema,
   sourcingAuditEvents,
   type CandidateCard,
   type TalentCandidateInput,
-} from "@/lib/sourcing/talentTypes";
+} from "@/sms-engine/sourcing/talentTypes";
 
 const originalEnv = { ...process.env };
 

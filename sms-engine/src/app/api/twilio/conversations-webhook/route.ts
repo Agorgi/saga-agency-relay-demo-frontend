@@ -1,14 +1,14 @@
-import { handleConversationMessageWebhook } from "@/lib/groupChat";
+import { handleConversationMessageWebhook } from "@/sms-engine/groupChat";
 import {
   messageExistsForTwilioSid,
   shouldSkipDuplicateTwilioMessageSid,
-} from "@/lib/messages";
-import { logServerError } from "@/lib/safeLogging";
+} from "@/sms-engine/messages";
+import { logServerError } from "@/sms-engine/safeLogging";
 import {
   forbiddenTwilioResponse,
   formDataToRecord,
   validateTwilioWebhookRequest,
-} from "@/lib/twilioWebhook";
+} from "@/sms-engine/twilioWebhook";
 
 export const runtime = "nodejs";
 

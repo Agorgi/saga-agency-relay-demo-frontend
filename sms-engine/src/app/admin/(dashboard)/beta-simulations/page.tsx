@@ -8,12 +8,12 @@ import {
   betaCohortSimulationTypes,
   type BetaCohortSimulationResult,
   type BetaCohortSimulationType,
-} from "@/lib/cohortSimulation/cohortTypes";
+} from "@/sms-engine/cohortSimulation/cohortTypes";
 import {
   getBetaCohortSimulationAdminSnapshot,
   runAllBetaCohortSimulations,
   runBetaCohortSimulation,
-} from "@/lib/cohortSimulation/runCohortSimulation";
+} from "@/sms-engine/cohortSimulation/runCohortSimulation";
 
 export const dynamic = "force-dynamic";
 

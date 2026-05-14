@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdminForAction } from "@/lib/adminAuth";
-import { logAudit } from "@/lib/audit";
-import { redactSensitiveTextForDisplay } from "@/lib/adminPrivacy";
+import { requireAdminForAction } from "@/sms-engine/adminAuth";
+import { logAudit } from "@/sms-engine/audit";
+import { redactSensitiveTextForDisplay } from "@/sms-engine/adminPrivacy";
 
 function text(formData: FormData, key: string) {
   const value = formData.get(key);

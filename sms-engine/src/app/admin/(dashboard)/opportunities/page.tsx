@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { getDb } from "@/lib/db";
+import { getDb } from "@/sms-engine/db";
 import { runRecommendationsAction } from "@/app/admin/(dashboard)/network-actions";
 
 export const dynamic = "force-dynamic";

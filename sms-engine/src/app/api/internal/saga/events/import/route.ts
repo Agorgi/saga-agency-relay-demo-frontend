@@ -1,6 +1,6 @@
-import { importSagaEvent } from "@/lib/internalSagaApi";
-import { requireInternalApiKey } from "@/lib/internalApiAuth";
-import { internalError, internalOk } from "@/lib/internalRoute";
+import { importSagaEvent } from "@/sms-engine/internalSagaApi";
+import { requireInternalApiKey } from "@/sms-engine/internalApiAuth";
+import { internalError, internalOk } from "@/sms-engine/internalRoute";
 
 export async function POST(request: Request) {
   const unauthorized = await requireInternalApiKey(request);

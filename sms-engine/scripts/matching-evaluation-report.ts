@@ -3,7 +3,7 @@ import { join } from "node:path";
 import {
   formatMatchingEvaluationReport,
   runMatchingEvaluation,
-} from "@/lib/matchingEval/runMatchingEvaluation";
+} from "@/sms-engine/matchingEval/runMatchingEvaluation";
 
 async function main() {
   const report = await runMatchingEvaluation();

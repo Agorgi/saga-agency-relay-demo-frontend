@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
-import { buildProjectUnderstanding } from "@/lib/producer/projectUnderstanding";
-import { generateRoleMap } from "@/lib/producer/roleMap";
-import { buildSourcingPlan } from "@/lib/producer/sourcingPlan";
-import { recommendInternalCandidates } from "@/lib/producer/candidateRecommendations";
-import { generateShortlistDraft } from "@/lib/producer/shortlistDraft";
-import type { CandidatePoolItem } from "@/lib/producer/producerAgentTypes";
+import { buildProjectUnderstanding } from "@/sms-engine/producer/projectUnderstanding";
+import { generateRoleMap } from "@/sms-engine/producer/roleMap";
+import { buildSourcingPlan } from "@/sms-engine/producer/sourcingPlan";
+import { recommendInternalCandidates } from "@/sms-engine/producer/candidateRecommendations";
+import { generateShortlistDraft } from "@/sms-engine/producer/shortlistDraft";
+import type { CandidatePoolItem } from "@/sms-engine/producer/producerAgentTypes";
 
 const forbiddenPattern =
   /\b(confirmed|booked|guaranteed?|revenue|ticket sales|attendance|venue access|celebrity|influencer|paid work|will join)\b/i;

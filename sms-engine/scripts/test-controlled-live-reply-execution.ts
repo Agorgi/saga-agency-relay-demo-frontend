@@ -5,7 +5,7 @@ import {
   liveReplyAuditEvents,
   safeLiveReplyHealthSummary,
   type LiveReplyConfigInput,
-} from "@/lib/conversation/liveReplyExecutor";
+} from "@/sms-engine/conversation/liveReplyExecutor";
 
 const validConfig = {
   providerMode: "TWILIO",

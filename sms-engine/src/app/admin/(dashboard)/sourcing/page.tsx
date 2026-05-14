@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { getDb } from "@/lib/db";
-import { buildProjectUnderstanding } from "@/lib/producer/projectUnderstanding";
-import { generateRoleMap } from "@/lib/producer/roleMap";
-import { generatePublicResearchPlan } from "@/lib/sourcing/publicResearchPlan";
-import { generateSourcingStrategy } from "@/lib/sourcing/sourcingStrategy";
-import { getTalentDiscoveryHealthSnapshot } from "@/lib/sourcing/talentDiscoveryHealth";
-import { getPublicWebResearchConfig } from "@/lib/sourcing/publicWebResearchProvider";
+import { getDb } from "@/sms-engine/db";
+import { buildProjectUnderstanding } from "@/sms-engine/producer/projectUnderstanding";
+import { generateRoleMap } from "@/sms-engine/producer/roleMap";
+import { generatePublicResearchPlan } from "@/sms-engine/sourcing/publicResearchPlan";
+import { generateSourcingStrategy } from "@/sms-engine/sourcing/sourcingStrategy";
+import { getTalentDiscoveryHealthSnapshot } from "@/sms-engine/sourcing/talentDiscoveryHealth";
+import { getPublicWebResearchConfig } from "@/sms-engine/sourcing/publicWebResearchProvider";
 import {
   runInternalTalentSearchAction,
   updateTalentCandidateStatusAction,

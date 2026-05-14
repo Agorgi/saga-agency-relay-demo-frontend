@@ -1,12 +1,12 @@
 import type { Prisma } from "@prisma/client";
-import { logAudit } from "@/lib/audit";
-import { getDb } from "@/lib/db";
-import { logServerError } from "@/lib/safeLogging";
+import { logAudit } from "@/sms-engine/audit";
+import { getDb } from "@/sms-engine/db";
+import { logServerError } from "@/sms-engine/safeLogging";
 import {
   forbiddenTwilioResponse,
   formDataToRecord,
   validateTwilioWebhookRequest,
-} from "@/lib/twilioWebhook";
+} from "@/sms-engine/twilioWebhook";
 
 export const runtime = "nodejs";
 

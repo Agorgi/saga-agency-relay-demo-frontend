@@ -6,7 +6,7 @@ import {
   evaluateOutboundSelfTestReadiness,
   outboundSelfTestReadinessAuditEvent,
   safeOutboundSelfTestHealthSummary,
-} from "@/lib/producer/outboundSelfTestReadiness";
+} from "@/sms-engine/producer/outboundSelfTestReadiness";
 
 const validConfig = {
   providerMode: "TWILIO",

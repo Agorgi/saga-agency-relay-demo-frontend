@@ -1,7 +1,7 @@
 import { Plus, Save, Trash2 } from "lucide-react";
 import { ContactsImportForm } from "@/components/admin/ContactsImportForm";
-import { redactPhoneForDisplay } from "@/lib/adminPrivacy";
-import { getDb } from "@/lib/db";
+import { redactPhoneForDisplay } from "@/sms-engine/adminPrivacy";
+import { getDb } from "@/sms-engine/db";
 import {
   createContactAction,
   deleteContactAction,
@@ -13,7 +13,7 @@ import {
   conversationAutonomyModeLabel,
   conversationAutonomyModes,
   serializeConversationAutonomySettingForAdmin,
-} from "@/lib/conversation/conversationAutonomy";
+} from "@/sms-engine/conversation/conversationAutonomy";
 
 export const dynamic = "force-dynamic";
 

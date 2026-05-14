@@ -1,6 +1,6 @@
 import { GET as healthGet } from "@/app/api/health/route";
-import { TwilioMessagingProvider } from "@/lib/messagingProvider";
-import { redactForLog } from "@/lib/safeLogging";
+import { TwilioMessagingProvider } from "@/sms-engine/messagingProvider";
+import { redactForLog } from "@/sms-engine/safeLogging";
 
 function requireExactEnv(name: string, expected: string) {
   if (process.env[name] !== expected) {

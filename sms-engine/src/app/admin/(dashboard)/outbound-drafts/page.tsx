@@ -8,8 +8,8 @@ import {
   evaluateOutboundDraftSendReadinessAction,
   rejectOutboundDraftAction,
 } from "@/app/admin/(dashboard)/actions";
-import { getDb } from "@/lib/db";
-import { briefTitle } from "@/lib/workflow";
+import { getDb } from "@/sms-engine/db";
+import { briefTitle } from "@/sms-engine/workflow";
 
 export const dynamic = "force-dynamic";
 

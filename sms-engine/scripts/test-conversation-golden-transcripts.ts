@@ -3,17 +3,17 @@ import type {
   ContactReplyKind,
   ConversationContext,
   ReplyPlan,
-} from "@/lib/conversation/conversationTypes";
-import { evaluateContactReplyPolicy } from "@/lib/conversation/contactReplyPolicy";
-import { generateContactReplyFromPlan } from "@/lib/conversation/contactReplyGenerator";
-import { evaluateGigSeekerOnboardingPolicy } from "@/lib/conversation/gigSeekerOnboardingPolicy";
-import { generateGigSeekerReplyFromPlan } from "@/lib/conversation/gigSeekerReplyGenerator";
-import { classifyConversationIntent } from "@/lib/conversation/intentRouter";
-import { evaluateInterestCheckPolicy } from "@/lib/conversation/interestCheckPolicy";
-import { generateInterestCheckReplyFromPlan } from "@/lib/conversation/interestCheckReplyGenerator";
-import { evaluateOrganizerIntakePolicy } from "@/lib/conversation/organizerIntakePolicy";
-import { generateOrganizerReplyFromPlan } from "@/lib/conversation/organizerReplyGenerator";
-import { redactForLog } from "@/lib/safeLogging";
+} from "@/sms-engine/conversation/conversationTypes";
+import { evaluateContactReplyPolicy } from "@/sms-engine/conversation/contactReplyPolicy";
+import { generateContactReplyFromPlan } from "@/sms-engine/conversation/contactReplyGenerator";
+import { evaluateGigSeekerOnboardingPolicy } from "@/sms-engine/conversation/gigSeekerOnboardingPolicy";
+import { generateGigSeekerReplyFromPlan } from "@/sms-engine/conversation/gigSeekerReplyGenerator";
+import { classifyConversationIntent } from "@/sms-engine/conversation/intentRouter";
+import { evaluateInterestCheckPolicy } from "@/sms-engine/conversation/interestCheckPolicy";
+import { generateInterestCheckReplyFromPlan } from "@/sms-engine/conversation/interestCheckReplyGenerator";
+import { evaluateOrganizerIntakePolicy } from "@/sms-engine/conversation/organizerIntakePolicy";
+import { generateOrganizerReplyFromPlan } from "@/sms-engine/conversation/organizerReplyGenerator";
+import { redactForLog } from "@/sms-engine/safeLogging";
 
 process.on("uncaughtException", (error) => {
   console.error(redactForLog(error));

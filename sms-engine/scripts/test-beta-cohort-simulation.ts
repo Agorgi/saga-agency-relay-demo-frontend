@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
-import { getCommandCenterSummary } from "@/lib/commandCenter/commandCenterSummary";
+import { getCommandCenterSummary } from "@/sms-engine/commandCenter/commandCenterSummary";
 import {
   formatBetaCohortSimulationReport,
   getBetaCohortSimulationHealthSnapshot,
   runAllBetaCohortSimulations,
   runBetaCohortSimulation,
-} from "@/lib/cohortSimulation/runCohortSimulation";
-import { evaluateLaunchReadinessDrill } from "@/lib/launchDrill/launchReadinessDrill";
+} from "@/sms-engine/cohortSimulation/runCohortSimulation";
+import { evaluateLaunchReadinessDrill } from "@/sms-engine/launchDrill/launchReadinessDrill";
 
 const previousEnv = { ...process.env };
 

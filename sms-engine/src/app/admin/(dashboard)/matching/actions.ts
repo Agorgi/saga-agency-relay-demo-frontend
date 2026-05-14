@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import {
   rankCandidatesForProject,
   updateCandidateGraphMatchResultReview,
-} from "@/lib/graph/projectCandidateMatcher";
+} from "@/sms-engine/graph/projectCandidateMatcher";
 
 const reviewStatuses = new Set<CandidateGraphMatchReviewStatus>([
   "SUGGESTED",

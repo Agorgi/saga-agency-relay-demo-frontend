@@ -7,7 +7,7 @@ import {
   getDesignPartnerPilotReadinessSnapshot,
   safePilotParticipantSummary,
   safePilotFeedbackSummary,
-} from "@/lib/pilotReadiness";
+} from "@/sms-engine/pilotReadiness";
 
 async function withEnv<T>(
   updates: Record<string, string | undefined>,

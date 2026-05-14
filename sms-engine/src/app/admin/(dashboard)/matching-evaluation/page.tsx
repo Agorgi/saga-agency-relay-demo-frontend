@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { getRelationshipAwareMatchingWeights } from "@/lib/graph/matchingWeights";
-import { getMatchingEvaluationHealthSnapshot } from "@/lib/matchingEval/matchingEvaluationHealth";
-import { matchingEvalFixtures } from "@/lib/matchingEval/matchingEvalFixtures";
+import { getRelationshipAwareMatchingWeights } from "@/sms-engine/graph/matchingWeights";
+import { getMatchingEvaluationHealthSnapshot } from "@/sms-engine/matchingEval/matchingEvaluationHealth";
+import { matchingEvalFixtures } from "@/sms-engine/matchingEval/matchingEvalFixtures";
 import {
   getMatchingEvaluationFixtureSummary,
   runMatchingEvaluation,
-} from "@/lib/matchingEval/runMatchingEvaluation";
+} from "@/sms-engine/matchingEval/runMatchingEvaluation";
 
 export const dynamic = "force-dynamic";
 

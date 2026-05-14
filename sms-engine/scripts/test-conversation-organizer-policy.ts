@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import type { ConversationContext } from "@/lib/conversation/conversationTypes";
-import { evaluateOrganizerIntakePolicy } from "@/lib/conversation/organizerIntakePolicy";
-import { redactForLog } from "@/lib/safeLogging";
+import type { ConversationContext } from "@/sms-engine/conversation/conversationTypes";
+import { evaluateOrganizerIntakePolicy } from "@/sms-engine/conversation/organizerIntakePolicy";
+import { redactForLog } from "@/sms-engine/safeLogging";
 
 process.on("uncaughtException", (error) => {
   console.error(redactForLog(error));

@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { assertNoRawPiiOrSecrets } from "@/lib/dataOps/dataClassification";
+import { assertNoRawPiiOrSecrets } from "@/sms-engine/dataOps/dataClassification";
 import {
   formatReleaseCandidateReport,
   getReleaseCandidateSummary,
   releaseCandidateTag,
   releaseCandidateTagMessage,
   releaseCandidateVersion,
-} from "@/lib/releaseCandidate/releaseCandidate";
+} from "@/sms-engine/releaseCandidate/releaseCandidate";
 
 const originalEnv = { ...process.env };
 const rawPhone = "+15551234567";

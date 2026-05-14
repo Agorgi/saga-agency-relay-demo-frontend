@@ -1,8 +1,8 @@
 import "dotenv/config";
 import { execFileSync } from "node:child_process";
-import { getDb } from "@/lib/db";
-import { normalizePhone } from "@/lib/phone";
-import { redactForLog } from "@/lib/safeLogging";
+import { getDb } from "@/sms-engine/db";
+import { normalizePhone } from "@/sms-engine/phone";
+import { redactForLog } from "@/sms-engine/safeLogging";
 
 const seedContactPhones = [
   "+14155550111",

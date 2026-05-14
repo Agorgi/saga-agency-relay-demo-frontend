@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { updateLlmReviewItemAction } from "@/app/admin/(dashboard)/llm-review/actions";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { getDb } from "@/lib/db";
+import { getDb } from "@/sms-engine/db";
 import {
   LLM_REVIEW_STATUSES,
   safeLlmReviewItemForDisplay,
-} from "@/lib/llm/qualityReview";
-import { briefTitle } from "@/lib/workflow";
+} from "@/sms-engine/llm/qualityReview";
+import { briefTitle } from "@/sms-engine/workflow";
 
 export const dynamic = "force-dynamic";
 

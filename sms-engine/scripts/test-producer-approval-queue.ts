@@ -5,7 +5,7 @@ import {
   normalizeCandidateReviewStatus,
   validateShortlistPacketForApproval,
   type ShortlistPacketCandidateInput,
-} from "@/lib/producer/approvalQueue";
+} from "@/sms-engine/producer/approvalQueue";
 
 const approvedCandidate: ShortlistPacketCandidateInput = {
   candidateRecommendationId: "rec_approved",

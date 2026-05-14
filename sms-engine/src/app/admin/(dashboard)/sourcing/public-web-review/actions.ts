@@ -9,7 +9,7 @@ import {
   reviewPublicWebResearchResult,
   updateContactabilityEvidenceReview,
   type PublicWebReviewAction,
-} from "@/lib/sourcing/publicWebResearchCleanup";
+} from "@/sms-engine/sourcing/publicWebResearchCleanup";
 
 function reviewAction(value: string): PublicWebReviewAction {
   if (

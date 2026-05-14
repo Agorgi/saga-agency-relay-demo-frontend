@@ -3,14 +3,14 @@ import {
   evaluateLiveReplyReadinessAction,
   evaluateOutboundSelfTestReadinessAction,
 } from "@/app/admin/(dashboard)/actions";
-import { getLiveReplyExecutionReadinessSnapshot } from "@/lib/conversation/liveReplyExecutor";
-import { getDb } from "@/lib/db";
-import { summarizeDesignPartnerTranscriptDryRuns } from "@/lib/dryRuns/runDesignPartnerTranscript";
-import { safeLlmHealth } from "@/lib/llm/llmProvider";
-import { getLaunchDrillHealthSnapshot } from "@/lib/launchDrill/launchReadinessDrill";
-import { metadataObject } from "@/lib/messages";
-import { getDesignPartnerPilotReadinessSnapshot } from "@/lib/pilotReadiness";
-import { getOutboundSelfTestReadinessSnapshot } from "@/lib/producer/outboundSelfTestReadiness";
+import { getLiveReplyExecutionReadinessSnapshot } from "@/sms-engine/conversation/liveReplyExecutor";
+import { getDb } from "@/sms-engine/db";
+import { summarizeDesignPartnerTranscriptDryRuns } from "@/sms-engine/dryRuns/runDesignPartnerTranscript";
+import { safeLlmHealth } from "@/sms-engine/llm/llmProvider";
+import { getLaunchDrillHealthSnapshot } from "@/sms-engine/launchDrill/launchReadinessDrill";
+import { metadataObject } from "@/sms-engine/messages";
+import { getDesignPartnerPilotReadinessSnapshot } from "@/sms-engine/pilotReadiness";
+import { getOutboundSelfTestReadinessSnapshot } from "@/sms-engine/producer/outboundSelfTestReadiness";
 
 export const dynamic = "force-dynamic";
 

@@ -1,15 +1,15 @@
 import "dotenv/config";
 import { execFileSync } from "node:child_process";
-import { getDb } from "@/lib/db";
+import { getDb } from "@/sms-engine/db";
 import {
   addInterestToCheck,
   classifyCandidateReply,
   convertInterestCheckToProject,
   createFullDemoScenario,
   createInterestCheckFromForm,
-} from "@/lib/networkCore";
-import { runCandidateRecommendations } from "@/lib/networkMatching";
-import { redactForLog } from "@/lib/safeLogging";
+} from "@/sms-engine/networkCore";
+import { runCandidateRecommendations } from "@/sms-engine/networkMatching";
+import { redactForLog } from "@/sms-engine/safeLogging";
 
 const demoScenarioEventId = "evt_demo_full_scenario";
 

@@ -4,9 +4,9 @@ import { Bell } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import { MessageThread } from "@/components/admin/MessageThread";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { redactPhoneForDisplay } from "@/lib/adminPrivacy";
-import { getDb } from "@/lib/db";
-import { briefTitle } from "@/lib/workflow";
+import { redactPhoneForDisplay } from "@/sms-engine/adminPrivacy";
+import { getDb } from "@/sms-engine/db";
+import { briefTitle } from "@/sms-engine/workflow";
 import { sendTaskReminderAction } from "@/app/admin/(dashboard)/actions";
 
 export const dynamic = "force-dynamic";

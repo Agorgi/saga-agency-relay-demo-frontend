@@ -1,5 +1,5 @@
 import { GET as localHealthGet } from "@/app/api/health/route";
-import { redactForLog } from "@/lib/safeLogging";
+import { redactForLog } from "@/sms-engine/safeLogging";
 
 type HealthShape = {
   twilio?: {

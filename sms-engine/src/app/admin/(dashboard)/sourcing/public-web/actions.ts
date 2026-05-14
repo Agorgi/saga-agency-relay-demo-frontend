@@ -3,21 +3,21 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { PublicWebResearchResultStatus } from "@prisma/client";
-import { logAudit } from "@/lib/audit";
-import { getDb } from "@/lib/db";
-import { buildProjectUnderstanding } from "@/lib/producer/projectUnderstanding";
-import { generateRoleMap } from "@/lib/producer/roleMap";
-import { generatePublicResearchPlan } from "@/lib/sourcing/publicResearchPlan";
+import { logAudit } from "@/sms-engine/audit";
+import { getDb } from "@/sms-engine/db";
+import { buildProjectUnderstanding } from "@/sms-engine/producer/projectUnderstanding";
+import { generateRoleMap } from "@/sms-engine/producer/roleMap";
+import { generatePublicResearchPlan } from "@/sms-engine/sourcing/publicResearchPlan";
 import {
   cancelPublicWebResearchJob,
   getPublicWebResearchConfig,
   queuePublicWebResearchLiveDryRun,
   runPublicWebResearch,
   updatePublicWebResearchResultStatus,
-} from "@/lib/sourcing/publicWebResearchProvider";
-import { buildPublicWebQueryPlan } from "@/lib/sourcing/publicWebQueryBuilder";
-import { generateSourcingStrategy } from "@/lib/sourcing/sourcingStrategy";
-import { publicWebResearchAuditEvents } from "@/lib/sourcing/talentTypes";
+} from "@/sms-engine/sourcing/publicWebResearchProvider";
+import { buildPublicWebQueryPlan } from "@/sms-engine/sourcing/publicWebQueryBuilder";
+import { generateSourcingStrategy } from "@/sms-engine/sourcing/sourcingStrategy";
+import { publicWebResearchAuditEvents } from "@/sms-engine/sourcing/talentTypes";
 
 function resultStatus(value: string): PublicWebResearchResultStatus {
   if (

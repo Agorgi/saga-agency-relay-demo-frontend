@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
-import { evaluateAndExecuteLiveReply } from "@/lib/conversation/liveReplyExecutor";
+import { evaluateAndExecuteLiveReply } from "@/sms-engine/conversation/liveReplyExecutor";
 import {
   runStructuredLlmTask,
   type LlmStructuredProvider,
-} from "@/lib/llm/llmProvider";
+} from "@/sms-engine/llm/llmProvider";
 import {
   extractBriefFieldsSchema,
   intakeReplySchema,
-} from "@/lib/producerAgent";
+} from "@/sms-engine/producerAgent";
 
 const originalEnv = { ...process.env };
 

@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { CheckCircle2, Plus, Save, Send, Sparkles } from "lucide-react";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { redactPhoneForDisplay } from "@/lib/adminPrivacy";
-import { getDb } from "@/lib/db";
+import { redactPhoneForDisplay } from "@/sms-engine/adminPrivacy";
+import { getDb } from "@/sms-engine/db";
 import {
   approveMockRecommendationOutreachAction,
   createMockConversationAction,

@@ -6,7 +6,7 @@ import {
   assertOutreachStatusTransition,
   assertProjectBriefStatusTransition,
   WorkflowTransitionError,
-} from "@/lib/workflowStateMachine";
+} from "@/sms-engine/workflowStateMachine";
 
 function expectPass(name: string, run: () => void) {
   run();

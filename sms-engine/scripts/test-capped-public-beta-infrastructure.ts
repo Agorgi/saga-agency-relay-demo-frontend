@@ -3,12 +3,12 @@ import { existsSync } from "node:fs";
 import {
   evaluateCappedPublicBetaReadiness,
   evaluatePublicBetaAdmission,
-} from "@/lib/publicBeta/publicBetaAdmission";
+} from "@/sms-engine/publicBeta/publicBetaAdmission";
 import {
   getCappedPublicBetaConfig,
   getCappedPublicBetaHealthSnapshot,
   publicBetaAuditEvents,
-} from "@/lib/publicBeta/publicBetaConfig";
+} from "@/sms-engine/publicBeta/publicBetaConfig";
 import {
   createPublicBetaWaitlistEntry,
   detectWaitlistDuplicate,
@@ -16,8 +16,8 @@ import {
   preparePublicBetaWaitlistData,
   recordPublicBetaConsentEvent,
   safePublicBetaWaitlistSummary,
-} from "@/lib/publicBeta/publicBetaWaitlist";
-import { assertNoRawPiiOrSecrets } from "@/lib/dataOps/dataClassification";
+} from "@/sms-engine/publicBeta/publicBetaWaitlist";
+import { assertNoRawPiiOrSecrets } from "@/sms-engine/dataOps/dataClassification";
 
 const originalEnv = { ...process.env };
 const rawPhone = "+15551234567";

@@ -11,7 +11,7 @@ import {
   formatLaunchDrillReport,
   launchDrillStageIds,
   launchDrillStageStatuses,
-} from "@/lib/launchDrill/launchReadinessDrill";
+} from "@/sms-engine/launchDrill/launchReadinessDrill";
 
 export const dynamic = "force-dynamic";
 

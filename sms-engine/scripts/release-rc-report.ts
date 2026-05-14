@@ -5,7 +5,7 @@ import {
   formatReleaseCandidateReport,
   getReleaseCandidateSummary,
   releaseCandidateTag,
-} from "@/lib/releaseCandidate/releaseCandidate";
+} from "@/sms-engine/releaseCandidate/releaseCandidate";
 
 function git(args: string) {
   try {

@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import type { AuditLog, CreatorProfile, Person } from "@prisma/client";
-import { adminContactLabel, redactPhoneForDisplay } from "@/lib/adminPrivacy";
-import { safeAuditLogForDisplay } from "@/lib/audit";
-import { requireInternalApiKey } from "@/lib/internalApiAuth";
-import { safePerson } from "@/lib/internalSagaApi";
-import { getMessagingProvider } from "@/lib/messagingProvider";
-import { buildStructuredLogEvent, redactForLog } from "@/lib/safeLogging";
-import { validateTwilioWebhookRequest } from "@/lib/twilioWebhook";
+import { adminContactLabel, redactPhoneForDisplay } from "@/sms-engine/adminPrivacy";
+import { safeAuditLogForDisplay } from "@/sms-engine/audit";
+import { requireInternalApiKey } from "@/sms-engine/internalApiAuth";
+import { safePerson } from "@/sms-engine/internalSagaApi";
+import { getMessagingProvider } from "@/sms-engine/messagingProvider";
+import { buildStructuredLogEvent, redactForLog } from "@/sms-engine/safeLogging";
+import { validateTwilioWebhookRequest } from "@/sms-engine/twilioWebhook";
 
 async function withEnv<T>(
   updates: Record<string, string | undefined>,

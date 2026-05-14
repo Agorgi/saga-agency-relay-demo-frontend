@@ -7,7 +7,7 @@ import {
   redactPhone,
   redactSensitiveJson,
   safeExportValue,
-} from "@/lib/dataOps/dataClassification";
+} from "@/sms-engine/dataOps/dataClassification";
 import {
   auditSummaryExport,
   conversationTranscriptExport,
@@ -21,7 +21,7 @@ import {
   projectBriefExport,
   recordPilotExportCreated,
   summarizePilotExportForAudit,
-} from "@/lib/dataOps/pilotExport";
+} from "@/sms-engine/dataOps/pilotExport";
 import {
   buildRedactionSummary,
   dataOpsAuditEvents,
@@ -30,7 +30,7 @@ import {
   redactConversationMessageBodies,
   redactPilotFeedbackNotes,
   redactPilotParticipant,
-} from "@/lib/dataOps/pilotRedaction";
+} from "@/sms-engine/dataOps/pilotRedaction";
 
 const originalEnv = { ...process.env };
 const rawPhone = "+15551234567";

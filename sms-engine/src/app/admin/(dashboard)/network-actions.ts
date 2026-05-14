@@ -8,28 +8,28 @@ import type {
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { redactPhoneForDisplay } from "@/lib/adminPrivacy";
-import { requireAdminForAction } from "@/lib/adminAuth";
-import { logAudit } from "@/lib/audit";
-import { loadConversationContext } from "@/lib/conversation/conversationContext";
-import { getConversationEngineRuntime } from "@/lib/conversation/conversationEngineMode";
-import { adminDevDeterministicLlmUnavailableMetadata } from "@/lib/conversation/adminDevLlmReplies";
-import { evaluateGigSeekerOnboardingPolicy } from "@/lib/conversation/gigSeekerOnboardingPolicy";
-import { evaluateInterestCheckPolicy } from "@/lib/conversation/interestCheckPolicy";
+import { redactPhoneForDisplay } from "@/sms-engine/adminPrivacy";
+import { requireAdminForAction } from "@/sms-engine/adminAuth";
+import { logAudit } from "@/sms-engine/audit";
+import { loadConversationContext } from "@/sms-engine/conversation/conversationContext";
+import { getConversationEngineRuntime } from "@/sms-engine/conversation/conversationEngineMode";
+import { adminDevDeterministicLlmUnavailableMetadata } from "@/sms-engine/conversation/adminDevLlmReplies";
+import { evaluateGigSeekerOnboardingPolicy } from "@/sms-engine/conversation/gigSeekerOnboardingPolicy";
+import { evaluateInterestCheckPolicy } from "@/sms-engine/conversation/interestCheckPolicy";
 import {
   prepareInterestCheckForMockAdmin,
   shouldApplyInterestCheckMockActive,
-} from "@/lib/conversation/interestCheckPreparation";
-import { generateInterestCheckReplyFromPlan } from "@/lib/conversation/interestCheckReplyGenerator";
-import { shouldApplyGigSeekerMockActive } from "@/lib/conversation/gigSeekerProfilePreparation";
-import { generateGigSeekerReplyFromPlan } from "@/lib/conversation/gigSeekerReplyGenerator";
-import { classifyConversationIntent } from "@/lib/conversation/intentRouter";
+} from "@/sms-engine/conversation/interestCheckPreparation";
+import { generateInterestCheckReplyFromPlan } from "@/sms-engine/conversation/interestCheckReplyGenerator";
+import { shouldApplyGigSeekerMockActive } from "@/sms-engine/conversation/gigSeekerProfilePreparation";
+import { generateGigSeekerReplyFromPlan } from "@/sms-engine/conversation/gigSeekerReplyGenerator";
+import { classifyConversationIntent } from "@/sms-engine/conversation/intentRouter";
 import {
   gigSeekerGeneratedReplySchema,
   interestCheckGeneratedReplySchema,
-} from "@/lib/conversation/conversationTypes";
-import { getDb } from "@/lib/db";
-import { sendSmsMessage } from "@/lib/messages";
+} from "@/sms-engine/conversation/conversationTypes";
+import { getDb } from "@/sms-engine/db";
+import { sendSmsMessage } from "@/sms-engine/messages";
 import {
   addInterestToCheck,
   approveMockRecommendationOutreach,
@@ -43,14 +43,14 @@ import {
   handleCreatorOnboardingDemo,
   resetNetworkDemoData,
   simulateCandidateReply,
-} from "@/lib/networkCore";
-import { runCandidateRecommendations } from "@/lib/networkMatching";
-import { normalizePhone } from "@/lib/phone";
-import { redactForLog } from "@/lib/safeLogging";
+} from "@/sms-engine/networkCore";
+import { runCandidateRecommendations } from "@/sms-engine/networkMatching";
+import { normalizePhone } from "@/sms-engine/phone";
+import { redactForLog } from "@/sms-engine/safeLogging";
 import {
   assertProjectStatusTransition,
   assertRoleOpeningStatusTransition,
-} from "@/lib/workflowStateMachine";
+} from "@/sms-engine/workflowStateMachine";
 
 function text(formData: FormData, key: string) {
   const value = formData.get(key);

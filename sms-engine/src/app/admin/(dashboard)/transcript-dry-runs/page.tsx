@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { markTranscriptDryRunReviewAction } from "@/app/admin/(dashboard)/transcript-dry-runs/actions";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { designPartnerTranscriptScenarios } from "@/lib/dryRuns/designPartnerTranscriptScenarios";
+import { designPartnerTranscriptScenarios } from "@/sms-engine/dryRuns/designPartnerTranscriptScenarios";
 import {
   runDesignPartnerTranscriptDryRuns,
   summarizeDesignPartnerTranscriptDryRuns,
   type DesignPartnerTranscriptDryRunResult,
-} from "@/lib/dryRuns/runDesignPartnerTranscript";
+} from "@/sms-engine/dryRuns/runDesignPartnerTranscript";
 
 export const dynamic = "force-dynamic";
 

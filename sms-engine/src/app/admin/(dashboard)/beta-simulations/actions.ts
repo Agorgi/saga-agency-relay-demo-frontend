@@ -1,17 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdminForAction } from "@/lib/adminAuth";
+import { requireAdminForAction } from "@/sms-engine/adminAuth";
 import {
   runAllBetaCohortSimulations,
   runBetaCohortSimulation,
-} from "@/lib/cohortSimulation/runCohortSimulation";
+} from "@/sms-engine/cohortSimulation/runCohortSimulation";
 import {
   betaCohortSimulationAuditEvents,
   betaCohortSimulationTypes,
   type BetaCohortSimulationType,
-} from "@/lib/cohortSimulation/cohortTypes";
-import { logAudit } from "@/lib/audit";
+} from "@/sms-engine/cohortSimulation/cohortTypes";
+import { logAudit } from "@/sms-engine/audit";
 
 function cohortTypeFromForm(formData: FormData): BetaCohortSimulationType | null {
   const value = formData.get("cohortType");

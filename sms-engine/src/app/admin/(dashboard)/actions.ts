@@ -2,37 +2,37 @@
 
 import type { Prisma, ProjectStatus } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { requireAdminForAction } from "@/lib/adminAuth";
-import { accessAuditEvents, hashInviteCode } from "@/lib/access/accessControl";
-import { logAudit } from "@/lib/audit";
-import { evaluateCommandCenterForAdmin } from "@/lib/commandCenter/commandCenterSummary";
-import { parseContactCsv } from "@/lib/contactCsv";
-import { getDb } from "@/lib/db";
+import { requireAdminForAction } from "@/sms-engine/adminAuth";
+import { accessAuditEvents, hashInviteCode } from "@/sms-engine/access/accessControl";
+import { logAudit } from "@/sms-engine/audit";
+import { evaluateCommandCenterForAdmin } from "@/sms-engine/commandCenter/commandCenterSummary";
+import { parseContactCsv } from "@/sms-engine/contactCsv";
+import { getDb } from "@/sms-engine/db";
 import {
   createGroupChatForProject,
   parseTaskStatus,
   sendTaskReminder,
-} from "@/lib/groupChat";
+} from "@/sms-engine/groupChat";
 import {
   retryOutboundMessage,
   sendGroupSmsMessage,
   sendSmsMessage,
-} from "@/lib/messages";
-import { normalizePhone } from "@/lib/phone";
+} from "@/sms-engine/messages";
+import { normalizePhone } from "@/sms-engine/phone";
 import {
   normalizePilotFeedbackCategory,
   normalizePilotCohort,
   normalizePilotParticipantRole,
   normalizePilotParticipantStatus,
   preparePilotParticipantPhone,
-} from "@/lib/pilotReadiness";
+} from "@/sms-engine/pilotReadiness";
 import {
   generateProducerInternalCandidates,
   generateProducerProjectUnderstanding,
   generateProducerRoleMap,
   generateProducerShortlistDraft,
   generateProducerSourcingPlan,
-} from "@/lib/producer";
+} from "@/sms-engine/producer";
 import {
   approveShortlistPacket,
   editShortlistPacket,
@@ -40,18 +40,18 @@ import {
   normalizeCandidateReviewStatus,
   rejectShortlistPacket,
   reviewCandidateRecommendationForShortlist,
-} from "@/lib/producer/approvalQueue";
+} from "@/sms-engine/producer/approvalQueue";
 import {
   approveOutboundDraft,
   editOutboundDraft,
   generateCandidateOutreachDraftsForProjectBrief,
   generateOrganizerShortlistMessageDraftForPacket,
   rejectOutboundDraft,
-} from "@/lib/producer/outboundDrafts";
+} from "@/sms-engine/producer/outboundDrafts";
 import {
   markInboundProcessingJobSkipped,
   retryInboundProcessingJob,
-} from "@/lib/messagingPipeline";
+} from "@/sms-engine/messagingPipeline";
 import {
   launchDrillStageIds,
   launchDrillStageStatuses,
@@ -61,19 +61,19 @@ import {
   simulateRollbackDrillForAdmin,
   type LaunchDrillStageId,
   type LaunchDrillStageStatus,
-} from "@/lib/launchDrill/launchReadinessDrill";
-import { evaluateOutboundSelfTestReadinessForAdmin } from "@/lib/producer/outboundSelfTestReadiness";
-import { evaluateOutboundDraftSendReadiness } from "@/lib/producer/sendReadiness";
-import { evaluateLiveReplyReadinessForAdmin } from "@/lib/conversation/liveReplyExecutor";
+} from "@/sms-engine/launchDrill/launchReadinessDrill";
+import { evaluateOutboundSelfTestReadinessForAdmin } from "@/sms-engine/producer/outboundSelfTestReadiness";
+import { evaluateOutboundDraftSendReadiness } from "@/sms-engine/producer/sendReadiness";
+import { evaluateLiveReplyReadinessForAdmin } from "@/sms-engine/conversation/liveReplyExecutor";
 import {
   normalizeConversationAutonomyMode,
   prepareConversationAutonomyPhone,
   upsertConversationAutonomySetting,
-} from "@/lib/conversation/conversationAutonomy";
+} from "@/sms-engine/conversation/conversationAutonomy";
 import {
   getPilotSummaryExport,
   recordPilotExportCreated,
-} from "@/lib/dataOps/pilotExport";
+} from "@/sms-engine/dataOps/pilotExport";
 import {
   markPilotParticipantCompleted,
   markPilotParticipantOptedOut,
@@ -82,31 +82,31 @@ import {
   redactConversationMessageBodies,
   redactPilotFeedbackNotes,
   redactPilotParticipant,
-} from "@/lib/dataOps/pilotRedaction";
+} from "@/sms-engine/dataOps/pilotRedaction";
 import {
   evaluateCappedPublicBetaReadiness,
-} from "@/lib/publicBeta/publicBetaAdmission";
+} from "@/sms-engine/publicBeta/publicBetaAdmission";
 import {
   evaluatePublicBetaAdmissionForEntry,
   normalizePublicBetaWaitlistStatus,
   recordPublicBetaConsentEvent,
   updatePublicBetaWaitlistStatus,
-} from "@/lib/publicBeta/publicBetaWaitlist";
+} from "@/sms-engine/publicBeta/publicBetaWaitlist";
 import {
   publicBetaAuditEvents,
-} from "@/lib/publicBeta/publicBetaConfig";
+} from "@/sms-engine/publicBeta/publicBetaConfig";
 import {
   approveAndSendOutreach,
   approveAndSendSingleOutreach,
   draftOutreachForProject,
   generateRoleMapForProject,
   sendShortlistToOrganizer,
-} from "@/lib/outreach";
-import { syncContactToPersonCreatorProfile } from "@/lib/networkBridge";
+} from "@/sms-engine/outreach";
+import { syncContactToPersonCreatorProfile } from "@/sms-engine/networkBridge";
 import {
   assertProjectBriefStatusTransition,
   assertTaskStatusTransition,
-} from "@/lib/workflowStateMachine";
+} from "@/sms-engine/workflowStateMachine";
 
 function text(formData: FormData, key: string) {
   const value = formData.get(key);

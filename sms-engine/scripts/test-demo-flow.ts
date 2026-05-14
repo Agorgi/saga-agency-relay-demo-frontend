@@ -1,13 +1,13 @@
-import { getDb } from "@/lib/db";
-import { handleOrganizerInbound } from "@/lib/intake";
-import { ensureProjectForProjectBrief } from "@/lib/networkBridge";
+import { getDb } from "@/sms-engine/db";
+import { handleOrganizerInbound } from "@/sms-engine/intake";
+import { ensureProjectForProjectBrief } from "@/sms-engine/networkBridge";
 import {
   approveMockRecommendationOutreach,
   classifyCandidateReply,
   createFullDemoScenario,
   simulateCandidateReply,
-} from "@/lib/networkCore";
-import { redactForLog } from "@/lib/safeLogging";
+} from "@/sms-engine/networkCore";
+import { redactForLog } from "@/sms-engine/safeLogging";
 
 const cases = [
   ["YES", "YES"],

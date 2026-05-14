@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import twilio from "twilio";
 import { POST as statusPost } from "@/app/api/twilio/status/route";
-import { getDb } from "@/lib/db";
-import { redactForLog } from "@/lib/safeLogging";
-import { validateTwilioWebhookRequest } from "@/lib/twilioWebhook";
+import { getDb } from "@/sms-engine/db";
+import { redactForLog } from "@/sms-engine/safeLogging";
+import { validateTwilioWebhookRequest } from "@/sms-engine/twilioWebhook";
 
 const fakeEnv = {
   MESSAGING_PROVIDER: "TWILIO",

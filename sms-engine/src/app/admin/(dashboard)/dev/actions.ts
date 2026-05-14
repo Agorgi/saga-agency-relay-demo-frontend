@@ -1,24 +1,24 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { requireAdminForAction } from "@/lib/adminAuth";
-import { logAudit } from "@/lib/audit";
-import { loadConversationContext } from "@/lib/conversation/conversationContext";
-import { getConversationEngineRuntime } from "@/lib/conversation/conversationEngineMode";
-import { evaluateOrganizerIntakePolicy } from "@/lib/conversation/organizerIntakePolicy";
-import { generateOrganizerReplyFromPlan } from "@/lib/conversation/organizerReplyGenerator";
+import { requireAdminForAction } from "@/sms-engine/adminAuth";
+import { logAudit } from "@/sms-engine/audit";
+import { loadConversationContext } from "@/sms-engine/conversation/conversationContext";
+import { getConversationEngineRuntime } from "@/sms-engine/conversation/conversationEngineMode";
+import { evaluateOrganizerIntakePolicy } from "@/sms-engine/conversation/organizerIntakePolicy";
+import { generateOrganizerReplyFromPlan } from "@/sms-engine/conversation/organizerReplyGenerator";
 import {
   generateAdminDevOrganizerReplyWithLlm,
   resolveAdminDevLlmExecution,
-} from "@/lib/conversation/adminDevLlmReplies";
-import { classifyConversationIntent } from "@/lib/conversation/intentRouter";
+} from "@/sms-engine/conversation/adminDevLlmReplies";
+import { classifyConversationIntent } from "@/sms-engine/conversation/intentRouter";
 import type {
   OrganizerGeneratedReply,
   ReplyPlan,
-} from "@/lib/conversation/conversationTypes";
-import { getDb } from "@/lib/db";
-import { handleOrganizerInbound } from "@/lib/intake";
-import { normalizePhone } from "@/lib/phone";
+} from "@/sms-engine/conversation/conversationTypes";
+import { getDb } from "@/sms-engine/db";
+import { handleOrganizerInbound } from "@/sms-engine/intake";
+import { normalizePhone } from "@/sms-engine/phone";
 
 function text(formData: FormData, key: string) {
   const value = formData.get(key);
