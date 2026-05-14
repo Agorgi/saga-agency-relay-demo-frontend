@@ -9,7 +9,7 @@
     "start": "next start",
     "start:demo": "next start -H 0.0.0.0 -p 3000",
     "demo:prod": "npm run build && npm run start:demo",
-    "lint": "next lint"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
