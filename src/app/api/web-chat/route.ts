@@ -23,6 +23,7 @@ import {
   WEB_SESSION_COOKIE_MAX_AGE,
   WEB_SESSION_COOKIE_NAME,
 } from "@/lib/webChatSessionStore";
+import { getEffectiveAutonomous } from "@/lib/webChatRuntimeSettings";
 
 type ChatRole = "user" | "assistant";
 
@@ -71,10 +72,6 @@ function normalizeRouteLlmMode(value: string | undefined): RouteLlmMode {
     return "live";
   }
   return "active_mock";
-}
-
-function autonomousResponsesEnabled(value: string | undefined) {
-  return value?.trim().toLowerCase() === "true";
 }
 
 function toPriorMessage(
@@ -334,13 +331,11 @@ export async function POST(req: NextRequest) {
       : crypto.randomUUID();
 
   const latestMessage = message.trim();
-  const autonomousEnabled = autonomousResponsesEnabled(
-    process.env.WEB_CHAT_AUTONOMOUS_RESPONSES_ENABLED,
-  );
 
   try {
     const { session, isNew } = await getOrCreateSession(req);
     const sessionCookieValue = isNew ? session.id : undefined;
+    const autonomousEnabled = await getEffectiveAutonomous();
     const history = await loadConversationHistory({
       sessionId: session.id,
       conversationId,
