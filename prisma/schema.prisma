@@ -1804,3 +1804,28 @@ model ProductionConversation {
   @@index([status])
   @@index([updatedAt])
 }
+
+model WebSession {
+  id         String           @id @default(cuid())
+  createdAt  DateTime         @default(now())
+  lastSeenAt DateTime         @updatedAt
+  userAgent  String?
+  ipHash     String?
+  messages   WebChatMessage[]
+
+  @@index([createdAt])
+}
+
+model WebChatMessage {
+  id             String     @id @default(cuid())
+  sessionId      String
+  session        WebSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  conversationId String
+  role           String
+  content        String
+  mode           String?
+  turn           Int
+  createdAt      DateTime   @default(now())
+
+  @@index([sessionId, conversationId, createdAt])
+}
