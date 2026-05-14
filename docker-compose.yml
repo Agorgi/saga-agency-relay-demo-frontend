@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: saga-sms-producer-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: saga
+      POSTGRES_PASSWORD: saga
+      POSTGRES_DB: saga_sms_producer
+    ports:
+      - "5432:5432"
+    volumes:
+      - saga_sms_producer_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saga -d saga_sms_producer"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  saga_sms_producer_pgdata:

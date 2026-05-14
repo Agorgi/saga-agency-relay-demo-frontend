@@ -1,0 +1,13 @@
+{
+  "existingSagaEventId": "evt_123",
+  "organizerSagaUserId": "usr_organizer_123",
+  "existingSagaCommunityId": "community_anime_la",
+  "source": "MOBILE_APP",
+  "title": "Anime Rave LA",
+  "description": "A fandom-aligned music night with DJs, guest cosplayers, photo moments, and vendors.",
+  "city": "Los Angeles",
+  "targetDate": "2026-09-12",
+  "fandoms": ["anime", "cosplay", "gaming"],
+  "ticketingEnabled": true,
+  "rsvpEnabled": true
+}
