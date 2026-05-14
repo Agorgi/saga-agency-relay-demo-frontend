@@ -103,7 +103,7 @@ export function ImageTile({
             ) : null}
 
             {(!loaded || imgError) && (
-              <div className="absolute inset-0 bg-[linear-gradient(135deg,_#dfd9cf,_#f6f3ee)]" />
+              <div className="absolute inset-0 bg-[linear-gradient(135deg,#dfd9cf,#f6f3ee)]" />
             )}
 
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_0%,rgba(15,15,15,0)_45%,rgba(15,15,15,0.74)_100%)]" />

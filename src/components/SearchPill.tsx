@@ -57,7 +57,7 @@ export function SearchPill({ variant = "hero" }: SearchPillProps) {
         }`}
       >
         <div
-          className={`brand-surface-inset flex flex-shrink-0 items-center justify-center rounded-full ${
+          className={`brand-surface-inset flex shrink-0 items-center justify-center rounded-full ${
             isHero ? "h-10 w-10 sm:h-11 sm:w-11" : "h-9 w-9"
           }`}
         >
@@ -110,7 +110,7 @@ export function SearchPill({ variant = "hero" }: SearchPillProps) {
           whileHover={{ scale: 1.06 }}
           whileTap={{ scale: 0.94 }}
           transition={{ duration: 0.2 }}
-          className={`flex flex-shrink-0 items-center justify-center rounded-full ${
+          className={`flex shrink-0 items-center justify-center rounded-full ${
             isHero ? "h-10 w-10 sm:h-11 sm:w-11" : "h-9 w-9"
           } ${hasText ? "brand-button-primary" : "brand-surface-inset"}`}
         >

@@ -515,7 +515,7 @@ export function ProjectTalentDiscoveryView({ projectSlug }: { projectSlug: strin
             <div className="pointer-events-auto min-w-0 flex-1">
               {roleBar}
             </div>
-            <div className="pointer-events-auto flex flex-shrink-0 items-center gap-3">
+            <div className="pointer-events-auto flex shrink-0 items-center gap-3">
               {roleActions}
             </div>
           </div>

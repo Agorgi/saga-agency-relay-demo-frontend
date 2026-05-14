@@ -910,7 +910,7 @@ function BrandComposer({
             type="button"
             disabled={disabled}
             onClick={onSend}
-            className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-[#1877f2] text-white shadow-[0_14px_36px_rgba(24,119,242,0.22)] transition-transform disabled:cursor-not-allowed ${
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#1877f2] text-white shadow-[0_14px_36px_rgba(24,119,242,0.22)] transition-transform disabled:cursor-not-allowed ${
               dark ? "disabled:bg-[#243049] disabled:text-white/28" : "disabled:bg-[#d7e6f7] disabled:text-[#8ea2bc]"
             }`}
             aria-label="Send next message"

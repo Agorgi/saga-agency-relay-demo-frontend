@@ -1,17 +1,16 @@
-import { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-import { FlatCompat } from "@eslint/eslintrc";
+import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
+import nextTypeScript from "eslint-config-next/typescript";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
-export default [
+const config = [
+  ...nextCoreWebVitals,
+  ...nextTypeScript,
   {
-    ignores: [".next/**", "out/**", "build/**", "next-env.d.ts"],
+    ignores: [".next/**", "out/**", "build/**", "next-env.d.ts", "sms-engine/**"],
+    rules: {
+      "react-hooks/preserve-manual-memoization": "off",
+      "react-hooks/set-state-in-effect": "off",
+    },
   },
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
 ];
+
+export default config;

@@ -79,8 +79,8 @@ export function TicketCheckoutView({ eventSlug }: { eventSlug?: string }) {
                   isDark ? "brand-surface-deep" : "brand-surface-strong"
                 }`}
               >
-                <div className="absolute -left-4 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full bg-[var(--app-bg)]" />
-                <div className="absolute -right-4 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full bg-[var(--app-bg)]" />
+                <div className="absolute -left-4 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full bg-(--app-bg)" />
+                <div className="absolute -right-4 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full bg-(--app-bg)" />
 
                 <div className="relative flex items-start justify-between gap-4">
                   <div>

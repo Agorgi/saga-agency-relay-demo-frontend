@@ -35,7 +35,7 @@ export function FocusInfoCard({ creator }: FocusInfoCardProps) {
             {creator.primaryRole} · {creator.city}
           </p>
         </div>
-        <div className="flex h-14 w-14 flex-shrink-0 flex-col items-center justify-center rounded-full bg-accent/45 text-ink shadow-[0_12px_30px_rgba(86,201,255,0.2)] sm:h-16 sm:w-16">
+        <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-full bg-accent/45 text-ink shadow-[0_12px_30px_rgba(86,201,255,0.2)] sm:h-16 sm:w-16">
           <span className="text-lg font-semibold">{creator.overallScore}</span>
           <span className="text-[10px] uppercase tracking-[0.16em]">Match</span>
         </div>

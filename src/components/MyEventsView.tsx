@@ -153,7 +153,7 @@ export function MyEventsView() {
                   closeTicketModal();
                   openEvent(activeTicket.event.id);
                 }}
-                className={`w-full rounded-pill border px-4 py-3 text-sm font-medium ${isDark ? "border-[#5d68ff]/50 text-white" : "border-[var(--surface-border-strong)] text-ink"}`}
+                className={`w-full rounded-pill border px-4 py-3 text-sm font-medium ${isDark ? "border-[#5d68ff]/50 text-white" : "border-(--surface-border-strong) text-ink"}`}
               >
                 View Event Details
               </button>

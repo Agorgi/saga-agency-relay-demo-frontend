@@ -69,7 +69,7 @@ export function FocusOverlay() {
                 />
               ) : null}
               {(!loaded || imgError) && (
-                <div className="h-[300px] w-full bg-[linear-gradient(135deg,_#ddd5cb,_#f5f3ef)] sm:h-[360px] lg:h-[340px] xl:h-[390px] sm:w-[540px]" />
+                <div className="h-[300px] w-full bg-[linear-gradient(135deg,#ddd5cb,#f5f3ef)] sm:h-[360px] lg:h-[340px] xl:h-[390px] sm:w-[540px]" />
               )}
             </div>
 
@@ -92,7 +92,7 @@ export function FocusOverlay() {
             </div>
           </motion.div>
 
-          <div className="order-3 w-full flex-shrink-0 lg:w-[220px] xl:w-[240px]">
+          <div className="order-3 w-full shrink-0 lg:w-[220px] xl:w-[240px]">
             <RelatedRail />
           </div>
         </div>
