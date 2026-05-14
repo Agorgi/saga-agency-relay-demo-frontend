@@ -273,6 +273,14 @@ export const adminNavSections: AdminNavSection[] = [
         keywords: ["group chats", "chat"],
         icon: "messageSquare",
       },
+      {
+        label: "Web Chat Sessions",
+        href: "/admin/web-chat-sessions",
+        description: "Read recent anonymous web chat sessions and message history.",
+        keywords: ["web chat", "sessions", "messages", "viewer"],
+        icon: "messageSquare",
+        activeMatchHrefs: ["/admin/web-chat-sessions/"],
+      },
     ],
   },
   {

@@ -3,17 +3,20 @@
 import { useRef, useState } from "react";
 
 type ChatRole = "user" | "assistant";
+type ChatMode = "autonomous" | "holding";
 
 type ChatEntry = {
   id: string;
   content: string;
   role: ChatRole;
+  mode?: ChatMode;
 };
 
 type WebChatResponse = {
   conversationId: string;
   reply: string;
   turn: number;
+  mode: ChatMode;
 };
 
 const INITIAL_MESSAGES: ChatEntry[] = [
@@ -80,6 +83,7 @@ export function ChatWidget() {
           id: `assistant-${data.turn}`,
           role: "assistant",
           content: data.reply,
+          mode: data.mode,
         },
       ]);
     } catch {
@@ -119,7 +123,14 @@ export function ChatWidget() {
                     : "brand-surface-inset max-w-[85%] rounded-[22px] rounded-bl-md px-4 py-3 text-sm leading-6 text-ink"
                 }
               >
-                {entry.content}
+                <div>{entry.content}</div>
+                {entry.role === "assistant" && entry.mode ? (
+                  <div className="mt-2">
+                    <span className="inline-flex rounded-pill bg-white/70 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-light">
+                      {entry.mode}
+                    </span>
+                  </div>
+                ) : null}
               </div>
             </div>
           ))}
