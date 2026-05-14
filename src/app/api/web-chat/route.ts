@@ -1,3 +1,5 @@
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { generateAdminDevOrganizerReplyWithLlm } from "@/sms-engine/conversation/adminDevLlmReplies";
 import { evaluateOrganizerIntakePolicy } from "@/sms-engine/conversation/organizerIntakePolicy";
 import { generateOrganizerReplyFromPlan } from "@/sms-engine/conversation/organizerReplyGenerator";
@@ -14,6 +16,13 @@ import {
   sagaVoiceGuidelines,
 } from "@/sms-engine/llm/prompts";
 import { intakeReplySchema } from "@/sms-engine/producerAgent";
+import { getDb } from "@/sms-engine/db";
+import {
+  appendTurn,
+  getOrCreateSession,
+  WEB_SESSION_COOKIE_MAX_AGE,
+  WEB_SESSION_COOKIE_NAME,
+} from "@/lib/webChatSessionStore";
 
 type ChatRole = "user" | "assistant";
 
@@ -22,14 +31,9 @@ type ChatMessage = {
   content: string;
 };
 
-type ConversationState = {
-  messages: ChatMessage[];
-};
-
 type RouteLlmMode = "active_mock" | "live";
 type ReplyMode = "autonomous" | "holding";
 
-const conversations = new Map<string, ConversationState>();
 const HOLDING_REPLY = "Thanks - we've logged your message and will reply soon.";
 
 const LIVE_INSTRUCTIONS = [
@@ -40,10 +44,25 @@ const LIVE_INSTRUCTIONS = [
 
 export const dynamic = "force-dynamic";
 
-function json(data: unknown, init?: ResponseInit) {
-  const headers = new Headers(init?.headers);
-  headers.set("Cache-Control", "no-store");
-  return Response.json(data, { ...init, headers });
+function json(
+  data: unknown,
+  init?: ResponseInit,
+  sessionCookieValue?: string,
+) {
+  const response = NextResponse.json(data, init);
+  response.headers.set("Cache-Control", "no-store");
+  if (sessionCookieValue) {
+    response.cookies.set({
+      name: WEB_SESSION_COOKIE_NAME,
+      value: sessionCookieValue,
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: WEB_SESSION_COOKIE_MAX_AGE,
+    });
+  }
+  return response;
 }
 
 function normalizeRouteLlmMode(value: string | undefined): RouteLlmMode {
@@ -268,7 +287,26 @@ async function generateReply({
   return { error: null, reply: reply.replyText };
 }
 
-export async function POST(req: Request) {
+async function loadConversationHistory({
+  sessionId,
+  conversationId,
+}: {
+  sessionId: string;
+  conversationId: string;
+}) {
+  const messages = await getDb().webChatMessage.findMany({
+    where: { sessionId, conversationId },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    select: { role: true, content: true },
+  });
+
+  return messages.map((message) => ({
+    role: message.role === "assistant" ? "assistant" : "user",
+    content: message.content,
+  })) satisfies ChatMessage[];
+}
+
+export async function POST(req: NextRequest) {
   let body: unknown;
 
   try {
@@ -295,60 +333,77 @@ export async function POST(req: Request) {
       ? rawConversationId.trim()
       : crypto.randomUUID();
 
-  const state = conversations.get(conversationId) ?? { messages: [] };
-  const assistantTurn = state.messages.filter(
-    (entry) => entry.role === "assistant",
-  ).length;
   const latestMessage = message.trim();
   const autonomousEnabled = autonomousResponsesEnabled(
     process.env.WEB_CHAT_AUTONOMOUS_RESPONSES_ENABLED,
   );
 
-  if (!autonomousEnabled) {
-    // TODO: PR-H - enqueue for human review when autonomous responses are disabled.
-    state.messages.push(
-      { role: "user", content: latestMessage },
-      { role: "assistant", content: HOLDING_REPLY },
-    );
-    conversations.set(conversationId, state);
-
-    return json({
-      conversationId,
-      reply: HOLDING_REPLY,
-      turn: assistantTurn,
-      mode: "holding" satisfies ReplyMode,
-    });
-  }
-
-  const mode = normalizeRouteLlmMode(process.env.LLM_MODE);
-
   try {
+    const { session, isNew } = await getOrCreateSession(req);
+    const sessionCookieValue = isNew ? session.id : undefined;
+    const history = await loadConversationHistory({
+      sessionId: session.id,
+      conversationId,
+    });
+
+    if (!autonomousEnabled) {
+      // Persist holding turns so later review flows can load them from durable storage.
+      const turn = await appendTurn({
+        sessionId: session.id,
+        conversationId,
+        userMessage: latestMessage,
+        assistantReply: HOLDING_REPLY,
+        mode: "holding",
+      });
+      return json(
+        {
+          conversationId,
+          reply: HOLDING_REPLY,
+          turn,
+          mode: "holding" satisfies ReplyMode,
+        },
+        undefined,
+        sessionCookieValue,
+      );
+    }
+
+    const mode = normalizeRouteLlmMode(process.env.LLM_MODE);
     const result = await generateReply({
-      history: state.messages,
+      history,
       latestMessage,
       mode,
     });
 
     if (result.error === "LLM not configured") {
-      return json({ error: "LLM not configured" }, { status: 503 });
+      return json(
+        { error: "LLM not configured" },
+        { status: 503 },
+        sessionCookieValue,
+      );
     }
 
     if (result.error || !result.reply) {
-      return json({ error: "Engine error" }, { status: 502 });
+      return json({ error: "Engine error" }, { status: 502 }, sessionCookieValue);
     }
 
-    state.messages.push(
-      { role: "user", content: latestMessage },
-      { role: "assistant", content: result.reply },
-    );
-    conversations.set(conversationId, state);
-
-    return json({
+    const turn = await appendTurn({
+      sessionId: session.id,
       conversationId,
-      reply: result.reply,
-      turn: assistantTurn,
-      mode: "autonomous" satisfies ReplyMode,
+      userMessage: latestMessage,
+      assistantReply: result.reply,
+      mode: "autonomous",
     });
+
+    return json(
+      {
+        conversationId,
+        reply: result.reply,
+        turn,
+        mode: "autonomous" satisfies ReplyMode,
+      },
+      undefined,
+      sessionCookieValue,
+    );
   } catch (error) {
     console.error("Web chat engine request failed", error);
     return json({ error: "Engine error" }, { status: 502 });
