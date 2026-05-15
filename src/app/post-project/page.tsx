@@ -1,12 +1,5 @@
-import { AppFrame } from "@/components/AppFrame";
-import { ProjectBriefBuilderView } from "@/components/ProjectBriefBuilderView";
+import { permanentRedirect } from "next/navigation";
 
-export default function PostProjectPage() {
-  return (
-    <AppFrame chrome={false} composer={false}>
-      <div className="absolute inset-0">
-        <ProjectBriefBuilderView />
-      </div>
-    </AppFrame>
-  );
+export default function PostProjectRedirectPage() {
+  permanentRedirect("/?intent=host");
 }

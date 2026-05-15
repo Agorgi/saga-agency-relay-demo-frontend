@@ -1,12 +1,5 @@
-import { AppFrame } from "@/components/AppFrame";
-import { ProjectBriefBuilderView } from "@/components/ProjectBriefBuilderView";
+import { permanentRedirect } from "next/navigation";
 
-export default function CreateAliasPage() {
-  return (
-    <AppFrame>
-      <div className="absolute inset-0">
-        <ProjectBriefBuilderView />
-      </div>
-    </AppFrame>
-  );
+export default function CreateRedirectPage() {
+  permanentRedirect("/?intent=host");
 }

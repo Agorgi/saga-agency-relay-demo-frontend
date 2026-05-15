@@ -9,7 +9,7 @@ import { useAgencyStore } from "@/store/useAgencyStore";
 export function ProjectsDashboardView() {
   const projects = useAgencyStore((state) => state.projects);
   const conversations = useAgencyStore((state) => state.conversations);
-  const { openProject, openPostProject, goRelay } = useSagaNavigation();
+  const { openProject, goRelay } = useSagaNavigation();
   const isDark = useThemeMode() === "dark";
 
   const getStageLabel = (projectId: string, projectStatus: string) => {
@@ -69,36 +69,20 @@ export function ProjectsDashboardView() {
             isDark ? "brand-surface-deep text-white" : "brand-surface-strong text-ink"
           }`}
         >
-          <div className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr] xl:items-end">
-            <div>
-              <p className={`text-[10px] uppercase tracking-[0.3em] ${isDark ? "text-white/42" : "text-ink-light"}`}>Client dashboard</p>
-              <h1
-                data-copy-lint="header"
-                className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl"
-              >
-                What you&apos;re working on.
-              </h1>
-              <p
-                data-copy-lint="subhead"
-                className={`mt-4 max-w-[720px] text-sm leading-7 ${isDark ? "text-white/64" : "text-ink-light"}`}
-              >
-                Tap a project to act.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2 xl:justify-end">
-              <button
-                onClick={openPostProject}
-                className="brand-button-primary rounded-pill px-5 py-3 text-sm font-medium"
-              >
-                Post a Project
-              </button>
-              <button
-                onClick={() => goRelay(projects[0]?.id)}
-                className="brand-button-secondary rounded-pill px-5 py-3 text-sm font-medium"
-              >
-                Coordinate
-              </button>
-            </div>
+          <div>
+            <p className={`text-[10px] uppercase tracking-[0.3em] ${isDark ? "text-white/42" : "text-ink-light"}`}>Client dashboard</p>
+            <h1
+              data-copy-lint="header"
+              className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl"
+            >
+              What you&apos;re working on.
+            </h1>
+            <p
+              data-copy-lint="subhead"
+              className={`mt-4 max-w-[720px] text-sm leading-7 ${isDark ? "text-white/64" : "text-ink-light"}`}
+            >
+              Tap a project to act.
+            </p>
           </div>
         </motion.section>
 

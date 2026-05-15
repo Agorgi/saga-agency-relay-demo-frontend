@@ -6,6 +6,7 @@ export const sagaRoutes = {
   me: "/me",
   spaces: "/spaces",
   projects: "/projects",
+  projectNew: "/projects/new",
   myEvents: "/projects",
   profile: "/profile",
   postProject: "/post-project",

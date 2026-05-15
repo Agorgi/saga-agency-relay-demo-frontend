@@ -114,3 +114,14 @@ export async function getRecentAudit(limit = 20) {
     take: limit,
   });
 }
+
+export async function recordSystemHoldingFallback() {
+  const snapshot = await getRuntimeSettingSnapshot();
+  await getDb().webChatRuntimeSettingAudit.create({
+    data: {
+      oldValue: snapshot.requestedAutonomousEnabled,
+      newValue: snapshot.requestedAutonomousEnabled,
+      actorAdminSessionId: "system",
+    },
+  });
+}

@@ -67,7 +67,7 @@ export function getDiscoverPath(persona: Persona | null) {
 
 export function getPrimaryCta(persona: Persona | null) {
   if (persona === "host") {
-    return { label: "Post a Project", href: "/post-project" };
+    return { label: "Start your brief", href: "/?intent=host" };
   }
 
   if (persona === "creative") {
