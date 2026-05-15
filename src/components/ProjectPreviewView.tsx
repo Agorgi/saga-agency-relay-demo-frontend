@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useMemo } from "react";
 import { buildBriefDraftFromHostPrefill, buildProjectFromDraft } from "@/data/sagaAgencyData";
 import { requestWebChatReset } from "@/components/web-chat/useWebChat";
-import { decodePrefillPayload } from "@/lib/webChatNextStep";
+import { decodePrefillPayload, readPendingNextStep } from "@/lib/webChatNextStep";
 import { useSagaNavigation } from "@/lib/useSagaNavigation";
 import { useThemeMode } from "@/lib/useThemeMode";
 import { useAgencyStore } from "@/store/useAgencyStore";
@@ -20,10 +20,14 @@ export function ProjectPreviewView({
   const isDark = useThemeMode() === "dark";
   const { goHome } = useSagaNavigation();
 
-  const prefill = useMemo(
-    () => decodePrefillPayload(encodedPrefill),
-    [encodedPrefill],
-  );
+  const prefill = useMemo(() => {
+    const decoded = decodePrefillPayload(encodedPrefill);
+    if (decoded) {
+      return decoded;
+    }
+
+    return readPendingNextStep("/projects/new")?.prefill ?? null;
+  }, [encodedPrefill]);
   const draft = useMemo(
     () =>
       prefill
@@ -40,7 +44,7 @@ export function ProjectPreviewView({
               typeof prefill.projectType === "string" ? prefill.projectType : null,
             suggestedRoles:
               Array.isArray(prefill.suggestedRoles) &&
-              prefill.suggestedRoles.every((item) => typeof item === "string")
+              prefill.suggestedRoles.every((item: unknown) => typeof item === "string")
                 ? prefill.suggestedRoles
                 : null,
           })

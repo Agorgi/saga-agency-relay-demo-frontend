@@ -116,7 +116,7 @@ export function HeroChatMorph({
 
     setIsExpanded(true);
     await submitCurrentDraft({
-      persona: persona ?? fallbackPersona ?? "host",
+      persona: fallbackPersona,
     });
   }
 

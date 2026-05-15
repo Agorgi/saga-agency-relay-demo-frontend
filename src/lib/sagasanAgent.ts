@@ -605,27 +605,102 @@ export function extractStructuredFields({
 
 type PersonaScores = Record<Persona, number>;
 
+const CREATIVE_SIGNAL_PATTERNS = [
+  /\bphotographer\b/i,
+  /\bvideographer\b/i,
+  /\bdj\b/i,
+  /\billustrator\b/i,
+  /\bdesigner\b/i,
+  /\bcosplayer\b/i,
+  /\bperformer\b/i,
+  /\bartist\b/i,
+  /\blooking for gigs\b/i,
+  /\blooking for work\b/i,
+  /\bavailable for events\b/i,
+  /\bbook me\b/i,
+  /\bhire me\b/i,
+  /\bportfolio\b/i,
+  /\bmy work\b/i,
+];
+
+const VENUE_SIGNAL_PATTERNS = [
+  /\bi run (?:a|an)?(?:\s+\w+){0,2}\s+venue\b/i,
+  /\bi run (?:a|an)?(?:\s+\w+){0,2}\s+space\b/i,
+  /\bmy venue\b/i,
+  /\bmy space\b/i,
+  /\bstudio\b/i,
+  /\bcafe\b/i,
+  /\bgallery\b/i,
+  /\bevent space\b/i,
+  /\bwe host events\b/i,
+  /\brent out my space\b/i,
+];
+
+const FAN_SIGNAL_PATTERNS = [
+  /\bfind events\b/i,
+  /\bdiscover events\b/i,
+  /\bcool events\b/i,
+  /\bthings near me\b/i,
+  /\bwhat'?s happening\b/i,
+  /\bi want to attend\b/i,
+  /\banime events near me\b/i,
+  /\bshows near me\b/i,
+  /\bcool stuff\b/i,
+  /\bevents near me\b/i,
+];
+
+const HOST_SIGNAL_PATTERNS = [
+  /\bi want to host\b/i,
+  /\bi want to throw\b/i,
+  /\bi want to organize\b/i,
+  /\bi want to produce\b/i,
+  /\bputting on an event\b/i,
+  /\bplanning an event\b/i,
+  /\bcreating a project\b/i,
+  /\bi want to put on\b/i,
+];
+
+function matchesAnyPattern(message: string, patterns: RegExp[]) {
+  return patterns.some((pattern) => pattern.test(message));
+}
+
 function strongCreativeSignal(message: string) {
-  return /\bactually\b.*\b(dj|photographer|videographer|illustrator|designer|cosplayer)\b|\bi(?:'m| am)\s+(?:the\s+)?(dj|photographer|videographer|illustrator|designer|cosplayer)\b/i.test(
-    message,
+  return (
+    /\bactually\b.*\b(dj|photographer|videographer|illustrator|designer|cosplayer|performer|artist)\b/i.test(
+      message,
+    ) ||
+    /\bi(?:'m| am)\s+(?:the\s+)?(dj|photographer|videographer|illustrator|designer|cosplayer|performer|artist)\b/i.test(
+      message,
+    ) ||
+    matchesAnyPattern(message, CREATIVE_SIGNAL_PATTERNS)
   );
 }
 
 function strongVenueSignal(message: string) {
-  return /\bactually\b.*\b(?:run a (?:space|venue))\b|\bi run a (?:space|venue)\b|\bour (?:space|venue)\b/i.test(
-    message,
+  return (
+    /\bactually\b.*\b(?:run(?:ning)? (?:a|an)?(?:\s+\w+){0,2}\s+(?:space|venue))\b/i.test(
+      message,
+    ) ||
+    /\bi run (?:a|an)?(?:\s+\w+){0,2}\s+(?:space|venue)\b|\bour (?:space|venue)\b/i.test(
+      message,
+    ) ||
+    matchesAnyPattern(message, VENUE_SIGNAL_PATTERNS)
   );
 }
 
 function strongFanSignal(message: string) {
-  return /\bactually\b.*\bfind events\b|\bi want to attend\b|\bwhat'?s happening\b/i.test(
-    message,
+  return (
+    /\bactually\b.*\b(find|discover|attend)\b/i.test(message) ||
+    /\bi want to attend\b|\bwhat'?s happening\b/i.test(message) ||
+    matchesAnyPattern(message, FAN_SIGNAL_PATTERNS)
   );
 }
 
 function strongHostSignal(message: string) {
-  return /\bactually\b.*\b(host|throw|organize|produce|put on)\b|\bi want to (?:host|throw|organize|produce|put on)\b/i.test(
-    message,
+  return (
+    /\bactually\b.*\b(host|throw|organize|produce|put on)\b/i.test(message) ||
+    /\bi want to (?:host|throw|organize|produce|put on)\b/i.test(message) ||
+    matchesAnyPattern(message, HOST_SIGNAL_PATTERNS)
   );
 }
 
@@ -633,29 +708,20 @@ function scorePersona(message: string): PersonaScores {
   const lower = message.toLowerCase();
   return {
     host:
-      (/i want to (throw|host|organize|produce|put on)/.test(lower) ? 4 : 0) +
-      (/\bproject\b|\bbrief\b|\bhiring\b|\bneed a\b/.test(lower) ? 2 : 0),
+      (matchesAnyPattern(message, HOST_SIGNAL_PATTERNS) ? 6 : 0) +
+      (/\bproject\b|\bbrief\b|\bhiring\b|\bneed a\b|\bneed help\b/.test(lower)
+        ? 2
+        : 0),
     creative:
-      (/\blooking for gigs\b|\blooking for work\b|\bavailable for events\b/.test(lower)
-        ? 4
-        : 0) +
-      (/photographer|dj|videographer|illustrator|designer|cosplayer/.test(lower)
-        ? 3
-        : 0) +
-      (/\bportfolio\b|\breel\b/.test(lower) ? 2 : 0),
+      (matchesAnyPattern(message, CREATIVE_SIGNAL_PATTERNS) ? 6 : 0) +
+      (/\bportfolio\b|\breel\b|\bsamples?\b/.test(lower) ? 2 : 0) +
+      (/\bfor hire\b|\bavailable\b/.test(lower) ? 1 : 0),
     venue:
-      (/\bi run a space\b|\bi run a venue\b|\bour venue\b|\bour space\b/.test(lower)
-        ? 5
-        : 0) +
-      (/studio|cafe|gallery|event space|warehouse/.test(lower) ? 2 : 0) +
-      (/\bwe host events\b/.test(lower) ? 2 : 0),
+      (matchesAnyPattern(message, VENUE_SIGNAL_PATTERNS) ? 7 : 0) +
+      (/\bavailability\b|\bopen dates\b|\bcapacity\b/.test(lower) ? 1 : 0),
     fan:
-      (/\bfind\b[\w\s-]{0,24}\bevents\b|\bdiscover\b[\w\s-]{0,24}\bevents\b|\bthings near me\b|\bcool stuff\b|\bwhat'?s happening\b|\bi want to attend\b|\bevents near me\b/.test(
-        lower,
-      )
-        ? 4
-        : 0) +
-      (/\bscene\b|\bscenes\b|\bnights\b/.test(lower) ? 2 : 0),
+      (matchesAnyPattern(message, FAN_SIGNAL_PATTERNS) ? 7 : 0) +
+      (/\bscene\b|\bscenes\b|\bnights\b|\bfandom\b/.test(lower) ? 2 : 0),
   };
 }
 
@@ -706,18 +772,25 @@ export function resolvePersona({
     typeof personaHint === "string" ? normalizePersona(personaHint) : null;
   const normalizedExplicit =
     typeof explicitPersona === "string" ? normalizePersona(explicitPersona) : null;
-  const currentPersona =
-    normalizedHint ||
-    normalizedExplicit ||
-    normalizePersona(sessionPersona) ||
-    normalizePersona(cookiePersona);
+  const anchoredPersona = normalizedHint || normalizedExplicit;
+  const rememberedPersona =
+    normalizePersona(sessionPersona) || normalizePersona(cookiePersona);
+  const currentPersona = anchoredPersona || rememberedPersona;
   const pivotPersona = detectPersonaPivot(latestMessage, currentPersona);
   if (pivotPersona) {
     return pivotPersona;
   }
 
   const inferred = inferPersonaFromMessage(latestMessage);
-  return currentPersona || inferred;
+  if (anchoredPersona) {
+    return anchoredPersona;
+  }
+
+  if (inferred) {
+    return inferred;
+  }
+
+  return rememberedPersona;
 }
 
 function buildHostNextStep(fields: StoredExtractedFields): WebChatNextStep | null {

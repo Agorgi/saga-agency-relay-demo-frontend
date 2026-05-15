@@ -23,6 +23,7 @@ export const webChatNextStepSchema = z.object({
 export type WebChatNextStep = z.infer<typeof webChatNextStepSchema>;
 export type WebChatPrefill = z.infer<typeof webChatPrefillSchema>;
 const MAX_PREFILL_BYTES = 1200;
+export const WEB_CHAT_PENDING_NEXT_STEP_KEY = "saga-web-chat-pending-next-step";
 
 const ALLOWED_PREFILL_KEYS: Record<string, string[]> = {
   "/projects/new": [
@@ -106,6 +107,54 @@ export function buildNextStepHref(nextStep: WebChatNextStep) {
   }
 
   return params.size ? `${nextStep.route}?${params.toString()}` : nextStep.route;
+}
+
+export function persistPendingNextStep(nextStep: WebChatNextStep | null | undefined) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const sanitized = sanitizeNextStepPayload(nextStep);
+  if (!sanitized) {
+    return;
+  }
+
+  window.sessionStorage.setItem(
+    WEB_CHAT_PENDING_NEXT_STEP_KEY,
+    JSON.stringify(sanitized),
+  );
+}
+
+export function readPendingNextStep(route?: string | null) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = window.sessionStorage.getItem(WEB_CHAT_PENDING_NEXT_STEP_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const sanitized = sanitizeNextStepPayload(JSON.parse(raw));
+    if (!sanitized) {
+      return null;
+    }
+    if (route && sanitized.route !== route) {
+      return null;
+    }
+    return sanitized;
+  } catch {
+    return null;
+  }
+}
+
+export function clearPendingNextStep() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.sessionStorage.removeItem(WEB_CHAT_PENDING_NEXT_STEP_KEY);
 }
 
 export function clampNextStepLabel(label: string | null | undefined) {

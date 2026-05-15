@@ -103,6 +103,46 @@ test("persona hint and free-form copy resolve to the right personas", () => {
   }
 });
 
+test("free-form copy overrides stale remembered persona when the signal is strong", () => {
+  const cases = [
+    {
+      label: "remembered host to creative",
+      sessionPersona: "host",
+      cookiePersona: "host",
+      latestMessage: "I'm a photographer in LA looking for anime event gigs.",
+      expected: "creative",
+    },
+    {
+      label: "remembered host to venue",
+      sessionPersona: "host",
+      cookiePersona: "host",
+      latestMessage: "I run a small venue in Brooklyn.",
+      expected: "venue",
+    },
+    {
+      label: "remembered host to fan",
+      sessionPersona: "host",
+      cookiePersona: "host",
+      latestMessage: "I want to find cool anime events near me.",
+      expected: "fan",
+    },
+  ] as const;
+
+  for (const scenario of cases) {
+    assert.equal(
+      resolvePersona({
+        personaHint: null,
+        explicitPersona: null,
+        sessionPersona: scenario.sessionPersona,
+        cookiePersona: scenario.cookiePersona,
+        latestMessage: scenario.latestMessage,
+      }),
+      scenario.expected,
+      scenario.label,
+    );
+  }
+});
+
 test("persona pivots override the prior session persona", () => {
   assert.equal(
     resolvePersona({
@@ -241,6 +281,20 @@ test("long detailed opening messages skip redundant follow-ups", () => {
 
   assert.ok(result.nextStep);
   assert.equal((result.reply.match(/\?/g) || []).length, 0);
+});
+
+test("host next-step prefill keeps the routeable project details", () => {
+  const result = buildMockAgentReply({
+    persona: "host",
+    history: [],
+    latestMessage:
+      "I want to throw a 100-person anime picnic in Silver Lake next month with a playful neon vibe.",
+  });
+
+  assert.equal(result.nextStep?.route, "/projects/new");
+  assert.equal(result.nextStep?.prefill.city, "Silver Lake");
+  assert.equal(result.nextStep?.prefill.date, "next month");
+  assert.equal(result.nextStep?.prefill.projectIdea, "throw a 100-person anime picnic in Silver Lake next month with a playful neon vibe");
 });
 
 test("live reply uses the provided OpenAI call and preserves nextStep", async () => {

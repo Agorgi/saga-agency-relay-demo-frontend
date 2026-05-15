@@ -139,6 +139,50 @@ test("persona chips pass structured hints through the route", async () => {
   }
 });
 
+test("free-form first turns classify correctly without persona hints", async () => {
+  process.env.LLM_MODE = "mock_active";
+  process.env.OPENAI_API_KEY = "";
+
+  const cases = [
+    {
+      label: "host",
+      message: "I want to throw an anime picnic in Silver Lake next month.",
+      expectedPersona: "host",
+    },
+    {
+      label: "creative",
+      message: "I'm a photographer in LA looking for anime event gigs.",
+      expectedPersona: "creative",
+    },
+    {
+      label: "venue",
+      message: "I run a small venue in Brooklyn.",
+      expectedPersona: "venue",
+    },
+    {
+      label: "fan",
+      message: "I want to find cool anime events near me.",
+      expectedPersona: "fan",
+    },
+  ] as const;
+
+  for (const scenario of cases) {
+    await resetWebChatTables();
+    const response = await POST(
+      createRequest({
+        message: scenario.message,
+      }),
+    );
+
+    const data = (await response.json()) as {
+      persona: string | null;
+    };
+
+    assert.equal(response.status, 200, scenario.label);
+    assert.equal(data.persona, scenario.expectedPersona, scenario.label);
+  }
+});
+
 test("web chat POST hits OpenAI in live mode when a key is present", async () => {
   process.env.LLM_MODE = "active_live";
   process.env.OPENAI_API_KEY = "test-key";

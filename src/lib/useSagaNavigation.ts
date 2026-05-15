@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { requestWebChatReset } from "@/components/web-chat/useWebChat";
 import { sagaRoutes, withRoleFilter } from "@/lib/sagaRoutes";
+import { buildNextStepHref, readPendingNextStep } from "@/lib/webChatNextStep";
 import { useAgencyStore } from "@/store/useAgencyStore";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -50,10 +51,22 @@ export function useSagaNavigation() {
     },
     goProfile: () => router.push(sagaRoutes.profile),
     openCreate: () => {
+      const pendingNextStep = readPendingNextStep("/projects/new");
+      if (pendingNextStep) {
+        router.push(buildNextStepHref(pendingNextStep));
+        return;
+      }
+
       requestWebChatReset("host");
       router.push("/?intent=host");
     },
     openPostProject: () => {
+      const pendingNextStep = readPendingNextStep("/projects/new");
+      if (pendingNextStep) {
+        router.push(buildNextStepHref(pendingNextStep));
+        return;
+      }
+
       requestWebChatReset("host");
       router.push("/?intent=host");
     },

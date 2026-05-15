@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { normalizePersona, type Persona } from "@/lib/sagasanPersonas";
 import { useSessionPersona, writeSessionPersona } from "@/lib/useSessionPersona";
-import { type WebChatNextStep } from "@/lib/webChatNextStep";
+import {
+  clearPendingNextStep,
+  persistPendingNextStep,
+  type WebChatNextStep,
+} from "@/lib/webChatNextStep";
 
 export type ChatRole = "user" | "assistant";
 export type ChatMode = "autonomous" | "holding";
@@ -122,6 +126,7 @@ export function requestWebChatReset(nextPersona?: Persona | null) {
     return;
   }
 
+  clearPendingNextStep();
   window.localStorage.removeItem(CONVERSATION_STORAGE_KEY);
   window.sessionStorage.setItem(WEB_CHAT_SUPPRESS_RESTORE_KEY, "1");
   window.sessionStorage.setItem(WEB_CHAT_RESET_REQUEST_KEY, `${Date.now()}`);
@@ -241,6 +246,13 @@ export function useWebChat({
             nextStep: message.role === "assistant" ? message.nextStep ?? null : null,
           })) satisfies ChatEntry[];
 
+          const latestNextStep = [...restoredMessages]
+            .reverse()
+            .find((message) => message.role === "assistant" && message.nextStep)?.nextStep;
+          if (latestNextStep) {
+            persistPendingNextStep(latestNextStep);
+          }
+
           const cached = data.conversationId
             ? readConversationCache(data.conversationId)
             : null;
@@ -308,8 +320,8 @@ export function useWebChat({
       return false;
     }
 
-    const nextPersona =
-      normalizePersona(options?.persona) ?? persona ?? fallbackPersona;
+    const requestedPersona = normalizePersona(options?.persona);
+    const nextPersona = requestedPersona ?? persona ?? fallbackPersona;
     const uiFallbackReply = getUiChatFallbackReply(nextPersona ?? null);
 
     const userMessage: ChatEntry = {
@@ -336,8 +348,8 @@ export function useWebChat({
         body: JSON.stringify({
           conversationId,
           message,
-          persona: nextPersona,
-          personaHint: nextPersona,
+          persona: requestedPersona,
+          personaHint: requestedPersona,
         }),
       });
 
@@ -385,6 +397,9 @@ export function useWebChat({
       ];
 
       setMessages(nextMessages);
+      if (data.nextStep) {
+        persistPendingNextStep(data.nextStep);
+      }
       persistConversationCache(data.conversationId, resolvedPersona, nextMessages);
 
       return true;
