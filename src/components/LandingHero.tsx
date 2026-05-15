@@ -2,7 +2,6 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { HeroTrendingCluster } from "./HeroTrendingCluster";
 import { HeroChatMorph } from "@/components/web-chat/HeroChatMorph";
 import { WEB_CHAT_RESET_EVENT } from "@/components/web-chat/useWebChat";
 import { useSagaNavigation } from "@/lib/useSagaNavigation";
@@ -31,25 +30,9 @@ export function LandingHero() {
 
       <div
         className={`relative z-10 mx-auto flex w-full items-center justify-center ${
-          isConversationOpen ? "max-w-[460px]" : "max-w-[1320px] gap-12 xl:gap-16"
+          isConversationOpen ? "max-w-[460px]" : "max-w-[900px]"
         }`}
       >
-        <AnimatePresence>
-          {!isConversationOpen ? (
-            <motion.div
-              initial={{ opacity: 0, x: -18 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -24 }}
-              transition={{ duration: 0.55, ease: [0.23, 1, 0.32, 1] }}
-              className="relative hidden h-[430px] w-[360px] shrink-0 lg:block xl:w-[420px]"
-            >
-              <div className="absolute left-[-1.75rem] top-[-0.5rem] xl:left-[-1rem]">
-                <HeroTrendingCluster />
-              </div>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-
         <motion.div
           layout
           transition={{ duration: 0.55, ease: [0.23, 1, 0.32, 1] }}
