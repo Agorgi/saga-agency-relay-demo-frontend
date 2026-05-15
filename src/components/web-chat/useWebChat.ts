@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { normalizePersona, type Persona } from "@/lib/sagasanPersonas";
 import { useSessionPersona, writeSessionPersona } from "@/lib/useSessionPersona";
+import { type WebChatNextStep } from "@/lib/webChatNextStep";
 
 export type ChatRole = "user" | "assistant";
 export type ChatMode = "autonomous" | "holding";
@@ -12,13 +13,16 @@ export type ChatEntry = {
   content: string;
   role: ChatRole;
   mode?: ChatMode;
+  nextStep?: WebChatNextStep | null;
 };
 
 type WebChatResponse = {
   conversationId: string;
+  persona: Persona | null;
   reply: string;
   turn: number;
   mode: ChatMode;
+  nextStep?: WebChatNextStep | null;
 };
 
 type WebChatHistoryResponse = {
@@ -35,6 +39,7 @@ type WebChatHistoryResponse = {
 };
 
 export const CONVERSATION_STORAGE_KEY = "saga-web-chat-conversation-id";
+export const CONVERSATION_CACHE_PREFIX = "saga-web-chat-cache:";
 export const WEB_CHAT_RESET_EVENT = "saga:web-chat-reset";
 export const WEB_CHAT_RESET_REQUEST_KEY = "saga-web-chat-reset-requested";
 export const WEB_CHAT_SUPPRESS_RESTORE_KEY = "saga-web-chat-suppress-restore";
@@ -43,6 +48,54 @@ export const SAGASAN_AVATAR_SRC = "/branding/sagasan-contact.png";
 export const DEFAULT_CHAT_DESCRIPTION = "";
 export const DEFAULT_CHAT_PLACEHOLDER = "Message Sagasan...";
 export const DEFAULT_WELCOME_MESSAGE = "";
+
+type CachedConversation = {
+  persona: Persona | null;
+  messages: ChatEntry[];
+};
+
+function conversationCacheKey(conversationId: string) {
+  return `${CONVERSATION_CACHE_PREFIX}${conversationId}`;
+}
+
+function readConversationCache(conversationId: string): CachedConversation | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(conversationCacheKey(conversationId));
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as CachedConversation;
+    return {
+      persona: normalizePersona(parsed.persona),
+      messages: Array.isArray(parsed.messages) ? parsed.messages : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function persistConversationCache(
+  conversationId: string,
+  persona: Persona | null,
+  messages: ChatEntry[],
+) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(
+    conversationCacheKey(conversationId),
+    JSON.stringify({
+      persona,
+      messages,
+    }),
+  );
+}
 
 export function requestWebChatReset(nextPersona?: Persona | null) {
   if (typeof window === "undefined") {
@@ -66,14 +119,17 @@ function createInitialMessages(welcomeMessage: string): ChatEntry[] {
       id: "assistant-welcome",
       role: "assistant",
       content: welcomeMessage,
+      nextStep: null,
     },
   ];
 }
 
 export function useWebChat({
   welcomeMessage = DEFAULT_WELCOME_MESSAGE,
+  fallbackPersona = null,
 }: {
   welcomeMessage?: string;
+  fallbackPersona?: Persona | null;
 } = {}) {
   const { persona, setPersona } = useSessionPersona();
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -85,6 +141,12 @@ export function useWebChat({
     createInitialMessages(welcomeMessage),
   );
 
+  const messagesRef = useRef<ChatEntry[]>(messages);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
   const resetChatState = useCallback(() => {
     setConversationId(null);
     setDraft("");
@@ -92,6 +154,12 @@ export function useWebChat({
     setIsSending(false);
     setMessages(createInitialMessages(welcomeMessage));
   }, [welcomeMessage]);
+
+  useEffect(() => {
+    if (fallbackPersona && !persona) {
+      setPersona(fallbackPersona);
+    }
+  }, [fallbackPersona, persona, setPersona]);
 
   useEffect(() => {
     function handleReset() {
@@ -129,8 +197,9 @@ export function useWebChat({
       }
 
       if (!cancelled) {
-        if (data.persona) {
-          setPersona(data.persona);
+        const restoredPersona = data.persona ?? fallbackPersona ?? null;
+        if (restoredPersona) {
+          setPersona(restoredPersona);
         }
 
         if (data.conversationId) {
@@ -142,14 +211,36 @@ export function useWebChat({
         }
 
         if (data.messages.length > 0) {
-          setMessages(
-            data.messages.map((message, index) => ({
-              id: `${message.id}-${message.turn}-${message.role}-${index}`,
-              role: message.role,
-              content: message.content,
-              mode: message.role === "assistant" ? message.mode ?? undefined : undefined,
-            })),
-          );
+          const restoredMessages = data.messages.map((message, index) => ({
+            id: `${message.id}-${message.turn}-${message.role}-${index}`,
+            role: message.role,
+            content: message.content,
+            mode: message.role === "assistant" ? message.mode ?? undefined : undefined,
+            nextStep: null,
+          })) satisfies ChatEntry[];
+
+          const cached = data.conversationId
+            ? readConversationCache(data.conversationId)
+            : null;
+          const hydratedMessages = restoredMessages.map((message, index) => ({
+            ...message,
+            nextStep:
+              message.role === "assistant" &&
+              cached?.messages[index]?.role === "assistant" &&
+              cached.messages[index]?.content === message.content
+                ? cached.messages[index]?.nextStep ?? null
+                : null,
+          }));
+
+          setMessages(hydratedMessages);
+
+          if (data.conversationId) {
+            persistConversationCache(
+              data.conversationId,
+              restoredPersona ?? cached?.persona ?? null,
+              hydratedMessages,
+            );
+          }
         } else {
           setMessages(createInitialMessages(welcomeMessage));
         }
@@ -193,7 +284,7 @@ export function useWebChat({
     return () => {
       cancelled = true;
     };
-  }, [resetChatState, setPersona, welcomeMessage]);
+  }, [fallbackPersona, resetChatState, setPersona, welcomeMessage]);
 
   async function submitCurrentDraft(options?: {
     message?: string;
@@ -204,18 +295,22 @@ export function useWebChat({
       return false;
     }
 
-    const nextPersona = normalizePersona(options?.persona) ?? persona;
+    const nextPersona =
+      normalizePersona(options?.persona) ?? persona ?? fallbackPersona;
 
     const userMessage: ChatEntry = {
       id: `user-${Date.now()}`,
       role: "user",
       content: message,
+      nextStep: null,
     };
+
+    const optimisticMessages = [...messagesRef.current, userMessage];
 
     setError(null);
     setDraft("");
     setIsSending(true);
-    setMessages((current) => [...current, userMessage]);
+    setMessages(optimisticMessages);
 
     try {
       const response = await fetch("/api/web-chat", {
@@ -240,22 +335,29 @@ export function useWebChat({
         return false;
       }
 
+      const resolvedPersona = data.persona ?? nextPersona ?? null;
+
       window.sessionStorage.removeItem(WEB_CHAT_SUPPRESS_RESTORE_KEY);
       window.sessionStorage.removeItem(WEB_CHAT_RESET_REQUEST_KEY);
       window.localStorage.setItem(CONVERSATION_STORAGE_KEY, data.conversationId);
-      if (nextPersona) {
-        setPersona(nextPersona);
+      if (resolvedPersona) {
+        setPersona(resolvedPersona);
       }
       setConversationId(data.conversationId);
-      setMessages((current) => [
-        ...current,
+
+      const nextMessages = [
+        ...optimisticMessages,
         {
           id: `assistant-${data.turn}-${Date.now()}`,
-          role: "assistant",
+          role: "assistant" as const,
           content: data.reply,
           mode: data.mode,
+          nextStep: data.nextStep ?? null,
         },
-      ]);
+      ];
+
+      setMessages(nextMessages);
+      persistConversationCache(data.conversationId, resolvedPersona, nextMessages);
 
       return true;
     } catch {
@@ -273,7 +375,7 @@ export function useWebChat({
     isRestoring,
     isSending,
     messages,
-    persona,
+    persona: persona ?? fallbackPersona,
     setDraft,
     setPersona,
     submitCurrentDraft,

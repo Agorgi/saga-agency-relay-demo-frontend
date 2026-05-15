@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import {
   buildProjectFromDraft,
+  buildBriefDraftFromHostPrefill,
   DEFAULT_BRIEF_DRAFT,
   DEFAULT_TALENT_FILTERS,
   getProjectBySlug,
@@ -45,6 +46,7 @@ interface AgencyState {
 
   seedDraftFromPrompt: (prompt: string) => void;
   createProjectFromPrompt: (prompt: string) => CreativeProject;
+  createProjectFromBriefDraft: (draft: BriefDraft) => CreativeProject;
   updateBriefDraft: (patch: Partial<BriefDraft>) => void;
   toggleBriefRole: (role: string) => void;
   setBriefRoleCount: (role: string, count: number) => void;
@@ -283,6 +285,39 @@ export const useAgencyStore = create<AgencyState>((set, get) => ({
       ...appendProject(currentState, nextProject),
       briefDraft: seedBriefFromPrompt(prompt),
       talentSearchQuery: prompt,
+    }));
+
+    return nextProject;
+  },
+
+  createProjectFromBriefDraft: (draft) => {
+    const state = get();
+    const baseDraft = {
+      ...draft,
+      roles: draft.roles.length
+        ? draft.roles
+        : buildBriefDraftFromHostPrefill({
+            eventType: draft.title,
+            projectType: draft.projectType,
+          }).roles,
+    };
+    let nextDraft = baseDraft;
+    let nextProject = buildProjectFromDraft(nextDraft);
+    let duplicateIndex = 2;
+
+    while (state.projects.some((project) => project.slug === nextProject.slug || project.id === nextProject.id)) {
+      nextDraft = {
+        ...baseDraft,
+        title: `${baseDraft.title} ${duplicateIndex}`,
+      };
+      nextProject = buildProjectFromDraft(nextDraft);
+      duplicateIndex += 1;
+    }
+
+    set((currentState) => ({
+      ...appendProject(currentState, nextProject),
+      briefDraft: nextDraft,
+      talentSearchQuery: nextDraft.title,
     }));
 
     return nextProject;

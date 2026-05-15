@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { requestWebChatReset } from "@/components/web-chat/useWebChat";
 import { sagaRoutes, withRoleFilter } from "@/lib/sagaRoutes";
 import { useAgencyStore } from "@/store/useAgencyStore";
 import { useAppStore } from "@/store/useAppStore";
@@ -48,8 +49,14 @@ export function useSagaNavigation() {
       router.push(`${sagaRoutes.relay}${suffix}`);
     },
     goProfile: () => router.push(sagaRoutes.profile),
-    openCreate: () => router.push(sagaRoutes.postProject),
-    openPostProject: () => router.push(sagaRoutes.postProject),
+    openCreate: () => {
+      requestWebChatReset("host");
+      router.push("/?intent=host");
+    },
+    openPostProject: () => {
+      requestWebChatReset("host");
+      router.push("/?intent=host");
+    },
     openProject: (projectId?: string | null) => {
       const slug = resolveProjectSlug(projectId);
       if (slug) router.push(sagaRoutes.project(slug));

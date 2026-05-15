@@ -1,7 +1,9 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { ChatThread } from "@/components/web-chat/ChatThread";
 import {
   DEFAULT_CHAT_PLACEHOLDER,
   DEFAULT_WELCOME_MESSAGE,
@@ -9,6 +11,7 @@ import {
   SAGASAN_DISPLAY_NAME,
   useWebChat,
 } from "@/components/web-chat/useWebChat";
+import { buildNextStepHref, type WebChatNextStep } from "@/lib/webChatNextStep";
 
 type ChatWidgetProps = {
   placeholder?: string;
@@ -19,6 +22,7 @@ export function ChatWidget({
   placeholder = DEFAULT_CHAT_PLACEHOLDER,
   welcomeMessage = DEFAULT_WELCOME_MESSAGE,
 }: ChatWidgetProps) {
+  const router = useRouter();
   const formRef = useRef<HTMLFormElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -60,6 +64,10 @@ export function ChatWidget({
     await submitCurrentDraft();
   }
 
+  function handleNextStep(nextStep: WebChatNextStep) {
+    router.push(buildNextStepHref(nextStep));
+  }
+
   return (
     <section className="brand-surface-strong overflow-hidden rounded-[32px] border border-[color:var(--surface-border)] shadow-[0_24px_70px_rgba(69,42,149,0.14)]">
       <div className="flex items-center gap-3 border-b border-[color:var(--surface-border)] px-4 py-3.5">
@@ -90,30 +98,11 @@ export function ChatWidget({
           ref={viewportRef}
           className="flex flex-1 flex-col justify-end gap-3 overflow-y-auto px-4 py-4"
         >
-          {messages.map((entry) => (
-            <div
-              key={entry.id}
-              className={entry.role === "user" ? "flex justify-end" : "flex justify-start"}
-            >
-              <div
-                className={
-                  entry.role === "user"
-                    ? "max-w-[82%] rounded-[22px] rounded-br-md bg-[linear-gradient(135deg,#5f45ff,#6ea4ff)] px-4 py-2.5 text-left text-[14px] leading-6 text-white shadow-[0_14px_28px_rgba(71,37,255,0.22)]"
-                    : "max-w-[82%] rounded-[22px] rounded-bl-md border border-white/65 bg-white/88 px-4 py-2.5 text-left text-[14px] leading-6 text-ink shadow-[0_10px_20px_rgba(58,35,123,0.08)]"
-                }
-              >
-                <div>{entry.content}</div>
-              </div>
-            </div>
-          ))}
-
-          {isSending ? (
-            <div className="flex justify-start">
-              <div className="max-w-[82%] rounded-[22px] rounded-bl-md border border-white/65 bg-white/88 px-4 py-2.5 text-left text-[14px] text-ink-light shadow-[0_10px_20px_rgba(58,35,123,0.08)]">
-                Sagasan is typing…
-              </div>
-            </div>
-          ) : null}
+          <ChatThread
+            messages={messages}
+            isSending={isSending}
+            onNextStep={handleNextStep}
+          />
         </div>
 
         <form ref={formRef} onSubmit={handleSubmit} className="border-t border-[color:var(--surface-border)] p-3">

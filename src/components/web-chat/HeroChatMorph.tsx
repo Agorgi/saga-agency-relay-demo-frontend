@@ -1,9 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
-import { PERSONA_OPTIONS } from "@/lib/sagasanPersonas";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ChatThread } from "@/components/web-chat/ChatThread";
 import {
   DEFAULT_CHAT_PLACEHOLDER,
   DEFAULT_WELCOME_MESSAGE,
@@ -11,15 +12,31 @@ import {
   SAGASAN_DISPLAY_NAME,
   useWebChat,
 } from "@/components/web-chat/useWebChat";
+import { PERSONA_OPTIONS, type Persona } from "@/lib/sagasanPersonas";
+import { buildNextStepHref, type WebChatNextStep } from "@/lib/webChatNextStep";
 
 type HeroChatMorphProps = {
   onExpandedChange?: (expanded: boolean) => void;
+  fallbackPersona?: Persona | null;
+  initialExpanded?: boolean;
+  welcomeMessage?: string;
+  contextNote?: {
+    title: string;
+    lines: string[];
+  } | null;
 };
 
-export function HeroChatMorph({ onExpandedChange }: HeroChatMorphProps) {
+export function HeroChatMorph({
+  onExpandedChange,
+  fallbackPersona = null,
+  initialExpanded = false,
+  welcomeMessage = DEFAULT_WELCOME_MESSAGE,
+  contextNote = null,
+}: HeroChatMorphProps) {
+  const router = useRouter();
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const {
     conversationId,
     draft,
@@ -30,17 +47,40 @@ export function HeroChatMorph({ onExpandedChange }: HeroChatMorphProps) {
     persona,
     setDraft,
     submitCurrentDraft,
-  } = useWebChat({ welcomeMessage: DEFAULT_WELCOME_MESSAGE });
+  } = useWebChat({
+    welcomeMessage,
+    fallbackPersona,
+  });
+
+  const initialMessageCount = welcomeMessage.trim() ? 1 : 0;
+  const hasActiveConversation =
+    Boolean(conversationId) || messages.length > initialMessageCount;
 
   useEffect(() => {
-    if (!isRestoring && (conversationId || messages.length > 1)) {
+    if (initialExpanded && !isRestoring) {
       setIsExpanded(true);
     }
-  }, [conversationId, isRestoring, messages.length]);
+  }, [initialExpanded, isRestoring]);
+
+  useEffect(() => {
+    if (!isRestoring && hasActiveConversation) {
+      setIsExpanded(true);
+    }
+  }, [hasActiveConversation, isRestoring]);
 
   useEffect(() => {
     onExpandedChange?.(isExpanded);
   }, [isExpanded, onExpandedChange]);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea || !isExpanded) {
+      return;
+    }
+
+    textarea.style.height = "0px";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 144)}px`;
+  }, [draft, isExpanded]);
 
   useEffect(() => {
     if (!isExpanded) {
@@ -57,16 +97,6 @@ export function HeroChatMorph({ onExpandedChange }: HeroChatMorphProps) {
   }, [isExpanded]);
 
   useEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea || !isExpanded) {
-      return;
-    }
-
-    textarea.style.height = "0px";
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 144)}px`;
-  }, [draft, isExpanded]);
-
-  useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport || !isExpanded) {
       return;
@@ -78,18 +108,20 @@ export function HeroChatMorph({ onExpandedChange }: HeroChatMorphProps) {
     });
   }, [isExpanded, isRestoring, isSending, messages]);
 
-  async function handleExpandedSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    await submitCurrentDraft();
-  }
-
-  async function handleCollapsedSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleLauncherSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isRestoring || isSending || draft.trim().length === 0) {
       return;
     }
 
     setIsExpanded(true);
+    await submitCurrentDraft({
+      persona: persona ?? fallbackPersona ?? "host",
+    });
+  }
+
+  async function handleExpandedSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     await submitCurrentDraft();
   }
 
@@ -105,27 +137,35 @@ export function HeroChatMorph({ onExpandedChange }: HeroChatMorphProps) {
     });
   }
 
+  function handleNextStep(nextStep: WebChatNextStep) {
+    router.push(buildNextStepHref(nextStep));
+  }
+
   const composerStatus = error || (isRestoring ? "Restoring your conversation..." : " ");
+  const chipPersona = useMemo(() => fallbackPersona ?? persona, [fallbackPersona, persona]);
 
   return (
     <motion.div
       layout
-      transition={{ duration: 0.42, ease: [0.23, 1, 0.32, 1] }}
-      className="mx-auto flex w-full flex-col items-center"
+      transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
+      className="mx-auto flex w-full max-w-[720px] flex-col items-center"
     >
-      <AnimatePresence initial={false} mode="wait">
-        {isExpanded ? (
-          <motion.section
-            key="expanded-chat"
-            layout
-            initial={{ opacity: 0, y: 18, scale: 0.985 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -12, scale: 0.985 }}
-            transition={{ duration: 0.34, ease: [0.23, 1, 0.32, 1] }}
-            className="brand-surface-strong w-full max-w-[440px] overflow-hidden rounded-[38px] border border-[color:var(--surface-border-strong)] shadow-[0_28px_90px_rgba(55,32,118,0.18)]"
-            style={{ height: "min(66vh, 610px)" }}
-          >
-            <div className="flex h-full min-h-0 flex-col">
+      <motion.section
+        layout
+        transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
+        className={`brand-surface-strong w-full overflow-hidden rounded-[34px] border border-[color:var(--surface-border)] shadow-[0_24px_70px_rgba(64,44,128,0.14)] ${
+          isExpanded ? "max-w-[520px]" : ""
+        }`}
+      >
+        <AnimatePresence initial={false}>
+          {isExpanded ? (
+            <motion.div
+              key="expanded"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex h-[min(68vh,640px)] min-h-[480px] flex-col"
+            >
               <div className="flex items-center gap-3 border-b border-[color:var(--surface-border)] px-4 py-3.5">
                 <div className="relative h-11 w-11 overflow-hidden rounded-full border border-white/60 bg-white/70 shadow-[0_10px_28px_rgba(75,46,150,0.15)]">
                   <Image
@@ -141,48 +181,42 @@ export function HeroChatMorph({ onExpandedChange }: HeroChatMorphProps) {
                     {SAGASAN_DISPLAY_NAME}
                   </p>
                   <p className="truncate text-xs text-ink-light">
-                    {conversationId ? "Live Saga chat" : "Ready when you are"}
+                    {conversationId ? "Routing your next move" : "Ready when you are"}
                   </p>
                 </div>
-                <span className="rounded-pill bg-white/70 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-light">
-                  {conversationId ? "Live" : "New"}
-                </span>
               </div>
+
+              {contextNote ? (
+                <div className="border-b border-[color:var(--surface-border)] px-4 py-3 text-left">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-ink-light">
+                    {contextNote.title}
+                  </p>
+                  <div className="mt-2 space-y-1">
+                    {contextNote.lines.map((line) => (
+                      <p key={line} className="text-sm leading-6 text-ink-light">
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
 
               <div className="flex min-h-0 flex-1 flex-col bg-[linear-gradient(180deg,rgba(255,255,255,0.58),rgba(247,241,255,0.38))]">
                 <div
                   ref={viewportRef}
                   className="flex min-h-0 flex-1 flex-col justify-end gap-3 overflow-y-auto px-4 py-4"
                 >
-                  {messages.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className={
-                        entry.role === "user" ? "flex justify-end" : "flex justify-start"
-                      }
-                    >
-                      <div
-                        className={
-                          entry.role === "user"
-                            ? "max-w-[82%] rounded-[22px] rounded-br-md bg-[linear-gradient(135deg,#5f45ff,#6ea4ff)] px-4 py-2.5 text-left text-[14px] leading-6 text-white shadow-[0_14px_28px_rgba(71,37,255,0.22)]"
-                            : "max-w-[82%] rounded-[22px] rounded-bl-md border border-white/65 bg-white/88 px-4 py-2.5 text-left text-[14px] leading-6 text-ink shadow-[0_10px_20px_rgba(58,35,123,0.08)]"
-                        }
-                      >
-                        <div>{entry.content}</div>
-                      </div>
-                    </div>
-                  ))}
-
-                  {isSending ? (
-                    <div className="flex justify-start">
-                      <div className="max-w-[82%] rounded-[22px] rounded-bl-md border border-white/65 bg-white/88 px-4 py-2.5 text-left text-[14px] text-ink-light shadow-[0_10px_20px_rgba(58,35,123,0.08)]">
-                        Sagasan is typing…
-                      </div>
-                    </div>
-                  ) : null}
+                  <ChatThread
+                    messages={messages}
+                    isSending={isSending}
+                    onNextStep={handleNextStep}
+                  />
                 </div>
 
-                <form onSubmit={handleExpandedSubmit} className="border-t border-[color:var(--surface-border)] p-3">
+                <form
+                  onSubmit={handleExpandedSubmit}
+                  className="border-t border-[color:var(--surface-border)] p-3"
+                >
                   <label className="sr-only" htmlFor="hero-chat-message">
                     Message Sagasan
                   </label>
@@ -224,27 +258,26 @@ export function HeroChatMorph({ onExpandedChange }: HeroChatMorphProps) {
                     </button>
                   </div>
 
-                  <p className="min-h-[18px] px-1 pt-2 text-left text-[11px] text-ink-light" aria-live="polite">
+                  <p
+                    className="min-h-[18px] px-1 pt-2 text-left text-[11px] text-ink-light"
+                    aria-live="polite"
+                  >
                     {composerStatus}
                   </p>
                 </form>
               </div>
-            </div>
-          </motion.section>
-        ) : (
-          <motion.div
-            key="collapsed-chat"
-            layout
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-            className="w-full"
-          >
-            <div className="mx-auto flex w-full max-w-[720px] flex-col items-center gap-4">
+            </motion.div>
+          ) : (
+            <motion.div
+              key="collapsed"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="px-4 py-4 sm:px-5 sm:py-5"
+            >
               <form
-                onSubmit={handleCollapsedSubmit}
-                className="brand-surface-strong flex w-full items-center gap-3 rounded-[28px] border border-[color:var(--surface-border)] px-4 py-3 shadow-[0_20px_60px_rgba(64,44,128,0.12)]"
+                onSubmit={handleLauncherSubmit}
+                className="flex w-full items-center gap-3 rounded-[28px] border border-[color:var(--surface-border)] bg-white/78 px-4 py-3"
               >
                 <div className="min-w-0 flex-1">
                   <label className="sr-only" htmlFor="hero-chat-launcher">
@@ -259,23 +292,21 @@ export function HeroChatMorph({ onExpandedChange }: HeroChatMorphProps) {
                     onChange={(event) => {
                       setDraft(event.target.value);
                     }}
-                    className="w-full bg-transparent text-[15px] font-light tracking-tight text-ink outline-none placeholder:text-ink-light sm:text-base disabled:cursor-not-allowed disabled:opacity-70"
+                    className="w-full bg-transparent text-[15px] leading-7 text-ink outline-none placeholder:text-ink-light/80 disabled:cursor-not-allowed disabled:opacity-70"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={isRestoring || isSending || draft.trim().length === 0}
-                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition ${
-                    draft.trim().length > 0 ? "brand-button-primary" : "brand-surface-inset"
-                  } disabled:cursor-not-allowed disabled:opacity-60`}
-                  aria-label="Start project chat"
+                  className="brand-button-primary flex h-12 w-12 shrink-0 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-55"
+                  aria-label="Start chat"
                 >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                     <path
-                      d="M3 8h10m0 0L9 4m4 4L9 12"
-                      stroke={draft.trim().length > 0 ? "#ffffff" : "#8f84ad"}
-                      strokeWidth="1.5"
+                      d="M3.75 9H14.25M14.25 9L9.5 4.25M14.25 9L9.5 13.75"
+                      stroke="white"
+                      strokeWidth="1.7"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
@@ -283,26 +314,37 @@ export function HeroChatMorph({ onExpandedChange }: HeroChatMorphProps) {
                 </button>
               </form>
 
-              {!persona ? (
-                <div className="flex w-full flex-wrap items-center justify-center gap-2">
-                  {PERSONA_OPTIONS.map((option) => (
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                {PERSONA_OPTIONS.map((option) => {
+                  const isActive = chipPersona === option.persona;
+                  return (
                     <button
                       key={option.persona}
                       type="button"
-                      onClick={() => {
-                        void handlePersonaClick(option);
-                      }}
-                      className="brand-chip rounded-pill px-4 py-2 text-sm font-medium text-ink-light transition hover:text-ink"
+                      onClick={() => void handlePersonaClick(option)}
+                      disabled={isRestoring || isSending}
+                      className={`rounded-pill px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                        isActive
+                          ? "bg-[linear-gradient(135deg,rgba(95,69,255,0.16),rgba(255,79,158,0.16))] text-ink shadow-[0_10px_24px_rgba(66,47,145,0.12)]"
+                          : "brand-chip text-ink hover:text-ink"
+                      }`}
                     >
                       {option.label}
                     </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                  );
+                })}
+              </div>
+
+              <p
+                className="min-h-[18px] px-1 pt-3 text-center text-[11px] text-ink-light"
+                aria-live="polite"
+              >
+                {composerStatus}
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.section>
     </motion.div>
   );
 }

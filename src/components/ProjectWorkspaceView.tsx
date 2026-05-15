@@ -119,7 +119,7 @@ export function ProjectWorkspaceView({ projectSlug }: { projectSlug: string }) {
   const projects = useAgencyStore((state) => state.projects);
   const conversations = useAgencyStore((state) => state.conversations);
   const selectProjectBySlug = useAgencyStore((state) => state.selectProjectBySlug);
-  const { openProjectDiscover, goRelay, openTicketsBySlug } = useSagaNavigation();
+  const { openProjectDiscover, goRelay } = useSagaNavigation();
   const isDark = useThemeMode() === "dark";
 
   useEffect(() => {
@@ -140,7 +140,6 @@ export function ProjectWorkspaceView({ projectSlug }: { projectSlug: string }) {
 
   if (!project) return null;
 
-  const interestCheckSlug = project.optionalEventModule?.publicEventSlug || null;
   const primaryGoal = project.goals[0] || "Lock the right team quickly.";
   const secondaryGoals = project.goals.slice(1, 4);
 
@@ -178,14 +177,16 @@ export function ProjectWorkspaceView({ projectSlug }: { projectSlug: string }) {
               onClick={() => openProjectDiscover(project.id)}
               className="brand-button-primary rounded-pill px-5 py-3 text-sm font-medium"
             >
-              Review talent canvas
+              See picks
             </button>
-            <button
-              onClick={() => goRelay(project.id, projectConversations[0]?.id)}
-              className="brand-button-secondary rounded-pill px-5 py-3 text-sm font-medium"
-            >
-              Coordinate
-            </button>
+            {projectConversations[0] ? (
+              <button
+                onClick={() => goRelay(project.id, projectConversations[0]?.id)}
+                className="brand-button-secondary rounded-pill px-5 py-3 text-sm font-medium"
+              >
+                Open relay
+              </button>
+            ) : null}
           </div>
         </motion.section>
 
@@ -278,15 +279,23 @@ export function ProjectWorkspaceView({ projectSlug }: { projectSlug: string }) {
           </div>
         </CardSection>
 
-        <CardSection eyebrow="Post interest check" title="Gauge demand, presell tickets" dark={isDark}>
+        <CardSection eyebrow="Next move" title="Keep this moving" dark={isDark}>
           <div className="grid gap-4 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
             <div>
               <p className={`text-sm leading-7 ${isDark ? "text-white/68" : "text-ink-light"}`}>
-                For event-style projects, Saga can turn on a public demand check before staffing is fully closed. Use it to test interest, drive urgency, and start preselling tickets while the crew plan is still locking.
+                Once this brief looks right, the fastest path is picks first, then Relay once the right people start replying.
               </p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <SummaryLine label="Audience signal" value={interestCheckSlug ? "Public interest page ready" : "Enable this when the project becomes public"} dark={isDark} />
-                <SummaryLine label="Why it matters" value="Demand can shape staffing and social coverage" dark={isDark} />
+                <SummaryLine
+                  label="Best next move"
+                  value={projectConversations.length ? "Keep Relay moving" : "Start with picks"}
+                  dark={isDark}
+                />
+                <SummaryLine
+                  label="Why it matters"
+                  value="The right people shape everything downstream."
+                  dark={isDark}
+                />
               </div>
             </div>
 
@@ -297,24 +306,24 @@ export function ProjectWorkspaceView({ projectSlug }: { projectSlug: string }) {
             >
               <p className={`text-[10px] uppercase tracking-[0.22em] ${isDark ? "text-white/42" : "text-ink-light"}`}>Next move</p>
               <h3 className={`mt-3 text-2xl font-semibold tracking-tight ${isDark ? "text-white" : "text-ink"}`}>
-                {interestCheckSlug ? "Open the tickets page" : "Review the staffing plan first"}
+                {projectConversations.length ? "Open relay" : "See picks"}
               </h3>
               <p className={`mt-3 text-sm leading-7 ${isDark ? "text-white/62" : "text-ink-light"}`}>
-                {interestCheckSlug
-                  ? "Launch a lightweight public check-in and presell flow before you finish the outreach cycle."
-                  : "This project does not need a public ticketing layer yet, so the next best move is talent review and Relay outreach."}
+                {projectConversations.length
+                  ? "Saga is already texting people. Open the thread and keep the conversation moving."
+                  : "Saga already heard the brief. Move straight into the shortlist and start shaping the crew."}
               </p>
               <button
                 onClick={() => {
-                  if (interestCheckSlug) {
-                    openTicketsBySlug(interestCheckSlug);
+                  if (projectConversations[0]) {
+                    goRelay(project.id, projectConversations[0].id);
                     return;
                   }
                   openProjectDiscover(project.id);
                 }}
                 className="mt-4 rounded-pill bg-[linear-gradient(90deg,#ff4f9e,#687dff)] px-5 py-3 text-sm font-medium text-white"
               >
-                {interestCheckSlug ? "Open tickets page" : "Review talent canvas"}
+                {projectConversations.length ? "Open relay" : "See picks"}
               </button>
             </div>
           </div>
@@ -329,7 +338,7 @@ export function ProjectWorkspaceView({ projectSlug }: { projectSlug: string }) {
             onClick={() => openProjectDiscover(project.id)}
             className="w-full rounded-pill bg-[linear-gradient(90deg,#ff4f9e,#687dff)] px-4 py-2.5 text-sm font-medium text-white"
           >
-            Review talent canvas
+            See picks
           </button>
         </div>
       </div>

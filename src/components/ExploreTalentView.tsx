@@ -22,11 +22,12 @@ export function ExploreTalentView() {
   const updateTalentFilters = useAgencyStore((state) => state.updateTalentFilters);
   const resetTalentFilters = useAgencyStore((state) => state.resetTalentFilters);
   const addTalentToShortlist = useAgencyStore((state) => state.addTalentToShortlist);
-  const { goHome, openTalentProfile, openProject } = useSagaNavigation();
+  const { goHome, openTalentProfile } = useSagaNavigation();
   const isDark = useThemeMode() === "dark";
 
   const projectSlug = searchParams.get("project");
   const roleParam = searchParams.get("role");
+  const projectIdParam = searchParams.get("projectId");
 
   useEffect(() => {
     if (projectSlug) selectProjectBySlug(projectSlug);
@@ -39,6 +40,7 @@ export function ExploreTalentView() {
   }, [roleParam, updateTalentFilters]);
 
   const activeProject =
+    projects.find((project) => project.id === projectIdParam) ||
     projects.find((project) => project.slug === projectSlug) ||
     projects.find((project) => project.id === selectedProjectId) ||
     null;
@@ -272,14 +274,6 @@ export function ExploreTalentView() {
                 >
                   Reset
                 </button>
-                {shortlistTarget ? (
-                  <button
-                    onClick={() => openProject(shortlistTarget.id)}
-                    className="brand-button-primary rounded-pill px-4 py-3 text-sm font-medium"
-                  >
-                    Open workspace
-                  </button>
-                ) : null}
               </div>
             </details>
           </div>

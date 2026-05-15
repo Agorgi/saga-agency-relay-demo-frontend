@@ -830,6 +830,45 @@ export function buildProjectFromDraft(draft: BriefDraft): CreativeProject {
   });
 }
 
+export function buildBriefDraftFromHostPrefill(input: {
+  eventType?: string | null;
+  city?: string | null;
+  scale?: string | null;
+  vibe?: string | null;
+  date?: string | null;
+  helpNeeded?: string | null;
+  projectType?: string | null;
+  suggestedRoles?: string[] | null;
+}): BriefDraft {
+  const normalizedProjectType = PROJECT_TYPES.includes(
+    input.projectType as ProjectType,
+  )
+    ? (input.projectType as ProjectType)
+    : inferHostProjectTypeFromLabel(input.eventType || "");
+  const titleBase = input.eventType?.trim() || "New project";
+  const vibeSentence = input.vibe?.trim() || "A new creative project staffed by Saga.";
+  const helpNeeded = input.helpNeeded?.trim();
+
+  return {
+    ...DEFAULT_BRIEF_DRAFT,
+    title: titleBase.replace(/\b\w/g, (char) => char.toUpperCase()),
+    projectType: normalizedProjectType,
+    description: vibeSentence,
+    goal: helpNeeded || "Find the right crew fast.",
+    city: input.city?.trim() || DEFAULT_BRIEF_DRAFT.city,
+    roles:
+      input.suggestedRoles?.length
+        ? input.suggestedRoles
+        : getSuggestedRoles(normalizedProjectType),
+    cultureNotes: vibeSentence,
+    dateLabel: input.date?.trim() || "Date TBD",
+    budgetRange: input.scale?.trim()
+      ? `Scale: ${input.scale.trim()}`
+      : DEFAULT_BRIEF_DRAFT.budgetRange,
+    deliverables: helpNeeded || DEFAULT_BRIEF_DRAFT.deliverables,
+  };
+}
+
 export function seedBriefFromPrompt(prompt: string): BriefDraft {
   const lower = prompt.toLowerCase();
   const inferredType =
@@ -868,6 +907,19 @@ export function seedBriefFromPrompt(prompt: string): BriefDraft {
     roles: getSuggestedRoles(inferredType),
     cultureNotes: prompt,
   };
+}
+
+function inferHostProjectTypeFromLabel(value: string): ProjectType {
+  const lower = value.toLowerCase();
+  if (/pop-?up|activation|launch/.test(lower)) return "Pop-up / activation";
+  if (/fan|gala|watch party|meetup/.test(lower)) return "Fan event";
+  if (/editorial|lookbook|photoshoot|photo shoot/.test(lower)) return "Photoshoot";
+  if (/music video/.test(lower)) return "Music video";
+  if (/video|trailer|film/.test(lower)) return "Video shoot";
+  if (/brand|campaign|product/.test(lower)) return "Brand campaign";
+  if (/creator/.test(lower)) return "Creator collaboration";
+  if (/performance|concert|show/.test(lower)) return "Live performance";
+  return "Other";
 }
 
 export function getNextProjectAction(project: CreativeProject, conversations: RelayConversation[]) {

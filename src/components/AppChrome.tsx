@@ -25,6 +25,7 @@ export function AppChrome() {
   const shouldHideBottomNav =
     pathname === "/" ||
     pathname === "/post-project" ||
+    pathname === "/projects/new" ||
     pathname === "/create" ||
     pathname.includes("/discover") ||
     pathname.startsWith("/talent/") ||
