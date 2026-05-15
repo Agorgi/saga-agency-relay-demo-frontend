@@ -4,11 +4,10 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { getTalentById, scoreTalentForProject } from "@/data/sagaAgencyData";
+import { scoreTalentForProject } from "@/data/sagaAgencyData";
 import { useSagaNavigation } from "@/lib/useSagaNavigation";
 import { useThemeMode } from "@/lib/useThemeMode";
 import { useAgencyStore } from "@/store/useAgencyStore";
-import { TalentReviewCanvas } from "./TalentReviewCanvas";
 
 export function ExploreTalentView() {
   const searchParams = useSearchParams();
@@ -22,8 +21,7 @@ export function ExploreTalentView() {
   const updateTalentFilters = useAgencyStore((state) => state.updateTalentFilters);
   const resetTalentFilters = useAgencyStore((state) => state.resetTalentFilters);
   const addTalentToShortlist = useAgencyStore((state) => state.addTalentToShortlist);
-  const askSagaToReachOut = useAgencyStore((state) => state.askSagaToReachOut);
-  const { openTalentProfile, openPostProject, openProject, goRelay } = useSagaNavigation();
+  const { openTalentProfile, openPostProject, openProject } = useSagaNavigation();
   const isDark = useThemeMode() === "dark";
 
   const projectSlug = searchParams.get("project");
@@ -141,65 +139,7 @@ export function ExploreTalentView() {
   );
 
   const shortlistTarget = activeProject || projects.find((project) => project.id === selectedProjectId) || null;
-  const gridCards = derivedCards.slice(0, 12);
-  const handleBranchFromSelection = (talentIds: string[]) => {
-    const selectedProfiles = talentIds
-      .map((id) => getTalentById(id, talent))
-      .filter((profile): profile is NonNullable<typeof profile> => Boolean(profile));
-
-    if (!selectedProfiles.length) return;
-
-    const cue = [...new Set(
-      selectedProfiles.flatMap((profile) => [
-        profile.roles[0],
-        ...profile.tags.slice(0, 2),
-        ...profile.credits.slice(0, 1),
-      ])
-    )]
-      .filter(Boolean)
-      .slice(0, 4)
-      .join(" ");
-
-    if (cue) {
-      setTalentSearchQuery(cue);
-    }
-  };
-  const mobileCanvas = (
-    <TalentReviewCanvas
-      recommendations={derivedCards}
-      activeProject={activeProject}
-      shortlistTarget={shortlistTarget}
-      focusLabel={
-        activeProject
-          ? `${activeProject.title} · ${derivedCards.length} matches`
-          : `${derivedCards.length} talent matches`
-      }
-      onOpenProfile={(talentId) => openTalentProfile(talentId, shortlistTarget?.id)}
-      onAddToShortlist={(talentId, roleName) => {
-        if (!shortlistTarget) return;
-        addTalentToShortlist(shortlistTarget.id, talentId, roleName);
-      }}
-      onAskSagaToReachOut={(talentId) => {
-        const relayProject = shortlistTarget || activeProject || projects[0] || null;
-        if (!relayProject) {
-          openPostProject();
-          return;
-        }
-
-        const conversationId = askSagaToReachOut(relayProject.id, talentId);
-        if (conversationId) {
-          goRelay(relayProject.id, conversationId);
-        }
-      }}
-      onBranchFromSelection={handleBranchFromSelection}
-      onOpenCrewBoard={shortlistTarget ? () => openProject(shortlistTarget.id) : undefined}
-      showCanvasHeader={false}
-      canvasHeightClass="h-[50svh] min-h-[460px]"
-      maxVisibleDesktop={24}
-      maxVisibleMobile={10}
-      lightModeBoxes={!isDark}
-    />
-  );
+  const gridCards = derivedCards.slice(0, 18);
 
   return (
     <div className={`brand-page absolute inset-0 overflow-y-auto px-4 pb-32 pt-24 md:px-6 md:pb-16 md:pt-28 lg:px-8 ${
@@ -207,7 +147,6 @@ export function ExploreTalentView() {
     }`}>
       <div className="mx-auto max-w-[1260px] space-y-6">
         <div className="space-y-4 lg:hidden">
-          {mobileCanvas}
           <section
             className={`rounded-[28px] p-4 ${
               isDark ? "brand-surface-deep" : "brand-surface-strong"
@@ -217,7 +156,7 @@ export function ExploreTalentView() {
               {activeProject ? "Matched to your brief" : "Explore talent"}
             </p>
             <p className={`mt-2 text-sm leading-6 ${isDark ? "text-white/68" : "text-ink-light"}`}>
-              Search, narrow, and shortlist without leaving the visual review canvas.
+              Search, narrow, and shortlist in a standard browse view without leaving the page.
             </p>
 
             {shortlistTarget ? (
@@ -287,7 +226,7 @@ export function ExploreTalentView() {
                 Find photographers, producers, stylists, videographers, creators, vendors, and fandom-native talent.
               </h1>
               <p className={`mt-4 max-w-[720px] text-sm leading-7 sm:text-base ${isDark ? "text-white/64" : "text-ink-light"}`}>
-                Saga ranks talent by portfolio fit, style fit, category experience, location, budget, availability, and distribution value.
+                Saga ranks talent by portfolio fit, style fit, category experience, location, budget, availability, and distribution value in a cleaner browse-first layout.
               </p>
               {shortlistTarget ? (
                 <div className={`mt-5 inline-flex items-center gap-2 rounded-pill border px-4 py-2 text-sm ${
@@ -383,45 +322,12 @@ export function ExploreTalentView() {
           </div>
         </motion.section>
 
-        <div className="hidden lg:block">
-          <TalentReviewCanvas
-          recommendations={derivedCards}
-          activeProject={activeProject}
-          shortlistTarget={shortlistTarget}
-          focusLabel={
-            activeProject
-              ? `${activeProject.title} · ${derivedCards.length} matches`
-              : `${derivedCards.length} talent matches`
-          }
-          onOpenProfile={(talentId) => openTalentProfile(talentId, shortlistTarget?.id)}
-          onAddToShortlist={(talentId, roleName) => {
-            if (!shortlistTarget) return;
-            addTalentToShortlist(shortlistTarget.id, talentId, roleName);
-          }}
-          onAskSagaToReachOut={(talentId) => {
-            const relayProject = shortlistTarget || activeProject || projects[0] || null;
-            if (!relayProject) {
-              openPostProject();
-              return;
-            }
-
-            const conversationId = askSagaToReachOut(relayProject.id, talentId);
-            if (conversationId) {
-              goRelay(relayProject.id, conversationId);
-            }
-          }}
-          onBranchFromSelection={handleBranchFromSelection}
-          onOpenCrewBoard={shortlistTarget ? () => openProject(shortlistTarget.id) : undefined}
-          lightModeBoxes={!isDark}
-          />
-        </div>
-
         <section className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[10px] uppercase tracking-[0.26em] text-ink-light">Top matches</p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">
-                Structured cards, if you want a tighter read.
+                Browse talent in a standard card layout.
               </h2>
             </div>
             <div className="rounded-pill border border-black/8 bg-white/70 px-4 py-2 text-xs font-medium text-ink-light shadow-sm">
