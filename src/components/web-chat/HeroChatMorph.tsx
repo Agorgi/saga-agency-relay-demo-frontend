@@ -81,6 +81,16 @@ export function HeroChatMorph({ onExpandedChange }: HeroChatMorphProps) {
     await submitCurrentDraft();
   }
 
+  async function handleCollapsedSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isRestoring || isSending || draft.trim().length === 0) {
+      return;
+    }
+
+    setIsExpanded(true);
+    await submitCurrentDraft();
+  }
+
   const composerStatus = error || (isRestoring ? "Restoring your conversation..." : " ");
 
   return (
@@ -145,19 +155,6 @@ export function HeroChatMorph({ onExpandedChange }: HeroChatMorphProps) {
                         }
                       >
                         <div>{entry.content}</div>
-                        {entry.role === "assistant" && entry.mode ? (
-                          <div className="mt-2">
-                            <span
-                              className={`inline-flex rounded-pill px-2 py-1 text-[10px] font-medium uppercase tracking-[0.18em] ${
-                                entry.mode === "holding"
-                                  ? "bg-[#fff1d6] text-[#94621d]"
-                                  : "bg-[#eef1ff] text-[#4e56a8]"
-                              }`}
-                            >
-                              {entry.mode}
-                            </span>
-                          </div>
-                        ) : null}
                       </div>
                     </div>
                   ))}
@@ -230,17 +227,10 @@ export function HeroChatMorph({ onExpandedChange }: HeroChatMorphProps) {
             transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
             className="w-full"
           >
-            <div className="brand-surface-strong mx-auto flex w-full max-w-[620px] items-center gap-3 rounded-[28px] border border-[color:var(--surface-border)] px-3 py-3 shadow-[0_20px_60px_rgba(64,44,128,0.12)]">
-              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border border-white/60 bg-white/75 shadow-[0_10px_24px_rgba(75,46,150,0.14)]">
-                <Image
-                  src={SAGASAN_AVATAR_SRC}
-                  alt={SAGASAN_DISPLAY_NAME}
-                  fill
-                  sizes="48px"
-                  className="object-cover"
-                />
-              </div>
-
+            <form
+              onSubmit={handleCollapsedSubmit}
+              className="brand-surface-strong mx-auto flex w-full max-w-[620px] items-center gap-3 rounded-[28px] border border-[color:var(--surface-border)] px-4 py-3 shadow-[0_20px_60px_rgba(64,44,128,0.12)]"
+            >
               <div className="min-w-0 flex-1">
                 <label className="sr-only" htmlFor="hero-chat-launcher">
                   Describe your project
@@ -250,26 +240,21 @@ export function HeroChatMorph({ onExpandedChange }: HeroChatMorphProps) {
                   type="text"
                   value={draft}
                   placeholder="Describe the project. Saga builds the team."
-                  disabled={isRestoring}
-                  onFocus={() => setIsExpanded(true)}
+                  disabled={isRestoring || isSending}
                   onChange={(event) => {
                     setDraft(event.target.value);
-                    if (!isExpanded) {
-                      setIsExpanded(true);
-                    }
                   }}
-                  className="w-full bg-transparent text-[15px] font-light tracking-tight text-ink outline-none placeholder:text-ink-light sm:text-base"
+                  className="w-full bg-transparent text-[15px] font-light tracking-tight text-ink outline-none placeholder:text-ink-light sm:text-base disabled:cursor-not-allowed disabled:opacity-70"
                 />
               </div>
 
               <button
-                type="button"
-                disabled={isRestoring}
-                onClick={() => setIsExpanded(true)}
+                type="submit"
+                disabled={isRestoring || isSending || draft.trim().length === 0}
                 className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition ${
                   draft.trim().length > 0 ? "brand-button-primary" : "brand-surface-inset"
                 } disabled:cursor-not-allowed disabled:opacity-60`}
-                aria-label="Open project chat"
+                aria-label="Start project chat"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path
@@ -281,7 +266,7 @@ export function HeroChatMorph({ onExpandedChange }: HeroChatMorphProps) {
                   />
                 </svg>
               </button>
-            </div>
+            </form>
           </motion.div>
         )}
       </AnimatePresence>

@@ -4,10 +4,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { HeroChatMorph } from "@/components/web-chat/HeroChatMorph";
 import { WEB_CHAT_RESET_EVENT } from "@/components/web-chat/useWebChat";
-import { useSagaNavigation } from "@/lib/useSagaNavigation";
 
 export function LandingHero() {
-  const { openPostProject, goTalent } = useSagaNavigation();
   const [isConversationOpen, setIsConversationOpen] = useState(false);
   const [resetKey, setResetKey] = useState(0);
 
@@ -79,42 +77,6 @@ export function LandingHero() {
               }}
             />
           </motion.div>
-
-          <AnimatePresence initial={false} mode="popLayout">
-            {!isConversationOpen ? (
-              <motion.div
-                key="landing-actions"
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -16 }}
-                transition={{ duration: 0.42, ease: [0.23, 1, 0.32, 1] }}
-                className="flex w-full flex-col items-center gap-6"
-              >
-                <div className="flex flex-wrap items-center justify-center gap-3">
-                  <button
-                    onClick={openPostProject}
-                    className="brand-button-primary rounded-pill px-5 py-3 text-sm font-medium"
-                  >
-                    Post a Project
-                  </button>
-                  <button
-                    onClick={() => goTalent()}
-                    className="brand-button-secondary rounded-pill px-5 py-3 text-sm font-medium"
-                  >
-                    Explore Talent
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-light sm:gap-3 sm:text-[11px]">
-                  <span className="brand-chip rounded-pill px-3 py-1.5">Idea</span>
-                  <span className="brand-chip rounded-pill px-3 py-1.5">Match</span>
-                  <span className="brand-chip rounded-pill px-3 py-1.5">Relay</span>
-                  <span className="brand-chip rounded-pill px-3 py-1.5">Book</span>
-                  <span className="brand-chip rounded-pill px-3 py-1.5">Produce</span>
-                </div>
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
         </motion.div>
       </div>
     </div>

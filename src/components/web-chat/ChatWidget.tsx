@@ -103,19 +103,6 @@ export function ChatWidget({
                 }
               >
                 <div>{entry.content}</div>
-                {entry.role === "assistant" && entry.mode ? (
-                  <div className="mt-2">
-                    <span
-                      className={`inline-flex rounded-pill px-2 py-1 text-[10px] font-medium uppercase tracking-[0.18em] ${
-                        entry.mode === "holding"
-                          ? "bg-[#fff1d6] text-[#94621d]"
-                          : "bg-[#eef1ff] text-[#4e56a8]"
-                      }`}
-                    >
-                      {entry.mode}
-                    </span>
-                  </div>
-                ) : null}
               </div>
             </div>
           ))}
