@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { motion } from "framer-motion";
+import { requestWebChatReset } from "@/components/web-chat/useWebChat";
 import { useSagaNavigation } from "@/lib/useSagaNavigation";
 
 export function PebbleMark() {
@@ -10,6 +11,7 @@ export function PebbleMark() {
   return (
     <motion.button
       onClick={() => {
+        requestWebChatReset();
         goHome();
       }}
       whileHover={{ scale: 1.02 }}

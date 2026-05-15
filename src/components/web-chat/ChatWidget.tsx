@@ -1,27 +1,27 @@
 "use client";
 
-import { useRef } from "react";
+import Image from "next/image";
+import { useEffect, useRef } from "react";
 import {
-  DEFAULT_CHAT_DESCRIPTION,
   DEFAULT_CHAT_PLACEHOLDER,
   DEFAULT_WELCOME_MESSAGE,
+  SAGASAN_AVATAR_SRC,
+  SAGASAN_DISPLAY_NAME,
   useWebChat,
 } from "@/components/web-chat/useWebChat";
 
 type ChatWidgetProps = {
-  eyebrow?: string;
-  description?: string;
   placeholder?: string;
   welcomeMessage?: string;
 };
 
 export function ChatWidget({
-  eyebrow = "Project concierge",
-  description = DEFAULT_CHAT_DESCRIPTION,
   placeholder = DEFAULT_CHAT_PLACEHOLDER,
   welcomeMessage = DEFAULT_WELCOME_MESSAGE,
 }: ChatWidgetProps) {
   const formRef = useRef<HTMLFormElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
   const {
     conversationId,
     draft,
@@ -33,27 +33,63 @@ export function ChatWidget({
     submitCurrentDraft,
   } = useWebChat({ welcomeMessage });
 
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = "0px";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
+  }, [draft]);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) {
+      return;
+    }
+
+    viewport.scrollTo({
+      top: viewport.scrollHeight,
+      behavior: isRestoring ? "auto" : "smooth",
+    });
+  }, [isRestoring, isSending, messages]);
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await submitCurrentDraft();
   }
 
   return (
-    <section className="brand-surface-strong rounded-[28px] p-4 shadow-[0_20px_60px_rgba(69,42,149,0.12)] sm:p-5">
-      <div className="flex items-center justify-between gap-3 border-b border-[color:var(--surface-border)] pb-3">
-        <div>
-          <p className="text-[10px] font-medium uppercase tracking-[0.24em] text-ink-light">
-            {eyebrow}
-          </p>
-          <p className="mt-1 text-sm text-ink-light">{description}</p>
+    <section className="brand-surface-strong overflow-hidden rounded-[32px] border border-[color:var(--surface-border)] shadow-[0_24px_70px_rgba(69,42,149,0.14)]">
+      <div className="flex items-center gap-3 border-b border-[color:var(--surface-border)] px-4 py-3.5">
+        <div className="relative h-11 w-11 overflow-hidden rounded-full border border-white/60 bg-white/70 shadow-[0_10px_28px_rgba(75,46,150,0.15)]">
+          <Image
+            src={SAGASAN_AVATAR_SRC}
+            alt={SAGASAN_DISPLAY_NAME}
+            fill
+            sizes="44px"
+            className="object-cover"
+          />
         </div>
-        <span className="rounded-pill bg-canvas px-3 py-1 text-[11px] font-medium text-ink-light">
-          {conversationId ? "Live thread" : "New thread"}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[15px] font-semibold tracking-[-0.01em] text-ink">
+            {SAGASAN_DISPLAY_NAME}
+          </p>
+          <p className="truncate text-xs text-ink-light">
+            {conversationId ? "Live producer conversation" : "Ready to help shape the brief"}
+          </p>
+        </div>
+        <span className="rounded-pill bg-white/70 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-light">
+          {conversationId ? "Live" : "New"}
         </span>
       </div>
 
-      <div className="mt-4 space-y-3 rounded-[24px] bg-white/45 p-3 sm:p-4">
-        <div className="flex max-h-[420px] min-h-[280px] flex-col gap-3 overflow-y-auto pr-1">
+      <div className="flex min-h-[560px] flex-col bg-[linear-gradient(180deg,rgba(255,255,255,0.58),rgba(247,241,255,0.38))]">
+        <div
+          ref={viewportRef}
+          className="flex flex-1 flex-col justify-end gap-3 overflow-y-auto px-4 py-4"
+        >
           {messages.map((entry) => (
             <div
               key={entry.id}
@@ -62,14 +98,20 @@ export function ChatWidget({
               <div
                 className={
                   entry.role === "user"
-                    ? "max-w-[85%] rounded-[22px] rounded-br-md bg-[color:var(--brand-indigo)] px-4 py-3 text-sm leading-6 text-white shadow-[0_12px_28px_rgba(71,37,255,0.22)]"
-                    : "brand-surface-inset max-w-[85%] rounded-[22px] rounded-bl-md px-4 py-3 text-sm leading-6 text-ink"
+                    ? "max-w-[82%] rounded-[22px] rounded-br-md bg-[linear-gradient(135deg,#5f45ff,#6ea4ff)] px-4 py-2.5 text-left text-[14px] leading-6 text-white shadow-[0_14px_28px_rgba(71,37,255,0.22)]"
+                    : "max-w-[82%] rounded-[22px] rounded-bl-md border border-white/65 bg-white/88 px-4 py-2.5 text-left text-[14px] leading-6 text-ink shadow-[0_10px_20px_rgba(58,35,123,0.08)]"
                 }
               >
                 <div>{entry.content}</div>
                 {entry.role === "assistant" && entry.mode ? (
                   <div className="mt-2">
-                    <span className="inline-flex rounded-pill bg-white/70 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-light">
+                    <span
+                      className={`inline-flex rounded-pill px-2 py-1 text-[10px] font-medium uppercase tracking-[0.18em] ${
+                        entry.mode === "holding"
+                          ? "bg-[#fff1d6] text-[#94621d]"
+                          : "bg-[#eef1ff] text-[#4e56a8]"
+                      }`}
+                    >
                       {entry.mode}
                     </span>
                   </div>
@@ -80,50 +122,58 @@ export function ChatWidget({
 
           {isSending ? (
             <div className="flex justify-start">
-              <div className="brand-surface-inset rounded-[22px] rounded-bl-md px-4 py-3 text-sm text-ink-light">
-                Saga is typing...
+              <div className="max-w-[82%] rounded-[22px] rounded-bl-md border border-white/65 bg-white/88 px-4 py-2.5 text-left text-[14px] text-ink-light shadow-[0_10px_20px_rgba(58,35,123,0.08)]">
+                Sagasan is typing…
               </div>
             </div>
           ) : null}
         </div>
 
-        <form ref={formRef} onSubmit={handleSubmit} className="space-y-3">
-          <label className="block text-sm font-medium text-ink" htmlFor="web-chat-message">
-            Message
+        <form ref={formRef} onSubmit={handleSubmit} className="border-t border-[color:var(--surface-border)] p-3">
+          <label className="sr-only" htmlFor="web-chat-message">
+            Message Sagasan
           </label>
-          <textarea
-            id="web-chat-message"
-            value={draft}
-            onChange={(event) => {
-              setDraft(event.target.value);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                formRef.current?.requestSubmit();
-              }
-            }}
-            placeholder={placeholder}
-            disabled={isSending || isRestoring}
-            rows={4}
-            className="brand-surface-inset min-h-[112px] w-full rounded-[24px] px-4 py-3 text-sm leading-6 text-ink outline-none transition placeholder:text-ink-light/80 disabled:cursor-not-allowed disabled:opacity-70"
-          />
+          <div className="brand-surface-inset flex items-end gap-3 rounded-[26px] px-3 py-3">
+            <textarea
+              ref={textareaRef}
+              id="web-chat-message"
+              value={draft}
+              onChange={(event) => {
+                setDraft(event.target.value);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  formRef.current?.requestSubmit();
+                }
+              }}
+              placeholder={placeholder}
+              disabled={isSending || isRestoring}
+              rows={1}
+              className="max-h-40 min-h-[24px] flex-1 resize-none bg-transparent px-1 py-1 text-[15px] leading-6 text-ink outline-none placeholder:text-ink-light/80 disabled:cursor-not-allowed disabled:opacity-70"
+            />
 
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs text-ink-light" aria-live="polite">
-              {error ??
-                (isRestoring
-                  ? "Restoring your conversation..."
-                  : "Press Enter to send. Use Shift+Enter for a new line.")}
-            </p>
             <button
               type="submit"
               disabled={isSending || isRestoring || draft.trim().length === 0}
-              className="brand-button-primary rounded-pill px-4 py-2.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-60"
+              className="brand-button-primary flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-60"
+              aria-label="Send message"
             >
-              {isRestoring ? "Loading..." : isSending ? "Sending..." : "Send"}
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <path
+                  d="M3.75 9H14.25M14.25 9L9.5 4.25M14.25 9L9.5 13.75"
+                  stroke="white"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </button>
           </div>
+
+          <p className="min-h-[18px] px-1 pt-2 text-left text-[11px] text-ink-light" aria-live="polite">
+            {error ?? (isRestoring ? "Restoring your conversation..." : " ")}
+          </p>
         </form>
       </div>
     </section>

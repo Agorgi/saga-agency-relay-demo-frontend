@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export type ChatRole = "user" | "assistant";
 export type ChatMode = "autonomous" | "holding";
@@ -32,12 +32,26 @@ type WebChatHistoryResponse = {
 };
 
 export const CONVERSATION_STORAGE_KEY = "saga-web-chat-conversation-id";
-export const DEFAULT_CHAT_DESCRIPTION =
-  "Tell Saga what you're producing, where it's happening, and the creative help you need.";
-export const DEFAULT_CHAT_PLACEHOLDER =
-  "Tell Saga what you're making, where it's happening, and the kind of help you need...";
+export const WEB_CHAT_RESET_EVENT = "saga:web-chat-reset";
+export const WEB_CHAT_RESET_REQUEST_KEY = "saga-web-chat-reset-requested";
+export const WEB_CHAT_SUPPRESS_RESTORE_KEY = "saga-web-chat-suppress-restore";
+export const SAGASAN_DISPLAY_NAME = "Sagasan";
+export const SAGASAN_AVATAR_SRC = "/branding/sagasan-contact.png";
+export const DEFAULT_CHAT_DESCRIPTION = "";
+export const DEFAULT_CHAT_PLACEHOLDER = "Message Sagasan...";
 export const DEFAULT_WELCOME_MESSAGE =
-  "Hi - I'm Saga. Tell me what you're producing, where it's happening, and the kind of creative help you need.";
+  "Hi, I'm Sagasan. Tell me what you're producing and I'll help shape the brief.";
+
+export function requestWebChatReset() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(CONVERSATION_STORAGE_KEY);
+  window.sessionStorage.setItem(WEB_CHAT_SUPPRESS_RESTORE_KEY, "1");
+  window.sessionStorage.setItem(WEB_CHAT_RESET_REQUEST_KEY, `${Date.now()}`);
+  window.dispatchEvent(new CustomEvent(WEB_CHAT_RESET_EVENT));
+}
 
 function createInitialMessages(welcomeMessage: string): ChatEntry[] {
   return [
@@ -62,6 +76,26 @@ export function useWebChat({
   const [messages, setMessages] = useState<ChatEntry[]>(() =>
     createInitialMessages(welcomeMessage),
   );
+
+  const resetChatState = useCallback(() => {
+    setConversationId(null);
+    setDraft("");
+    setError(null);
+    setIsSending(false);
+    setMessages(createInitialMessages(welcomeMessage));
+  }, [welcomeMessage]);
+
+  useEffect(() => {
+    function handleReset() {
+      resetChatState();
+      setIsRestoring(false);
+    }
+
+    window.addEventListener(WEB_CHAT_RESET_EVENT, handleReset);
+    return () => {
+      window.removeEventListener(WEB_CHAT_RESET_EVENT, handleReset);
+    };
+  }, [resetChatState]);
 
   useEffect(() => {
     let cancelled = false;
@@ -114,6 +148,13 @@ export function useWebChat({
 
     async function bootstrap() {
       try {
+        if (window.sessionStorage.getItem(WEB_CHAT_SUPPRESS_RESTORE_KEY) === "1") {
+          if (!cancelled) {
+            resetChatState();
+          }
+          return;
+        }
+
         const storedConversationId = window.localStorage.getItem(
           CONVERSATION_STORAGE_KEY,
         );
@@ -126,7 +167,7 @@ export function useWebChat({
         }
       } catch {
         if (!cancelled) {
-          setMessages(createInitialMessages(welcomeMessage));
+          resetChatState();
         }
       } finally {
         if (!cancelled) {
@@ -140,7 +181,7 @@ export function useWebChat({
     return () => {
       cancelled = true;
     };
-  }, [welcomeMessage]);
+  }, [resetChatState, welcomeMessage]);
 
   async function submitCurrentDraft() {
     const message = draft.trim();
@@ -181,6 +222,8 @@ export function useWebChat({
         return false;
       }
 
+      window.sessionStorage.removeItem(WEB_CHAT_SUPPRESS_RESTORE_KEY);
+      window.sessionStorage.removeItem(WEB_CHAT_RESET_REQUEST_KEY);
       window.localStorage.setItem(CONVERSATION_STORAGE_KEY, data.conversationId);
       setConversationId(data.conversationId);
       setMessages((current) => [
