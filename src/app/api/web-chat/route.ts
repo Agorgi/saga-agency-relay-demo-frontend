@@ -236,8 +236,8 @@ export async function POST(req: NextRequest) {
         sessionPersona: persona,
         assistantMeta: {
           persona,
-          route: null,
-          nextStep: null,
+          route: holdingReply.nextStep?.route ?? null,
+          nextStep: holdingReply.nextStep,
           extractedFields: holdingReply.extractedFields,
           operation: holdingReply.diagnostics.operation,
           selectedReplySource: "holding_template",
@@ -256,6 +256,7 @@ export async function POST(req: NextRequest) {
         turn,
         mode: "holding",
         sessionCookieValue,
+        nextStep: holdingReply.nextStep,
       });
     }
 

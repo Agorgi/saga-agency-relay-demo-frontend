@@ -328,3 +328,29 @@ test("web chat POST stays up without database env vars", async () => {
   assert.equal(data.mode, "holding");
   assert.match(data.reply, /what are you hosting|what city should i anchor|what are you planning to host/i);
 });
+
+test("holding mode keeps the next-step handoff when the brief is routeable", async () => {
+  process.env.DATABASE_URL = TEST_DATABASE_URL;
+  process.env.POSTGRES_URL_NON_POOLING = TEST_DATABASE_URL;
+  process.env.LLM_MODE = "mock_active";
+  process.env.OPENAI_API_KEY = "";
+  process.env.WEB_CHAT_AUTONOMOUS_RESPONSES_ENABLED = "";
+
+  const response = await POST(
+    createRequest({
+      message:
+        "I want to throw a 100-person anime picnic in Silver Lake next month with a playful neon vibe.",
+    }),
+  );
+
+  const data = (await response.json()) as {
+    mode: string;
+    nextStep?: { route?: string; prefill?: { city?: string; projectIdea?: string } };
+  };
+
+  assert.equal(response.status, 200);
+  assert.equal(data.mode, "holding");
+  assert.equal(data.nextStep?.route, "/projects/new");
+  assert.equal(data.nextStep?.prefill?.city, "Silver Lake");
+  assert.match(data.nextStep?.prefill?.projectIdea || "", /anime picnic/i);
+});
