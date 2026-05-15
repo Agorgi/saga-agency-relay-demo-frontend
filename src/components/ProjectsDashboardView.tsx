@@ -12,6 +12,51 @@ export function ProjectsDashboardView() {
   const { openProject, openPostProject, goRelay } = useSagaNavigation();
   const isDark = useThemeMode() === "dark";
 
+  const getStageLabel = (projectId: string, projectStatus: string) => {
+    const projectConversations = conversations.filter((conversation) => conversation.projectId === projectId);
+    if (projectConversations.some((conversation) => conversation.status === "booked")) {
+      return "booked";
+    }
+    if (
+      projectStatus === "booking" ||
+      projectConversations.some((conversation) => conversation.status === "terms-ready")
+    ) {
+      return "ready to confirm";
+    }
+    if (projectStatus === "outreach") {
+      return "waiting on reply";
+    }
+    return "needs picks";
+  };
+
+  const getPrimaryAction = (projectId: string, stageLabel: string) => {
+    if (stageLabel === "waiting on reply") {
+      return {
+        label: "Open relay",
+        onClick: () => goRelay(projectId),
+      };
+    }
+
+    if (stageLabel === "ready to confirm") {
+      return {
+        label: "Review terms",
+        onClick: () => goRelay(projectId),
+      };
+    }
+
+    if (stageLabel === "booked") {
+      return {
+        label: "View plan",
+        onClick: () => openProject(projectId),
+      };
+    }
+
+    return {
+      label: "See picks",
+      onClick: () => openProject(projectId),
+    };
+  };
+
   return (
     <div className={`brand-page absolute inset-0 overflow-y-auto px-4 pb-32 pt-24 md:px-6 md:pb-16 md:pt-28 lg:px-8 ${
       isDark ? "text-white" : "text-ink"
@@ -27,11 +72,17 @@ export function ProjectsDashboardView() {
           <div className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr] xl:items-end">
             <div>
               <p className={`text-[10px] uppercase tracking-[0.3em] ${isDark ? "text-white/42" : "text-ink-light"}`}>Client dashboard</p>
-              <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl">
-                Every active project, relay thread, shortlist, and booking step in one view.
+              <h1
+                data-copy-lint="header"
+                className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl"
+              >
+                What you&apos;re working on.
               </h1>
-              <p className={`mt-4 max-w-[720px] text-sm leading-7 ${isDark ? "text-white/64" : "text-ink-light"}`}>
-                Saga keeps the entire production pipeline in one place: brief, match, relay, terms, and booked talent.
+              <p
+                data-copy-lint="subhead"
+                className={`mt-4 max-w-[720px] text-sm leading-7 ${isDark ? "text-white/64" : "text-ink-light"}`}
+              >
+                Tap a project to act.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 xl:justify-end">
@@ -55,6 +106,8 @@ export function ProjectsDashboardView() {
           {projects.map((project, index) => {
             const activeConversations = conversations.filter((conversation) => conversation.projectId === project.id);
             const openRoles = project.requiredRoles.filter((role) => role.status !== "booked").length;
+            const stageLabel = getStageLabel(project.id, project.status);
+            const primaryAction = getPrimaryAction(project.id, stageLabel);
 
             return (
               <motion.button
@@ -76,7 +129,7 @@ export function ProjectsDashboardView() {
                     <span className={`rounded-pill border px-3 py-1.5 text-xs font-medium ${
                       isDark ? "border-white/10 bg-white/8 text-white/76" : "border-[#7bc6ff]/24 bg-white text-ink"
                     }`}>
-                      {project.status}
+                      {stageLabel}
                     </span>
                   </div>
                   <p className={`mt-3 text-sm leading-7 ${isDark ? "text-white/62" : "text-ink-light"}`}>{project.description}</p>
@@ -90,7 +143,19 @@ export function ProjectsDashboardView() {
 
                 <div className="border-t border-black/8 px-5 py-4">
                   <p className="text-[10px] uppercase tracking-[0.22em] text-ink-light">Next action</p>
-                  <p className="mt-2 text-sm font-medium text-ink">{getNextProjectAction(project, conversations)}</p>
+                  <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm font-medium text-ink">{getNextProjectAction(project, conversations)}</p>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        primaryAction.onClick();
+                      }}
+                      className="brand-button-primary rounded-pill px-4 py-2.5 text-sm font-medium"
+                    >
+                      {primaryAction.label}
+                    </button>
+                  </div>
                 </div>
               </motion.button>
             );

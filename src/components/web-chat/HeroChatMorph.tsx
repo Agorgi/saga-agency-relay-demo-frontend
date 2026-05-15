@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import { PERSONA_OPTIONS } from "@/lib/sagasanPersonas";
 import {
   DEFAULT_CHAT_PLACEHOLDER,
   DEFAULT_WELCOME_MESSAGE,
@@ -26,6 +27,7 @@ export function HeroChatMorph({ onExpandedChange }: HeroChatMorphProps) {
     isRestoring,
     isSending,
     messages,
+    persona,
     setDraft,
     submitCurrentDraft,
   } = useWebChat({ welcomeMessage: DEFAULT_WELCOME_MESSAGE });
@@ -91,6 +93,18 @@ export function HeroChatMorph({ onExpandedChange }: HeroChatMorphProps) {
     await submitCurrentDraft();
   }
 
+  async function handlePersonaClick(option: (typeof PERSONA_OPTIONS)[number]) {
+    if (isRestoring || isSending) {
+      return;
+    }
+
+    setIsExpanded(true);
+    await submitCurrentDraft({
+      message: option.firstTurn,
+      persona: option.persona,
+    });
+  }
+
   const composerStatus = error || (isRestoring ? "Restoring your conversation..." : " ");
 
   return (
@@ -127,7 +141,7 @@ export function HeroChatMorph({ onExpandedChange }: HeroChatMorphProps) {
                     {SAGASAN_DISPLAY_NAME}
                   </p>
                   <p className="truncate text-xs text-ink-light">
-                    {conversationId ? "Live producer conversation" : "Ready to help shape the brief"}
+                    {conversationId ? "Live Saga chat" : "Ready when you are"}
                   </p>
                 </div>
                 <span className="rounded-pill bg-white/70 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-light">
@@ -227,46 +241,65 @@ export function HeroChatMorph({ onExpandedChange }: HeroChatMorphProps) {
             transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
             className="w-full"
           >
-            <form
-              onSubmit={handleCollapsedSubmit}
-              className="brand-surface-strong mx-auto flex w-full max-w-[620px] items-center gap-3 rounded-[28px] border border-[color:var(--surface-border)] px-4 py-3 shadow-[0_20px_60px_rgba(64,44,128,0.12)]"
-            >
-              <div className="min-w-0 flex-1">
-                <label className="sr-only" htmlFor="hero-chat-launcher">
-                  Describe your project
-                </label>
-                <input
-                  id="hero-chat-launcher"
-                  type="text"
-                  value={draft}
-                  placeholder="Describe the project. Saga builds the team."
-                  disabled={isRestoring || isSending}
-                  onChange={(event) => {
-                    setDraft(event.target.value);
-                  }}
-                  className="w-full bg-transparent text-[15px] font-light tracking-tight text-ink outline-none placeholder:text-ink-light sm:text-base disabled:cursor-not-allowed disabled:opacity-70"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isRestoring || isSending || draft.trim().length === 0}
-                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition ${
-                  draft.trim().length > 0 ? "brand-button-primary" : "brand-surface-inset"
-                } disabled:cursor-not-allowed disabled:opacity-60`}
-                aria-label="Start project chat"
+            <div className="mx-auto flex w-full max-w-[720px] flex-col items-center gap-4">
+              <form
+                onSubmit={handleCollapsedSubmit}
+                className="brand-surface-strong flex w-full items-center gap-3 rounded-[28px] border border-[color:var(--surface-border)] px-4 py-3 shadow-[0_20px_60px_rgba(64,44,128,0.12)]"
               >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path
-                    d="M3 8h10m0 0L9 4m4 4L9 12"
-                    stroke={draft.trim().length > 0 ? "#ffffff" : "#8f84ad"}
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                <div className="min-w-0 flex-1">
+                  <label className="sr-only" htmlFor="hero-chat-launcher">
+                    Start with Sagasan
+                  </label>
+                  <input
+                    id="hero-chat-launcher"
+                    type="text"
+                    value={draft}
+                    placeholder="Tell Sagasan what you need."
+                    disabled={isRestoring || isSending}
+                    onChange={(event) => {
+                      setDraft(event.target.value);
+                    }}
+                    className="w-full bg-transparent text-[15px] font-light tracking-tight text-ink outline-none placeholder:text-ink-light sm:text-base disabled:cursor-not-allowed disabled:opacity-70"
                   />
-                </svg>
-              </button>
-            </form>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isRestoring || isSending || draft.trim().length === 0}
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition ${
+                    draft.trim().length > 0 ? "brand-button-primary" : "brand-surface-inset"
+                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                  aria-label="Start project chat"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path
+                      d="M3 8h10m0 0L9 4m4 4L9 12"
+                      stroke={draft.trim().length > 0 ? "#ffffff" : "#8f84ad"}
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              </form>
+
+              {!persona ? (
+                <div className="flex w-full flex-wrap items-center justify-center gap-2">
+                  {PERSONA_OPTIONS.map((option) => (
+                    <button
+                      key={option.persona}
+                      type="button"
+                      onClick={() => {
+                        void handlePersonaClick(option);
+                      }}
+                      className="brand-chip rounded-pill px-4 py-2 text-sm font-medium text-ink-light transition hover:text-ink"
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

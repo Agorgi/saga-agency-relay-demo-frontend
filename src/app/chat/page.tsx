@@ -8,13 +8,17 @@ export default function ChatPage() {
           <p className="text-[10px] font-medium uppercase tracking-[0.24em] text-ink-light">
             Talk to Saga
           </p>
-          <h1 className="mt-2 text-3xl font-medium tracking-tight text-ink sm:text-4xl">
-            Start your project in chat
+          <h1
+            data-copy-lint="header"
+            className="mt-2 text-3xl font-medium tracking-tight text-ink sm:text-4xl"
+          >
+            Start with Sagasan.
           </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-ink-light">
-            Tell Saga what you&apos;re making, where it&apos;s happening, and the creative help
-            you need. Depending on availability, Saga may respond right away or log your message
-            for a quick follow-up from the team.
+          <p
+            data-copy-lint="subhead"
+            className="mt-3 max-w-2xl text-sm leading-6 text-ink-light"
+          >
+            One turn at once.
           </p>
         </div>
         <ChatWidget />

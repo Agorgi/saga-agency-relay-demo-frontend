@@ -4,6 +4,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
+import { requestWebChatReset } from "@/components/web-chat/useWebChat";
 import { scoreTalentForProject } from "@/data/sagaAgencyData";
 import { useSagaNavigation } from "@/lib/useSagaNavigation";
 import { useThemeMode } from "@/lib/useThemeMode";
@@ -21,7 +22,7 @@ export function ExploreTalentView() {
   const updateTalentFilters = useAgencyStore((state) => state.updateTalentFilters);
   const resetTalentFilters = useAgencyStore((state) => state.resetTalentFilters);
   const addTalentToShortlist = useAgencyStore((state) => state.addTalentToShortlist);
-  const { openTalentProfile, openPostProject, openProject } = useSagaNavigation();
+  const { goHome, openTalentProfile, openProject } = useSagaNavigation();
   const isDark = useThemeMode() === "dark";
 
   const projectSlug = searchParams.get("project");
@@ -140,93 +141,36 @@ export function ExploreTalentView() {
 
   const shortlistTarget = activeProject || projects.find((project) => project.id === selectedProjectId) || null;
   const gridCards = derivedCards.slice(0, 18);
+  const topPicks = gridCards.slice(0, 4);
 
   return (
     <div className={`brand-page absolute inset-0 overflow-y-auto px-4 pb-32 pt-24 md:px-6 md:pb-16 md:pt-28 lg:px-8 ${
       isDark ? "text-white" : "text-ink"
     }`}>
       <div className="mx-auto max-w-[1260px] space-y-6">
-        <div className="space-y-4 lg:hidden">
-          <section
-            className={`rounded-[28px] p-4 ${
-              isDark ? "brand-surface-deep" : "brand-surface-strong"
-            }`}
-          >
-            <p className={`text-[10px] uppercase tracking-[0.26em] ${isDark ? "text-white/42" : "text-ink-light"}`}>
-              {activeProject ? "Matched to your brief" : "Explore talent"}
-            </p>
-            <p className={`mt-2 text-sm leading-6 ${isDark ? "text-white/68" : "text-ink-light"}`}>
-              Search, narrow, and shortlist in a standard browse view without leaving the page.
-            </p>
-
-            {shortlistTarget ? (
-              <div className={`mt-4 inline-flex items-center gap-2 rounded-pill border px-3 py-2 text-xs ${
-                isDark ? "border-white/10 bg-white/8 text-white/78" : "border-[#7bc6ff]/24 bg-[#edf5ff] text-[#173250]"
-              }`}>
-                <span className="font-medium">Shortlisting into</span>
-                <span>{shortlistTarget.title}</span>
-              </div>
-            ) : null}
-
-            <label className={`mt-4 flex items-center gap-3 rounded-[20px] border px-4 py-3 ${
-              isDark ? "border-white/10 bg-white/8" : "border-black/8 bg-white"
-            }`}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className={isDark ? "text-white/40" : "text-ink-light"}>
-                <circle cx="7" cy="7" r="4.7" stroke="currentColor" strokeWidth="1.4" />
-                <path d="M10.5 10.5 14 14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-              </svg>
-              <input
-                value={talentSearchQuery}
-                onChange={(event) => setTalentSearchQuery(event.target.value)}
-                placeholder="Find a photographer for a J-fashion shoot in LA"
-                className={`w-full bg-transparent text-sm outline-none ${
-                  isDark ? "text-white placeholder:text-white/30" : "text-ink placeholder:text-ink-light"
-                }`}
-              />
-            </label>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              <FilterSelect
-                value={talentFilters.role}
-                onChange={(value) => updateTalentFilters({ role: value })}
-                options={roleOptions}
-                dark={isDark}
-              />
-              <FilterSelect
-                value={talentFilters.city}
-                onChange={(value) => updateTalentFilters({ city: value })}
-                options={cityOptions}
-                dark={isDark}
-              />
-              <button
-                onClick={resetTalentFilters}
-                className={`rounded-pill border px-4 py-3 text-sm font-medium ${
-                  isDark ? "border-white/10 bg-white/8 text-white/70" : "border-black/8 bg-white text-ink"
-                }`}
-              >
-                Reset
-              </button>
-            </div>
-          </section>
-        </div>
-
         <motion.section
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`hidden overflow-hidden rounded-[32px] p-5 sm:p-7 lg:block ${
+          className={`overflow-hidden rounded-[32px] p-5 sm:p-7 ${
             isDark ? "brand-surface-deep text-white" : "brand-surface-strong text-ink"
           }`}
         >
-          <div className="grid gap-8 xl:grid-cols-[1.08fr_0.92fr] xl:items-end">
+          <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr] xl:items-end">
             <div>
               <p className={`text-[10px] uppercase tracking-[0.3em] ${isDark ? "text-white/42" : "text-ink-light"}`}>
-                {activeProject ? "Matched to your brief" : "Explore talent"}
+                Discover
               </p>
-              <h1 className="mt-3 text-[2.3rem] font-semibold leading-[0.96] tracking-tight sm:text-5xl">
-                Find photographers, producers, stylists, videographers, creators, vendors, and fandom-native talent.
+              <h1
+                data-copy-lint="header"
+                className="mt-3 text-[2.3rem] font-semibold leading-[0.96] tracking-tight sm:text-5xl"
+              >
+                Talent in your world.
               </h1>
-              <p className={`mt-4 max-w-[720px] text-sm leading-7 sm:text-base ${isDark ? "text-white/64" : "text-ink-light"}`}>
-                Saga ranks talent by portfolio fit, style fit, category experience, location, budget, availability, and distribution value in a cleaner browse-first layout.
+              <p
+                data-copy-lint="subhead"
+                className={`mt-4 max-w-[720px] text-sm leading-7 sm:text-base ${isDark ? "text-white/64" : "text-ink-light"}`}
+              >
+                Picks shaped by context.
               </p>
               {shortlistTarget ? (
                 <div className={`mt-5 inline-flex items-center gap-2 rounded-pill border px-4 py-2 text-sm ${
@@ -239,12 +183,31 @@ export function ExploreTalentView() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <InfoChip label="Portfolio fit" value="Visual quality + style overlap" dark={isDark} />
-              <InfoChip label="Budget fit" value="Range and scope alignment" dark={isDark} />
-              <InfoChip label="Distribution score" value="Audience, trust, cultural pull" dark={isDark} />
-              <InfoChip label="Availability" value="Likelihood to book quickly" dark={isDark} />
+              <InfoChip label="Portfolio fit" value="Visual style overlap." dark={isDark} />
+              <InfoChip label="Budget fit" value="Rate and scope match." dark={isDark} />
+              <InfoChip label="Audience fit" value="Cultural pull matters." dark={isDark} />
+              <InfoChip label="Availability" value="Who can move now." dark={isDark} />
             </div>
           </div>
+
+          {!activeProject ? (
+            <div className={`mt-6 rounded-[24px] border px-4 py-4 ${
+              isDark ? "border-white/10 bg-white/8" : "border-black/8 bg-white"
+            }`}>
+              <p className={`text-sm leading-7 ${isDark ? "text-white/68" : "text-ink-light"}`}>
+                Tell Saga what you&apos;re planning.
+              </p>
+              <button
+                onClick={() => {
+                  requestWebChatReset("host");
+                  goHome();
+                }}
+                className="brand-button-primary mt-3 rounded-pill px-4 py-2.5 text-sm font-medium"
+              >
+                Open chat
+              </button>
+            </div>
+          ) : null}
 
           <div className="mt-6 flex flex-col gap-3">
             <label className={`flex items-center gap-3 rounded-[24px] border px-4 py-3 ${
@@ -264,75 +227,93 @@ export function ExploreTalentView() {
               />
             </label>
 
-            <div className="flex flex-wrap gap-2">
-              <FilterSelect
-                value={talentFilters.role}
-                onChange={(value) => updateTalentFilters({ role: value })}
-                options={roleOptions}
-                dark={isDark}
-              />
-              <FilterSelect
-                value={talentFilters.city}
-                onChange={(value) => updateTalentFilters({ city: value })}
-                options={cityOptions}
-                dark={isDark}
-              />
-              <FilterSelect
-                value={talentFilters.projectType}
-                onChange={(value) => updateTalentFilters({ projectType: value as typeof talentFilters.projectType })}
-                options={["All", "Brand campaign", "Photoshoot", "Video shoot", "Social content package", "Music video", "Product launch", "Pop-up / activation", "Fan event", "Editorial shoot", "Creator collaboration", "Live performance", "Other"]}
-                dark={isDark}
-              />
-              <FilterSelect
-                value={talentFilters.tag}
-                onChange={(value) => updateTalentFilters({ tag: value })}
-                options={tagOptions}
-                dark={isDark}
-              />
-              <FilterSelect
-                value={talentFilters.availability}
-                onChange={(value) => updateTalentFilters({ availability: value as typeof talentFilters.availability })}
-                options={["all", "available", "maybe", "busy", "unknown"]}
-                dark={isDark}
-              />
-              <button
-                onClick={resetTalentFilters}
-                className={`rounded-pill border px-4 py-3 text-sm font-medium ${
-                  isDark ? "border-white/10 bg-white/8 text-white/70" : "border-black/8 bg-white text-ink"
-                }`}
-              >
-                Reset
-              </button>
-              {shortlistTarget ? (
+            <details className="group">
+              <summary className={`flex w-fit cursor-pointer list-none items-center gap-2 rounded-pill border px-4 py-3 text-sm font-medium ${
+                isDark ? "border-white/10 bg-white/8 text-white/72" : "border-black/8 bg-white text-ink"
+              }`}>
+                Narrow this
+              </summary>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <FilterSelect
+                  value={talentFilters.role}
+                  onChange={(value) => updateTalentFilters({ role: value })}
+                  options={roleOptions}
+                  dark={isDark}
+                />
+                <FilterSelect
+                  value={talentFilters.city}
+                  onChange={(value) => updateTalentFilters({ city: value })}
+                  options={cityOptions}
+                  dark={isDark}
+                />
+                <FilterSelect
+                  value={talentFilters.projectType}
+                  onChange={(value) => updateTalentFilters({ projectType: value as typeof talentFilters.projectType })}
+                  options={["All", "Brand campaign", "Photoshoot", "Video shoot", "Social content package", "Music video", "Product launch", "Pop-up / activation", "Fan event", "Editorial shoot", "Creator collaboration", "Live performance", "Other"]}
+                  dark={isDark}
+                />
+                <FilterSelect
+                  value={talentFilters.tag}
+                  onChange={(value) => updateTalentFilters({ tag: value })}
+                  options={tagOptions}
+                  dark={isDark}
+                />
+                <FilterSelect
+                  value={talentFilters.availability}
+                  onChange={(value) => updateTalentFilters({ availability: value as typeof talentFilters.availability })}
+                  options={["all", "available", "maybe", "busy", "unknown"]}
+                  dark={isDark}
+                />
                 <button
-                  onClick={() => openProject(shortlistTarget.id)}
-                  className="rounded-pill bg-[linear-gradient(90deg,#ff4f9e,#687dff)] px-4 py-3 text-sm font-medium text-white"
+                  onClick={resetTalentFilters}
+                  className={`rounded-pill border px-4 py-3 text-sm font-medium ${
+                    isDark ? "border-white/10 bg-white/8 text-white/70" : "border-black/8 bg-white text-ink"
+                  }`}
                 >
-                  Open Workspace
+                  Reset
                 </button>
-              ) : (
-                <button
-                  onClick={openPostProject}
-                  className="rounded-pill bg-[linear-gradient(90deg,#ff4f9e,#687dff)] px-4 py-3 text-sm font-medium text-white"
-                >
-                  Post a Project
-                </button>
-              )}
-            </div>
+                {shortlistTarget ? (
+                  <button
+                    onClick={() => openProject(shortlistTarget.id)}
+                    className="brand-button-primary rounded-pill px-4 py-3 text-sm font-medium"
+                  >
+                    Open workspace
+                  </button>
+                ) : null}
+              </div>
+            </details>
           </div>
         </motion.section>
 
         <section className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.26em] text-ink-light">Top matches</p>
+              <p className="text-[10px] uppercase tracking-[0.26em] text-ink-light">Picks for you</p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">
-                Browse talent in a standard card layout.
+                Picks for you.
               </h2>
             </div>
             <div className="rounded-pill border border-black/8 bg-white/70 px-4 py-2 text-xs font-medium text-ink-light shadow-sm">
               {gridCards.length} surfaced
             </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+            {topPicks.map((card) => (
+              <button
+                key={`pick-${card.id}`}
+                onClick={() => openTalentProfile(card.id, shortlistTarget?.id)}
+                className="overflow-hidden rounded-[24px] border border-black/8 bg-white/88 text-left shadow-[0_16px_40px_rgba(17,17,17,0.06)]"
+              >
+                <div className="relative h-[180px]">
+                  <Image src={card.portfolioImages[0]} alt={card.name} fill sizes="(max-width: 1280px) 50vw, 25vw" className="object-cover" />
+                </div>
+                <div className="space-y-2 p-4">
+                  <p className="text-lg font-semibold tracking-tight text-ink">{card.name}</p>
+                  <p className="text-sm text-ink-light">{card.whySagaMatched[0]}</p>
+                </div>
+              </button>
+            ))}
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -370,9 +351,9 @@ export function ExploreTalentView() {
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">
-                  <ScorePill label="Portfolio" value={card.portfolioFitScore} compact />
-                  <ScorePill label="Budget" value={card.budgetFitScore} compact />
-                  <ScorePill label="Audience" value={card.distributionScore} compact />
+                  <ScorePill label="Portfolio" value={card.portfolioFitScore} compact title="How closely the work matches the visual brief." />
+                  <ScorePill label="Budget" value={card.budgetFitScore} compact title="How well the rate range fits the ask." />
+                  <ScorePill label="Audience" value={card.distributionScore} compact title="How much cultural pull this person can add." />
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -448,13 +429,18 @@ function ScorePill({
   label,
   value,
   compact = false,
+  title,
 }: {
   label: string;
   value: number;
   compact?: boolean;
+  title?: string;
 }) {
   return (
-    <div className={`rounded-[18px] ${compact ? "bg-canvas" : "bg-white/[0.06]"} px-3 py-2`}>
+    <div
+      title={title}
+      className={`rounded-[18px] ${compact ? "bg-canvas" : "bg-white/[0.06]"} px-3 py-2`}
+    >
       <p className={`text-[10px] uppercase tracking-[0.18em] ${compact ? "text-ink-light" : "text-white/34"}`}>
         {label}
       </p>

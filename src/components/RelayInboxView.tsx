@@ -88,11 +88,17 @@ export function RelayInboxView() {
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
               <p className={`text-[10px] uppercase tracking-[0.3em] ${isDark ? "text-white/42" : "text-ink-light"}`}>Saga Relay</p>
-              <h1 className={`mt-3 text-3xl font-semibold tracking-tight sm:text-5xl ${isDark ? "text-white" : "text-ink"}`}>
-                Live text coordination without exchanging contact info.
+              <h1
+                data-copy-lint="header"
+                className={`mt-3 text-3xl font-semibold tracking-tight sm:text-5xl ${isDark ? "text-white" : "text-ink"}`}
+              >
+                Outreach in motion.
               </h1>
-              <p className={`mt-4 max-w-[760px] text-sm leading-7 ${isDark ? "text-white/64" : "text-ink-light"}`}>
-                Saga reformats outreach, relays messages by text, extracts decisions, and turns messy replies into clear booking terms.
+              <p
+                data-copy-lint="subhead"
+                className={`mt-4 max-w-[760px] text-sm leading-7 ${isDark ? "text-white/64" : "text-ink-light"}`}
+              >
+                We text. They reply. Done.
               </p>
             </div>
             {project ? (

@@ -1,11 +1,11 @@
 import { AppFrame } from "@/components/AppFrame";
-import { FanFeedView } from "@/components/FanFeedView";
+import { ForMeView } from "@/components/ForMeView";
 
-export default function FeedPage() {
+export default function MePage() {
   return (
     <AppFrame>
       <div className="absolute inset-0">
-        <FanFeedView />
+        <ForMeView />
       </div>
     </AppFrame>
   );

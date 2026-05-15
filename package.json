@@ -13,6 +13,7 @@
     "start:demo": "next start -H 0.0.0.0 -p 3000",
     "demo:prod": "npm run build && npm run start:demo",
     "lint": "eslint .",
+    "lint:copy": "tsx scripts/lint-copy.ts",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",

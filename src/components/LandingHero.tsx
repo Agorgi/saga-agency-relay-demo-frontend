@@ -46,20 +46,18 @@ export function LandingHero() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -18 }}
                 transition={{ duration: 0.45, ease: [0.23, 1, 0.32, 1] }}
-                className="flex w-full flex-col items-center gap-7"
+                className="flex w-full flex-col items-center gap-5"
               >
-                <div className="brand-chip inline-flex rounded-pill px-4 py-2 text-[10px] font-medium tracking-[0.1em] text-ink-light sm:text-[11px]">
-                  Real creatives for real creatives
-                </div>
-
-                <h1 className="brand-display max-w-[900px] text-[2.9rem] leading-[0.92] font-semibold tracking-[-0.04em] text-ink sm:text-5xl md:text-6xl lg:text-[4.6rem] xl:text-[5rem]">
+                <h1
+                  data-copy-lint="header"
+                  className="brand-display max-w-[900px] text-[2.9rem] leading-[0.92] font-semibold tracking-[-0.04em] text-ink sm:text-5xl md:text-6xl lg:text-[4.6rem] xl:text-[5rem]"
+                >
                   Your personal creative <br className="hidden md:block" />
                   producer.
                 </h1>
 
                 <p className="max-w-[660px] text-[15px] font-light leading-7 text-ink-light sm:text-base md:text-lg">
-                  Describe your project and Saga helps build a team with the taste, talent, and
-                  cultural fluency your vision deserves.
+                  Hey — what brings you to Saga today?
                 </p>
               </motion.div>
             ) : null}
