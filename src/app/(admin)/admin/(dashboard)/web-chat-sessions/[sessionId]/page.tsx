@@ -24,6 +24,19 @@ function modeTone(mode: string | null) {
   return "border-zinc-700 bg-zinc-900 text-zinc-300";
 }
 
+function metadataValue(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.join(", ") || "none";
+  }
+  if (value && typeof value === "object") {
+    return JSON.stringify(value);
+  }
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+  return typeof value === "string" && value ? value : "none";
+}
+
 export default async function WebChatSessionDetailPage({
   params,
 }: {
@@ -116,6 +129,101 @@ export default async function WebChatSessionDetailPage({
             key={conversation.conversationId}
             className="space-y-4 rounded-lg border border-zinc-800 bg-black p-5"
           >
+            {(() => {
+              const latestAssistant = [...conversation.messages]
+                .reverse()
+                .find((message) => message.role === "assistant");
+
+              if (!latestAssistant) {
+                return null;
+              }
+
+              return (
+                <div className="grid gap-3 rounded-lg border border-zinc-800 bg-zinc-950/70 p-4 md:grid-cols-2 xl:grid-cols-4">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+                      Persona
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-100">
+                      {metadataValue(latestAssistant.persona)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+                      Route
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-100">
+                      {metadataValue(latestAssistant.route)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+                      Reply source
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-100">
+                      {metadataValue(latestAssistant.selectedReplySource)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+                      Fallback reason
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-100">
+                      {metadataValue(latestAssistant.fallbackReason)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+                      Provider state
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-100">
+                      {metadataValue(latestAssistant.providerState)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+                      Model
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-100">
+                      {metadataValue(latestAssistant.model)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+                      Configured mode
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-100">
+                      {metadataValue(latestAssistant.configuredMode)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+                      Effective mode
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-100">
+                      {metadataValue(latestAssistant.effectiveMode)}
+                    </p>
+                  </div>
+                  <div className="md:col-span-2 xl:col-span-4">
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+                      Next step
+                    </p>
+                    <pre className="mt-2 whitespace-pre-wrap break-words rounded-md border border-zinc-800 bg-black/50 p-3 text-xs leading-relaxed text-zinc-300">
+                      {metadataValue(latestAssistant.nextStep)}
+                    </pre>
+                  </div>
+                  <div className="md:col-span-2 xl:col-span-4">
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+                      Extracted fields
+                    </p>
+                    <pre className="mt-2 whitespace-pre-wrap break-words rounded-md border border-zinc-800 bg-black/50 p-3 text-xs leading-relaxed text-zinc-300">
+                      {metadataValue(latestAssistant.extractedFields)}
+                    </pre>
+                  </div>
+                </div>
+              );
+            })()}
+
             <div>
               <p className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-500">
                 Conversation

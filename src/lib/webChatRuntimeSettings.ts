@@ -1,4 +1,5 @@
 import { getDb } from "@/sms-engine/db";
+import { getConfiguredModel, normalizeRouteLlmMode } from "@/lib/sagasanAgent";
 
 const WEB_CHAT_RUNTIME_SETTING_KEY = "global";
 
@@ -124,4 +125,85 @@ export async function recordSystemHoldingFallback() {
       actorAdminSessionId: "system",
     },
   });
+}
+
+export async function getWebChatRuntimeDashboard() {
+  const db = getDb();
+  const snapshot = await getRuntimeSettingSnapshot();
+  const configuredMode = normalizeRouteLlmMode(process.env.LLM_MODE);
+  const configuredModel = getConfiguredModel();
+  const openAiConfigured = Boolean(process.env.OPENAI_API_KEY?.trim());
+  const publicLaunchGate = process.env.PUBLIC_LAUNCH_ENABLED === "true";
+
+  const recentAssistantMessages = await db.webChatMessage.findMany({
+    where: { role: "assistant" },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+    select: {
+      mode: true,
+      providerState: true,
+      fallbackReason: true,
+      selectedReplySource: true,
+      model: true,
+      configuredMode: true,
+      effectiveMode: true,
+      createdAt: true,
+    },
+  });
+
+  const recentAssistantCount = recentAssistantMessages.length;
+  const recentFallbackCount = recentAssistantMessages.filter(
+    (message) => message.selectedReplySource !== "openai_selected",
+  ).length;
+  const fallbackRate = recentAssistantCount
+    ? recentFallbackCount / recentAssistantCount
+    : 0;
+  const latest = recentAssistantMessages[0] || null;
+
+  const blockingGate = !snapshot.envEnabled
+    ? "Environment ceiling is off."
+    : !snapshot.requestedAutonomousEnabled
+      ? "Runtime toggle is set to holding."
+      : configuredMode !== "active_live"
+        ? "LLM_MODE is active_mock."
+        : !openAiConfigured
+          ? "OPENAI_API_KEY is missing."
+          : latest?.providerState === "openai_called_failed"
+            ? "OpenAI call failed and deterministic fallback was selected."
+            : latest?.providerState === "openai_called_validation_failed"
+              ? "OpenAI responded but the reply failed validation."
+              : null;
+
+  const effectiveMode = !snapshot.effectiveAutonomousEnabled
+    ? "holding"
+    : configuredMode === "active_live" && openAiConfigured
+      ? "active_live"
+      : "active_mock";
+
+  return {
+    configuredModel,
+    configuredMode,
+    effectiveMode,
+    envEnabled: snapshot.envEnabled,
+    requestedAutonomousEnabled: snapshot.requestedAutonomousEnabled,
+    effectiveAutonomousEnabled: snapshot.effectiveAutonomousEnabled,
+    openAiConfigured,
+    openAiActuallyCalled:
+      latest?.providerState === "openai_called_succeeded" ||
+      latest?.providerState === "openai_called_failed" ||
+      latest?.providerState === "openai_called_validation_failed",
+    fallbackReason: latest?.fallbackReason || null,
+    providerState: latest?.providerState || null,
+    blockingGate,
+    activeLiveAllowed:
+      snapshot.effectiveAutonomousEnabled &&
+      configuredMode === "active_live" &&
+      openAiConfigured,
+    shadowMode: configuredMode !== "active_live",
+    publicLaunchGate,
+    recentAssistantCount,
+    recentFallbackCount,
+    fallbackRate,
+    lastObservedAt: latest?.createdAt || null,
+  };
 }

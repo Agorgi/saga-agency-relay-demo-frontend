@@ -216,7 +216,7 @@ export default async function ObservabilityPage() {
               ["Recent successes", summary.llm.recentSuccessCount],
               ["Recent failures", summary.llm.recentFailureCount],
               ["Recent fallbacks", summary.llm.recentFallbackCount],
-              ["Fallback rate", summary.llm.fallbackRate],
+              ["Fallback rate", formatFallbackRate(summary.llm.fallbackRate)],
             ]}
           />
           <div className="mt-4">
@@ -557,4 +557,16 @@ export default async function ObservabilityPage() {
       </div>
     </div>
   );
+}
+
+function formatFallbackRate(value: number | string) {
+  if (typeof value !== "number") {
+    return String(value);
+  }
+
+  if (value <= 1) {
+    return `${Math.round(value * 100)}%`;
+  }
+
+  return `${Math.round(value)}%`;
 }

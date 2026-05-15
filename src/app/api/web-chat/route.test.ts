@@ -24,6 +24,21 @@ async function resetWebChatTables() {
   await prisma.$disconnect();
 }
 
+async function readLatestAssistantMessage() {
+  process.env.DATABASE_URL = TEST_DATABASE_URL;
+  const prisma = new PrismaClient({
+    datasourceUrl: TEST_DATABASE_URL,
+  });
+
+  const message = await prisma.webChatMessage.findFirst({
+    where: { role: "assistant" },
+    orderBy: { createdAt: "desc" },
+  });
+
+  await prisma.$disconnect();
+  return message;
+}
+
 function createRequest(body: Record<string, unknown>) {
   return new NextRequest("http://localhost:3000/api/web-chat", {
     method: "POST",
@@ -63,6 +78,65 @@ test("web chat POST returns an autonomous mock reply in mock mode", async () => 
   assert.equal(data.mode, "autonomous");
   assert.ok(data.reply.length > 0);
   assert.equal(data.nextStep?.route, "/projects/new");
+});
+
+test("persona chips pass structured hints through the route", async () => {
+  process.env.LLM_MODE = "mock_active";
+  process.env.OPENAI_API_KEY = "";
+
+  const cases = [
+    {
+      label: "host",
+      personaHint: "host",
+      message: "I want to host something.",
+      expectedPersona: "host",
+      expectedOperation: "sagasan_host_intake",
+    },
+    {
+      label: "creative",
+      personaHint: "creative",
+      message: "I'm a creative looking for work.",
+      expectedPersona: "creative",
+      expectedOperation: "sagasan_creative_intake",
+    },
+    {
+      label: "venue",
+      personaHint: "venue",
+      message: "I run a space.",
+      expectedPersona: "venue",
+      expectedOperation: "sagasan_venue_intake",
+    },
+    {
+      label: "fan",
+      personaHint: "fan",
+      message: "I'm here to find cool stuff.",
+      expectedPersona: "fan",
+      expectedOperation: "sagasan_fan_intake",
+    },
+  ] as const;
+
+  for (const scenario of cases) {
+    await resetWebChatTables();
+    const response = await POST(
+      createRequest({
+        message: scenario.message,
+        personaHint: scenario.personaHint,
+      }),
+    );
+
+    const data = (await response.json()) as {
+      persona: string | null;
+      reply: string;
+    };
+
+    assert.equal(response.status, 200, scenario.label);
+    assert.equal(data.persona, scenario.expectedPersona, scenario.label);
+
+    const assistantMessage = await readLatestAssistantMessage();
+    assert.ok(assistantMessage, scenario.label);
+    assert.equal(assistantMessage?.persona, scenario.expectedPersona, scenario.label);
+    assert.equal(assistantMessage?.operation, scenario.expectedOperation, scenario.label);
+  }
 });
 
 test("web chat POST hits OpenAI in live mode when a key is present", async () => {
@@ -163,4 +237,26 @@ test("web chat POST hits OpenAI in live mode when a key is present", async () =>
       server.close((error) => (error ? reject(error) : resolve()));
     });
   }
+});
+
+test("live mode without a key falls back to deterministic Sagasan copy", async () => {
+  process.env.LLM_MODE = "active_live";
+  process.env.OPENAI_API_KEY = "";
+
+  const response = await POST(
+    createRequest({
+      message: "I want to throw an anime picnic in Silver Lake next month.",
+      personaHint: "host",
+    }),
+  );
+
+  const data = (await response.json()) as {
+    reply: string;
+    mode: string;
+  };
+
+  assert.equal(response.status, 200);
+  assert.equal(data.mode, "autonomous");
+  assert.match(data.reply, /what city|what are you planning|draft event brief/i);
+  assert.doesNotMatch(data.reply, /we['’]ve logged your message/i);
 });

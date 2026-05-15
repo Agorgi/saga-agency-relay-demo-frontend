@@ -22,6 +22,25 @@ export const webChatNextStepSchema = z.object({
 
 export type WebChatNextStep = z.infer<typeof webChatNextStepSchema>;
 export type WebChatPrefill = z.infer<typeof webChatPrefillSchema>;
+const MAX_PREFILL_BYTES = 1200;
+
+const ALLOWED_PREFILL_KEYS: Record<string, string[]> = {
+  "/projects/new": [
+    "eventType",
+    "city",
+    "scale",
+    "vibe",
+    "projectType",
+    "suggestedRoles",
+    "date",
+    "helpNeeded",
+    "projectIdea",
+  ],
+  "/me": ["city", "roles", "portfolio", "availability", "rates"],
+  "/spaces": ["city", "capacity", "neighborhood", "availabilityHint", "venueType"],
+  "/feed": ["city", "interests"],
+  "/explore": ["projectId", "role", "city"],
+};
 
 function toBase64Url(bytes: Uint8Array) {
   if (typeof Buffer !== "undefined") {
@@ -76,7 +95,11 @@ export function decodePrefillPayload(value: string | null | undefined) {
 
 export function buildNextStepHref(nextStep: WebChatNextStep) {
   const params = new URLSearchParams();
-  const prefill = encodePrefillPayload(nextStep.prefill);
+  const sanitizedPrefill = sanitizePrefillForRoute(nextStep.route, nextStep.prefill);
+  const prefill =
+    Object.keys(sanitizedPrefill).length > 0
+      ? encodePrefillPayload(sanitizedPrefill)
+      : "";
 
   if (prefill) {
     params.set("prefill", prefill);
@@ -93,4 +116,51 @@ export function clampNextStepLabel(label: string | null | undefined) {
 
   const words = cleaned.split(" ");
   return words.length <= 5 ? cleaned : words.slice(0, 5).join(" ");
+}
+
+export function sanitizePrefillForRoute(
+  route: string,
+  prefill: WebChatPrefill | null | undefined,
+) {
+  const allowedKeys = ALLOWED_PREFILL_KEYS[route];
+  if (!allowedKeys || !prefill) {
+    return {};
+  }
+
+  const sanitizedEntries = Object.entries(prefill)
+    .filter(([key]) => allowedKeys.includes(key))
+    .map(([key, value]) => [
+      key,
+      Array.isArray(value)
+        ? value
+            .map((item) => item.trim())
+            .filter(Boolean)
+            .slice(0, 8)
+        : value.trim().slice(0, 180),
+    ])
+    .filter(([, value]) =>
+      Array.isArray(value) ? value.length > 0 : value.length > 0,
+    );
+
+  const sanitized = Object.fromEntries(sanitizedEntries);
+  const encoded = encodePrefillPayload(sanitized);
+  if (encoded.length > MAX_PREFILL_BYTES) {
+    return {};
+  }
+
+  return sanitized;
+}
+
+export function sanitizeNextStepPayload(value: unknown) {
+  const parsed = webChatNextStepSchema.safeParse(value);
+  if (!parsed.success) {
+    return null;
+  }
+
+  const prefill = sanitizePrefillForRoute(parsed.data.route, parsed.data.prefill);
+  return {
+    label: clampNextStepLabel(parsed.data.label),
+    route: parsed.data.route,
+    prefill,
+  } satisfies WebChatNextStep;
 }
