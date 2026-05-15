@@ -260,3 +260,27 @@ test("live mode without a key falls back to deterministic Sagasan copy", async (
   assert.match(data.reply, /what city|what are you planning|draft event brief/i);
   assert.doesNotMatch(data.reply, /we['’]ve logged your message/i);
 });
+
+test("web chat POST stays up without database env vars", async () => {
+  delete process.env.DATABASE_URL;
+  delete process.env.POSTGRES_URL_NON_POOLING;
+  process.env.LLM_MODE = "mock_active";
+  process.env.OPENAI_API_KEY = "";
+  process.env.WEB_CHAT_AUTONOMOUS_RESPONSES_ENABLED = "";
+
+  const response = await POST(
+    createRequest({
+      message: "I want to host something.",
+      personaHint: "host",
+    }),
+  );
+
+  const data = (await response.json()) as {
+    reply: string;
+    mode: string;
+  };
+
+  assert.equal(response.status, 200);
+  assert.equal(data.mode, "holding");
+  assert.match(data.reply, /what are you hosting|what city should i anchor|what are you planning to host/i);
+});
