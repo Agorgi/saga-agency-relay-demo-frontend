@@ -4,32 +4,24 @@ import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { PebbleMark } from "@/components/PebbleMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { getDiscoverPath, getPrimaryCta } from "@/lib/sagasanPersonas";
 import { useSagaNavigation } from "@/lib/useSagaNavigation";
+import { useSessionPersona } from "@/lib/useSessionPersona";
 import { useThemeMode } from "@/lib/useThemeMode";
-import { useAgencyStore } from "@/store/useAgencyStore";
-
-const NAV_ITEMS = [
-  { label: "Home", action: "home" as const },
-  { label: "Explore Talent", action: "talent" as const },
-  { label: "Projects", action: "projects" as const },
-  { label: "Relay", action: "relay" as const },
-  { label: "Profile", action: "profile" as const },
-];
 
 export function AppChrome() {
   const pathname = usePathname();
-  const selectedProjectId = useAgencyStore((state) => state.selectedProjectId);
-  const { goHome, goTalent, goProjects, goRelay, goProfile, openPostProject } = useSagaNavigation();
+  const { persona } = useSessionPersona();
+  const { goExplore, goFeed, goHome, goMe, goSpaces, openPostProject } =
+    useSagaNavigation();
   const isDark = useThemeMode() === "dark";
 
+  const discoverPath = getDiscoverPath(persona);
+  const primaryCta = getPrimaryCta(persona);
   const onHomePath = pathname === "/";
-  const onTalentPath = pathname.startsWith("/talent") || pathname === "/explore";
-  const onProjectsPath =
-    pathname.startsWith("/projects") ||
-    pathname.startsWith("/events") ||
-    pathname === "/my-events";
-  const onRelayPath = pathname.startsWith("/relay");
-  const onProfilePath = pathname.startsWith("/profile");
+  const onForMePath = pathname === "/me" || pathname === "/profile";
+  const onTalentPath =
+    pathname.startsWith("/talent") || pathname === "/explore" || pathname === "/spaces";
   const shouldHideBottomNav =
     pathname === "/" ||
     pathname === "/post-project" ||
@@ -38,12 +30,59 @@ export function AppChrome() {
     pathname.startsWith("/talent/") ||
     pathname.endsWith("/tickets");
 
-  const handleNav = (action: (typeof NAV_ITEMS)[number]["action"]) => {
-    if (action === "home") return goHome();
-    if (action === "talent") return goTalent(selectedProjectId || undefined);
-    if (action === "projects") return goProjects();
-    if (action === "relay") return goRelay(selectedProjectId || undefined);
-    if (action === "profile") return goProfile();
+  const navItems: Array<{
+    label: string;
+    active: boolean;
+    onClick: () => void;
+  }> = [{ label: "Home", active: onHomePath, onClick: goHome }];
+
+  if (persona) {
+    navItems.push({
+      label: "For me",
+      active: onForMePath,
+      onClick: goMe,
+    });
+  }
+
+  if (discoverPath) {
+    navItems.push({
+      label: "Discover",
+      active: discoverPath === "/feed" ? pathname === "/feed" : onTalentPath,
+      onClick: () => {
+        if (discoverPath === "/feed") {
+          goFeed();
+        } else if (discoverPath === "/spaces") {
+          goSpaces();
+        } else {
+          goExplore();
+        }
+      },
+    });
+  }
+
+  const handlePrimaryCta = () => {
+    if (!primaryCta) {
+      return;
+    }
+
+    if (persona === "host") {
+      openPostProject();
+      return;
+    }
+
+    if (persona === "creative") {
+      goMe();
+      return;
+    }
+
+    if (persona === "venue") {
+      goSpaces();
+      return;
+    }
+
+    if (persona === "fan") {
+      goFeed();
+    }
   };
 
   return (
@@ -52,16 +91,12 @@ export function AppChrome() {
         <div className="pointer-events-auto flex items-center gap-3">
           <PebbleMark />
           <div className="brand-chip flex items-center gap-2 rounded-pill px-2 py-2">
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <button
                 key={item.label}
-                onClick={() => handleNav(item.action)}
+                onClick={item.onClick}
                 className={`rounded-pill px-3.5 py-2 text-sm font-medium transition-colors ${
-                  (item.action === "home" && onHomePath) ||
-                  (item.action === "talent" && onTalentPath) ||
-                  (item.action === "projects" && onProjectsPath) ||
-                  (item.action === "relay" && onRelayPath) ||
-                  (item.action === "profile" && onProfilePath)
+                  item.active
                     ? "brand-chip-signal"
                     : isDark
                       ? "text-white/62 hover:text-white"
@@ -76,12 +111,14 @@ export function AppChrome() {
 
         <div className="pointer-events-auto flex items-center gap-3">
           <ThemeToggle />
-          <button
-            onClick={openPostProject}
-            className="brand-button-primary rounded-pill px-5 py-2.5 text-sm font-medium"
-          >
-            Post a Project
-          </button>
+          {primaryCta ? (
+            <button
+              onClick={handlePrimaryCta}
+              className="brand-button-primary rounded-pill px-5 py-2.5 text-sm font-medium"
+            >
+              {primaryCta.label}
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -91,18 +128,18 @@ export function AppChrome() {
         </div>
         <div className="pointer-events-auto flex items-center gap-2">
           <ThemeToggle />
-          {!shouldHideBottomNav && (
+          {!shouldHideBottomNav && primaryCta ? (
             <button
-              onClick={openPostProject}
+              onClick={handlePrimaryCta}
               className="brand-button-primary rounded-pill px-3.5 py-2 text-sm font-medium"
             >
-              Post
+              Go
             </button>
-          )}
+          ) : null}
         </div>
       </div>
 
-      {!shouldHideBottomNav && (
+      {!shouldHideBottomNav && persona && (
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
@@ -110,21 +147,21 @@ export function AppChrome() {
             isDark ? "text-white" : "text-ink"
           }`}
         >
-          <BottomNavButton label="Talent" active={onTalentPath} dark={isDark} onClick={() => goTalent(selectedProjectId || undefined)} />
-          <BottomNavButton label="Projects" active={onProjectsPath} dark={isDark} onClick={goProjects} />
-          <button
-            onClick={openPostProject}
-            className="brand-button-primary absolute left-1/2 top-0 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-lg font-semibold"
-            aria-label="Post project"
-          >
-            +
-          </button>
-          <BottomNavButton label="Relay" active={onRelayPath} dark={isDark} onClick={() => goRelay(selectedProjectId || undefined)} />
+          <BottomNavButton label="Home" active={onHomePath} dark={isDark} onClick={goHome} />
+          <BottomNavButton label="For me" active={onForMePath} dark={isDark} onClick={goMe} />
           <BottomNavButton
-            label="Profile"
-            active={onProfilePath}
+            label="Discover"
+            active={discoverPath === "/feed" ? pathname === "/feed" : onTalentPath}
             dark={isDark}
-            onClick={goProfile}
+            onClick={() => {
+              if (discoverPath === "/feed") {
+                goFeed();
+              } else if (discoverPath === "/spaces") {
+                goSpaces();
+              } else {
+                goExplore();
+              }
+            }}
           />
         </motion.div>
       )}

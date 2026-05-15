@@ -77,7 +77,7 @@ export function ChatWidget({
             {SAGASAN_DISPLAY_NAME}
           </p>
           <p className="truncate text-xs text-ink-light">
-            {conversationId ? "Live producer conversation" : "Ready to help shape the brief"}
+            {conversationId ? "Live Saga chat" : "Ready when you are"}
           </p>
         </div>
         <span className="rounded-pill bg-white/70 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-ink-light">

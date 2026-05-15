@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { normalizePersona, type Persona } from "@/lib/sagasanPersonas";
+import { useSessionPersona, writeSessionPersona } from "@/lib/useSessionPersona";
 
 export type ChatRole = "user" | "assistant";
 export type ChatMode = "autonomous" | "holding";
@@ -21,6 +23,7 @@ type WebChatResponse = {
 
 type WebChatHistoryResponse = {
   conversationId: null | string;
+  persona: Persona | null;
   messages: Array<{
     id: string;
     role: ChatRole;
@@ -39,10 +42,9 @@ export const SAGASAN_DISPLAY_NAME = "Sagasan";
 export const SAGASAN_AVATAR_SRC = "/branding/sagasan-contact.png";
 export const DEFAULT_CHAT_DESCRIPTION = "";
 export const DEFAULT_CHAT_PLACEHOLDER = "Message Sagasan...";
-export const DEFAULT_WELCOME_MESSAGE =
-  "Hi, I'm Sagasan. Tell me what you're producing and I'll help shape the brief.";
+export const DEFAULT_WELCOME_MESSAGE = "";
 
-export function requestWebChatReset() {
+export function requestWebChatReset(nextPersona?: Persona | null) {
   if (typeof window === "undefined") {
     return;
   }
@@ -50,10 +52,15 @@ export function requestWebChatReset() {
   window.localStorage.removeItem(CONVERSATION_STORAGE_KEY);
   window.sessionStorage.setItem(WEB_CHAT_SUPPRESS_RESTORE_KEY, "1");
   window.sessionStorage.setItem(WEB_CHAT_RESET_REQUEST_KEY, `${Date.now()}`);
+  writeSessionPersona(normalizePersona(nextPersona));
   window.dispatchEvent(new CustomEvent(WEB_CHAT_RESET_EVENT));
 }
 
 function createInitialMessages(welcomeMessage: string): ChatEntry[] {
+  if (!welcomeMessage.trim()) {
+    return [];
+  }
+
   return [
     {
       id: "assistant-welcome",
@@ -68,6 +75,7 @@ export function useWebChat({
 }: {
   welcomeMessage?: string;
 } = {}) {
+  const { persona, setPersona } = useSessionPersona();
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -121,6 +129,10 @@ export function useWebChat({
       }
 
       if (!cancelled) {
+        if (data.persona) {
+          setPersona(data.persona);
+        }
+
         if (data.conversationId) {
           window.localStorage.setItem(CONVERSATION_STORAGE_KEY, data.conversationId);
           setConversationId(data.conversationId);
@@ -181,13 +193,18 @@ export function useWebChat({
     return () => {
       cancelled = true;
     };
-  }, [resetChatState, welcomeMessage]);
+  }, [resetChatState, setPersona, welcomeMessage]);
 
-  async function submitCurrentDraft() {
-    const message = draft.trim();
+  async function submitCurrentDraft(options?: {
+    message?: string;
+    persona?: Persona | null;
+  }) {
+    const message = (options?.message ?? draft).trim();
     if (!message || isSending || isRestoring) {
       return false;
     }
+
+    const nextPersona = normalizePersona(options?.persona) ?? persona;
 
     const userMessage: ChatEntry = {
       id: `user-${Date.now()}`,
@@ -209,6 +226,7 @@ export function useWebChat({
         body: JSON.stringify({
           conversationId,
           message,
+          persona: nextPersona,
         }),
       });
 
@@ -225,6 +243,9 @@ export function useWebChat({
       window.sessionStorage.removeItem(WEB_CHAT_SUPPRESS_RESTORE_KEY);
       window.sessionStorage.removeItem(WEB_CHAT_RESET_REQUEST_KEY);
       window.localStorage.setItem(CONVERSATION_STORAGE_KEY, data.conversationId);
+      if (nextPersona) {
+        setPersona(nextPersona);
+      }
       setConversationId(data.conversationId);
       setMessages((current) => [
         ...current,
@@ -252,7 +273,9 @@ export function useWebChat({
     isRestoring,
     isSending,
     messages,
+    persona,
     setDraft,
+    setPersona,
     submitCurrentDraft,
   };
 }

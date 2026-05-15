@@ -31,10 +31,12 @@ export function useSagaNavigation() {
     goHome: () => router.push(sagaRoutes.landing),
     goTalent: (projectId?: string | null) => {
       const slug = resolveProjectSlug(projectId);
-      router.push(slug ? `${sagaRoutes.talent}?project=${slug}` : sagaRoutes.talent);
+      router.push(slug ? `${sagaRoutes.explore}?project=${slug}` : sagaRoutes.explore);
     },
-    goExplore: () => router.push(sagaRoutes.talent),
+    goExplore: () => router.push(sagaRoutes.explore),
     goFeed: () => router.push(sagaRoutes.feed),
+    goMe: () => router.push(sagaRoutes.me),
+    goSpaces: () => router.push(sagaRoutes.spaces),
     goProjects: () => router.push(sagaRoutes.projects),
     goMyEvents: () => router.push(sagaRoutes.projects),
     goRelay: (projectId?: string | null, conversationId?: string | null) => {

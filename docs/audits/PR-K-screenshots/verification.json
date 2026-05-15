@@ -1,0 +1,13 @@
+{
+  "replies": {
+    "host": "What are you hosting, and what should it feel like?",
+    "creative": "What kind of work do you want, and what do you make?",
+    "venue": "What kind of space do you run, and what does it feel like?",
+    "fan": "What city are you in, and what scenes do you want more of?"
+  },
+  "mobileCheck": {
+    "horizontalOverflow": false,
+    "chipsVisible": true,
+    "inputFits": true
+  }
+}

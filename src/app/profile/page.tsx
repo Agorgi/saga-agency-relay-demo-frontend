@@ -1,11 +1,11 @@
 import { AppFrame } from "@/components/AppFrame";
-import { ProfileView } from "@/components/ProfileView";
+import { ForMeView } from "@/components/ForMeView";
 
 export default function ProfilePage() {
   return (
     <AppFrame>
       <div className="absolute inset-0">
-        <ProfileView />
+        <ForMeView legacyHeader />
       </div>
     </AppFrame>
   );

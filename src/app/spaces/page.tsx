@@ -1,11 +1,11 @@
 import { AppFrame } from "@/components/AppFrame";
-import { FanFeedView } from "@/components/FanFeedView";
+import { SpacesView } from "@/components/SpacesView";
 
-export default function FeedPage() {
+export default function SpacesPage() {
   return (
     <AppFrame>
       <div className="absolute inset-0">
-        <FanFeedView />
+        <SpacesView />
       </div>
     </AppFrame>
   );
