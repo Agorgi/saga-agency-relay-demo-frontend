@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import test from "node:test";
 import { PrismaClient } from "@prisma/client";
 import { NextRequest } from "next/server";
-import { POST } from "@/app/api/web-chat/route";
+import { GET, POST } from "@/app/api/web-chat/route";
 import { __setLegacyWebChatDbModeForTests } from "@/lib/webChatSessionStore";
 
 const TEST_DATABASE_URL =
@@ -47,6 +47,33 @@ function createRequest(body: Record<string, unknown>) {
       "content-type": "application/json",
     },
     body: JSON.stringify(body),
+  });
+}
+
+function createGetRequest({
+  conversationId,
+  sessionId,
+  persona,
+}: {
+  conversationId?: string | null;
+  sessionId?: string | null;
+  persona?: string | null;
+} = {}) {
+  const url = new URL("http://localhost:3000/api/web-chat");
+  if (conversationId) {
+    url.searchParams.set("conversationId", conversationId);
+  }
+
+  const cookies = [
+    sessionId ? `web_session_id=${sessionId}` : null,
+    persona ? `saga_persona=${persona}` : null,
+  ]
+    .filter(Boolean)
+    .join("; ");
+
+  return new NextRequest(url, {
+    method: "GET",
+    headers: cookies ? { cookie: cookies } : undefined,
   });
 }
 
@@ -388,4 +415,50 @@ test("production-like legacy DB mode still returns reply and nextStep", async ()
   assert.ok(assistantMessage);
   assert.equal(assistantMessage?.role, "assistant");
   assert.equal(assistantMessage?.content.length > 0, true);
+});
+
+test("legacy GET session payload keeps assistant content even when metadata columns are unavailable", async () => {
+  process.env.DATABASE_URL = TEST_DATABASE_URL;
+  process.env.POSTGRES_URL_NON_POOLING = TEST_DATABASE_URL;
+  process.env.LLM_MODE = "mock_active";
+  process.env.OPENAI_API_KEY = "";
+  process.env.WEB_CHAT_AUTONOMOUS_RESPONSES_ENABLED = "true";
+  __setLegacyWebChatDbModeForTests(true);
+
+  const postResponse = await POST(
+    createRequest({
+      message:
+        "I want to throw a 100-person anime picnic in Silver Lake next month with a playful neon vibe.",
+    }),
+  );
+  const postData = (await postResponse.json()) as {
+    conversationId: string;
+    persona: string | null;
+  };
+
+  const sessionCookie = postResponse.cookies.get("web_session_id")?.value ?? null;
+  assert.ok(sessionCookie);
+
+  const getResponse = await GET(
+    createGetRequest({
+      conversationId: postData.conversationId,
+      sessionId: sessionCookie,
+      persona: postData.persona,
+    }),
+  );
+  const getData = (await getResponse.json()) as {
+    persona: string | null;
+    messages: Array<{
+      role: string;
+      content: string;
+      nextStep: unknown;
+    }>;
+  };
+
+  assert.equal(getResponse.status, 200);
+  assert.equal(getData.persona, "host");
+  const assistantMessage = getData.messages.find((message) => message.role === "assistant");
+  assert.ok(assistantMessage);
+  assert.match(assistantMessage?.content || "", /draft event brief|what city/i);
+  assert.equal(assistantMessage?.nextStep ?? null, null);
 });
