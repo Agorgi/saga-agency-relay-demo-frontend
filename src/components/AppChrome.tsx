@@ -2,12 +2,40 @@
 
 import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { PebbleMark } from "@/components/PebbleMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { getDiscoverPath, getPrimaryCta } from "@/lib/sagasanPersonas";
 import { useSagaNavigation } from "@/lib/useSagaNavigation";
 import { useSessionPersona } from "@/lib/useSessionPersona";
 import { useThemeMode } from "@/lib/useThemeMode";
+import {
+  getPersonaFromNextStep,
+  readPendingNextStep,
+  WEB_CHAT_PENDING_NEXT_STEP_EVENT,
+  type WebChatNextStep,
+} from "@/lib/webChatNextStep";
+
+export function resolveChromePersona({
+  persona,
+  pendingNextStep,
+  pathname,
+}: {
+  persona: ReturnType<typeof useSessionPersona>["persona"];
+  pendingNextStep: WebChatNextStep | null;
+  pathname: string;
+}) {
+  const pendingPersona = getPersonaFromNextStep(pendingNextStep);
+  if (pendingPersona) {
+    return pendingPersona;
+  }
+
+  if (pathname === "/") {
+    return null;
+  }
+
+  return persona;
+}
 
 export function AppChrome() {
   const pathname = usePathname();
@@ -15,9 +43,29 @@ export function AppChrome() {
   const { goExplore, goFeed, goHome, goMe, goSpaces, openPostProject } =
     useSagaNavigation();
   const isDark = useThemeMode() === "dark";
+  const [pendingNextStep, setPendingNextStep] = useState<WebChatNextStep | null>(null);
 
-  const discoverPath = getDiscoverPath(persona);
-  const primaryCta = getPrimaryCta(persona);
+  useEffect(() => {
+    setPendingNextStep(readPendingNextStep());
+
+    function handleNextStepChange(event: Event) {
+      const detail = (event as CustomEvent<{ nextStep?: WebChatNextStep | null }>).detail;
+      setPendingNextStep(detail?.nextStep ?? readPendingNextStep());
+    }
+
+    window.addEventListener(WEB_CHAT_PENDING_NEXT_STEP_EVENT, handleNextStepChange);
+    return () => {
+      window.removeEventListener(WEB_CHAT_PENDING_NEXT_STEP_EVENT, handleNextStepChange);
+    };
+  }, []);
+
+  const chromePersona = resolveChromePersona({
+    persona,
+    pendingNextStep,
+    pathname,
+  });
+  const discoverPath = getDiscoverPath(chromePersona);
+  const primaryCta = getPrimaryCta(chromePersona);
   const onHomePath = pathname === "/";
   const onForMePath = pathname === "/me" || pathname === "/profile";
   const onTalentPath =
@@ -66,22 +114,22 @@ export function AppChrome() {
       return;
     }
 
-    if (persona === "host") {
+    if (chromePersona === "host") {
       openPostProject();
       return;
     }
 
-    if (persona === "creative") {
+    if (chromePersona === "creative") {
       goMe();
       return;
     }
 
-    if (persona === "venue") {
+    if (chromePersona === "venue") {
       goSpaces();
       return;
     }
 
-    if (persona === "fan") {
+    if (chromePersona === "fan") {
       goFeed();
     }
   };
@@ -140,7 +188,7 @@ export function AppChrome() {
         </div>
       </div>
 
-      {!shouldHideBottomNav && persona && (
+      {!shouldHideBottomNav && chromePersona && (
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}

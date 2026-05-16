@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Persona } from "@/lib/sagasanPersonas";
 
 export const webChatRouteSchema = z.union([
   z.literal("/me"),
@@ -24,6 +25,7 @@ export type WebChatNextStep = z.infer<typeof webChatNextStepSchema>;
 export type WebChatPrefill = z.infer<typeof webChatPrefillSchema>;
 const MAX_PREFILL_BYTES = 1200;
 export const WEB_CHAT_PENDING_NEXT_STEP_KEY = "saga-web-chat-pending-next-step";
+export const WEB_CHAT_PENDING_NEXT_STEP_EVENT = "saga:web-chat-next-step";
 
 const ALLOWED_PREFILL_KEYS: Record<string, string[]> = {
   "/projects/new": [
@@ -123,6 +125,11 @@ export function persistPendingNextStep(nextStep: WebChatNextStep | null | undefi
     WEB_CHAT_PENDING_NEXT_STEP_KEY,
     JSON.stringify(sanitized),
   );
+  window.dispatchEvent(
+    new CustomEvent(WEB_CHAT_PENDING_NEXT_STEP_EVENT, {
+      detail: { nextStep: sanitized },
+    }),
+  );
 }
 
 export function readPendingNextStep(route?: string | null) {
@@ -155,6 +162,11 @@ export function clearPendingNextStep() {
   }
 
   window.sessionStorage.removeItem(WEB_CHAT_PENDING_NEXT_STEP_KEY);
+  window.dispatchEvent(
+    new CustomEvent(WEB_CHAT_PENDING_NEXT_STEP_EVENT, {
+      detail: { nextStep: null },
+    }),
+  );
 }
 
 export function clampNextStepLabel(label: string | null | undefined) {
@@ -212,4 +224,28 @@ export function sanitizeNextStepPayload(value: unknown) {
     route: parsed.data.route,
     prefill,
   } satisfies WebChatNextStep;
+}
+
+export function getPersonaFromNextStep(nextStep: WebChatNextStep | null | undefined): Persona | null {
+  if (!nextStep) {
+    return null;
+  }
+
+  if (nextStep.route === "/projects/new") {
+    return "host";
+  }
+
+  if (nextStep.route === "/me") {
+    return "creative";
+  }
+
+  if (nextStep.route === "/spaces") {
+    return "venue";
+  }
+
+  if (nextStep.route === "/feed") {
+    return "fan";
+  }
+
+  return null;
 }

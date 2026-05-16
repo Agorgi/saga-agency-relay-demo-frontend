@@ -5,6 +5,7 @@ import { normalizePersona, type Persona } from "@/lib/sagasanPersonas";
 import { useSessionPersona, writeSessionPersona } from "@/lib/useSessionPersona";
 import {
   clearPendingNextStep,
+  getPersonaFromNextStep,
   persistPendingNextStep,
   readPendingNextStep,
   sanitizeNextStepPayload,
@@ -104,30 +105,6 @@ function extractConversationId(value: unknown) {
 
 export function isUiChatFallbackReply(value: unknown) {
   return typeof value === "string" && /lost that turn for a second/i.test(value);
-}
-
-function getPersonaFromNextStep(nextStep: WebChatNextStep | null | undefined) {
-  if (!nextStep) {
-    return null;
-  }
-
-  if (nextStep.route === "/projects/new") {
-    return "host" satisfies Persona;
-  }
-
-  if (nextStep.route === "/me") {
-    return "creative" satisfies Persona;
-  }
-
-  if (nextStep.route === "/spaces") {
-    return "venue" satisfies Persona;
-  }
-
-  if (nextStep.route === "/feed") {
-    return "fan" satisfies Persona;
-  }
-
-  return null;
 }
 
 function getLatestAssistantNextStep(messages: ChatEntry[]) {

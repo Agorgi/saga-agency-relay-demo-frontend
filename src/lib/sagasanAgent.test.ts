@@ -294,6 +294,7 @@ test("host next-step prefill keeps the routeable project details", () => {
   assert.equal(result.nextStep?.route, "/projects/new");
   assert.equal(result.nextStep?.prefill.city, "Silver Lake");
   assert.equal(result.nextStep?.prefill.date, "next month");
+  assert.equal(result.nextStep?.prefill.eventType, "Pop-up / activation");
   assert.equal(result.nextStep?.prefill.projectIdea, "throw a 100-person anime picnic in Silver Lake next month with a playful neon vibe");
 });
 

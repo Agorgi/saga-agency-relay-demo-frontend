@@ -517,8 +517,9 @@ function inferVibeTags(value: string) {
 
 function inferHostProjectType(value: string): ProjectType {
   const lower = value.toLowerCase();
+  if (/picnic/.test(lower)) return "Pop-up / activation";
   if (/pop-?up|activation|launch/.test(lower)) return "Pop-up / activation";
-  if (/fan|gala|watch party|meetup|picnic/.test(lower)) return "Fan event";
+  if (/fan|gala|watch party|meetup/.test(lower)) return "Fan event";
   if (/editorial|lookbook|photoshoot|photo shoot/.test(lower)) return "Photoshoot";
   if (/music video/.test(lower)) return "Music video";
   if (/video|trailer|film/.test(lower)) return "Video shoot";

@@ -12,6 +12,7 @@ import {
 function installWindowStorageMock() {
   const storage = new Map<string, string>();
   const mockWindow = {
+    dispatchEvent: () => true,
     sessionStorage: {
       getItem: (key: string) => storage.get(key) ?? null,
       setItem: (key: string, value: string) => {
