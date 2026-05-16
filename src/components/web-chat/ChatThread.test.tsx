@@ -60,3 +60,24 @@ test("chat thread keeps backend reply labels short", () => {
   assert.match(markup, /Open my feed/);
   assert.equal("Open my feed".split(/\s+/).length <= 5, true);
 });
+
+test("chat thread renders assistant content without requiring a CTA", () => {
+  const markup = renderToStaticMarkup(
+    <ChatThread
+      isSending={false}
+      messages={[
+        {
+          id: "assistant-3",
+          role: "assistant",
+          content: "Tickets live elsewhere — Saga doesn't handle those.",
+          persona: "creative",
+          mode: "autonomous",
+          nextStep: null,
+        },
+      ]}
+    />,
+  );
+
+  assert.match(markup, /Tickets live elsewhere/);
+  assert.doesNotMatch(markup, /data-next-step-href=/);
+});

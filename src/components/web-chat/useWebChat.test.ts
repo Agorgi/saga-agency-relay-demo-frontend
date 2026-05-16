@@ -15,6 +15,8 @@ test("parseWebChatResponse accepts top-level reply", () => {
     reply: "Got it. What city are you thinking?",
     turn: 0,
     mode: "holding",
+    selectedReplySource: "holding_template",
+    fallbackReason: "host_turn1",
     nextStep: {
       label: "Build my event",
       route: "/projects/new",
@@ -26,6 +28,8 @@ test("parseWebChatResponse accepts top-level reply", () => {
 
   assert.equal(parsed?.reply, "Got it. What city are you thinking?");
   assert.equal(parsed?.nextStep?.route, "/projects/new");
+  assert.equal(parsed?.selectedReplySource, "holding_template");
+  assert.equal(parsed?.fallbackReason, "host_turn1");
 });
 
 test("parseWebChatResponse accepts message and nested data.reply shapes", () => {

@@ -355,11 +355,13 @@ export function shouldAnswerTickets(message: string) {
 }
 
 function isCapabilityQuestion(message: string) {
-  return /\bwhat do you do\b|\bwhat can you do\b|\bhow can you help\b/i.test(message);
+  return /\bwhat do you do\b|\bwhat does saga do\b|\bwhat can you do\b|\bhow can you help\b|\bhow does saga\b/i.test(
+    message,
+  );
 }
 
 function isPaidWorkBoundary(message: string) {
-  return /\bpaid work\b|\bget paid\b|\bbook me\b|\bguarantee\b/i.test(message);
+  return /\bpaid work\b|\bget paid\b|\bbook me\b/i.test(message);
 }
 
 function isGuaranteeBoundary(message: string) {
@@ -913,12 +915,179 @@ export function deriveNextStep(
   return null;
 }
 
+function compactList(values: string[]) {
+  return uniqueStrings(values).slice(0, 3).join(", ");
+}
+
+function hostAnchor(fields: StoredExtractedFields) {
+  const idea = fields.projectIdea || fields.vibeTags[0] || "that plan";
+  if (fields.city) {
+    return trimSentence(`${idea} in ${fields.city}`, 90);
+  }
+  return trimSentence(idea, 90);
+}
+
+function creativeAnchor(fields: StoredExtractedFields) {
+  const role = compactList(fields.roles);
+  if (role && fields.city) {
+    return trimSentence(`${role} in ${fields.city}`, 90);
+  }
+  if (role) {
+    return trimSentence(role, 90);
+  }
+  if (fields.city) {
+    return trimSentence(`creative in ${fields.city}`, 90);
+  }
+  return "your creative lane";
+}
+
+function venueAnchor(fields: StoredExtractedFields) {
+  const venueType = fields.venueType || "your space";
+  const location = fields.neighborhood || fields.city;
+  if (location) {
+    return trimSentence(`${venueType} in ${location}`, 90);
+  }
+  return trimSentence(venueType, 90);
+}
+
+function fanAnchor(fields: StoredExtractedFields) {
+  const interests = compactList(fields.interests);
+  if (fields.city && interests) {
+    return trimSentence(`${interests} around ${fields.city}`, 90);
+  }
+  if (fields.city) {
+    return trimSentence(`the scene around ${fields.city}`, 90);
+  }
+  if (interests) {
+    return trimSentence(interests, 90);
+  }
+  return "the right scene";
+}
+
+function buildSuccessReply(
+  persona: Persona,
+  fields: StoredExtractedFields,
+  nextStep: WebChatNextStep,
+) {
+  if (persona === "host") {
+    return `Got it — ${hostAnchor(fields)}. Build your event page and review the brief.`;
+  }
+
+  if (persona === "creative") {
+    return `Got it — ${creativeAnchor(fields)}. Open your feed and keep that profile moving.`;
+  }
+
+  if (persona === "venue") {
+    return `Got it — ${venueAnchor(fields)}. Open your spaces and keep the listing moving.`;
+  }
+
+  if (nextStep.route === "/feed") {
+    return `Got it — ${fanAnchor(fields)}. See events and keep that signal handy.`;
+  }
+
+  return "Got it. Keep moving.";
+}
+
+function buildPersonaFollowUp(
+  persona: Persona,
+  fields: StoredExtractedFields,
+): { reply: string; templateId: string } {
+  if (persona === "host") {
+    if (!fields.projectIdea) {
+      return {
+        reply: "Got it — what are you trying to put together?",
+        templateId: "host_turn1",
+      };
+    }
+
+    if (!fields.city) {
+      return {
+        reply: `Got it — ${trimSentence(fields.projectIdea, 90)}. What city should I anchor it in?`,
+        templateId: "host_turn1",
+      };
+    }
+
+    if (!fields.scale) {
+      return {
+        reply: `Got it — ${hostAnchor(fields)}. What kind of turnout are you imagining?`,
+        templateId: "host_turn2",
+      };
+    }
+
+    return {
+      reply: `Got it — ${hostAnchor(fields)}. What should the vibe feel like?`,
+      templateId: "host_turn2",
+    };
+  }
+
+  if (persona === "creative") {
+    if (fields.roles.length === 0) {
+      return {
+        reply: "Got it — what kind of creative work do you want most?",
+        templateId: "creative_turn1",
+      };
+    }
+
+    if (!fields.city) {
+      return {
+        reply: `Got it — ${compactList(fields.roles)}. What city should I anchor your profile around?`,
+        templateId: "creative_turn2",
+      };
+    }
+
+    return {
+      reply: `Got it — ${creativeAnchor(fields)}. Where can I see your work?`,
+      templateId: "creative_turn2",
+    };
+  }
+
+  if (persona === "venue") {
+    if (!fields.venueType) {
+      return {
+        reply: "Got it — what kind of space is it?",
+        templateId: "venue_turn1",
+      };
+    }
+
+    if (!fields.city && !fields.neighborhood) {
+      return {
+        reply: `Got it — ${fields.venueType.toLowerCase()}. What city is it in?`,
+        templateId: "venue_turn1",
+      };
+    }
+
+    if (!fields.scale) {
+      return {
+        reply: `Got it — ${venueAnchor(fields)}. About how many people does it fit?`,
+        templateId: "venue_turn1",
+      };
+    }
+
+    return {
+      reply: `Got it — ${venueAnchor(fields)}. What dates or weekends are easiest to open up?`,
+      templateId: "venue_turn1",
+    };
+  }
+
+  if (!fields.city) {
+    return {
+      reply: "Got it. What city or scene should I look around?",
+      templateId: "fan_turn1",
+    };
+  }
+
+  return {
+    reply: `Got it — ${fanAnchor(fields)}. What fandoms or nights should I tune for?`,
+    templateId: "fan_turn1",
+  };
+}
+
 function buildCapabilityReply(persona: Persona | null, fields: StoredExtractedFields): AgentReply {
   return {
     reply:
       persona === "creative"
-        ? "I can shape your creative profile and route you to the right opportunities. What kind of work are you chasing?"
-        : "I can shape the brief and route you to the right next page. Which lane fits best: host, creative, venue, or fan?",
+        ? "I shape creative profiles and route them into the right opportunities. What kind of work are you chasing?"
+        : "I shape briefs, profiles, spaces, and scene signals. Which lane fits you best: host, creative, venue, or fan?",
     nextStep: null,
     persona,
     extractedFields: fields,
@@ -948,9 +1117,9 @@ function buildBoundaryReply(
   const replyMap = {
     ticketing: TICKET_REPLY,
     paid_work:
-      "I can't promise paid work. What role and city should I anchor for you?",
+      "I can't promise paid work, but I can shape your profile so the right opportunities are easier to match. What role should I anchor first?",
     guarantee:
-      "I can't guarantee bookings or a confirmed team. What should I help shape next?",
+      "I can't guarantee bookings, a confirmed team, or a full calendar. What should I help shape next?",
     off_topic:
       "I stay focused on creative plans, opportunities, spaces, and scenes. What are you trying to make or find?",
   } as const;
@@ -963,7 +1132,14 @@ function buildBoundaryReply(
     diagnostics: {
       operation: persona ? `sagasan_${persona}_intake` : "sagasan_router",
       selectedReplySource: "deterministic_fallback",
-      fallbackReason: kind,
+      fallbackReason:
+        kind === "ticketing"
+          ? "boundary_ticketing"
+          : kind === "paid_work"
+            ? "boundary_paid_work"
+            : kind === "guarantee"
+              ? "boundary_guarantee"
+              : "off_topic",
       providerState: "openai_not_called_mode_mock",
       model: getConfiguredModel(),
       configuredMode: "active_mock",
@@ -1018,14 +1194,14 @@ function buildDeterministicReply({
   if (!persona) {
     return {
       reply:
-        "I can route hosts, creatives, venues, and fans. Which lane fits you best?",
+        "I route hosts, creatives, venues, and fans. Which lane fits what you're trying to do?",
       nextStep: null,
       persona,
       extractedFields,
       diagnostics: {
         operation: "sagasan_router",
         selectedReplySource: "deterministic_fallback",
-        fallbackReason: fallbackReason || "router_needed",
+        fallbackReason: fallbackReason || "unknown_persona",
         providerState,
         model: getConfiguredModel(),
         configuredMode,
@@ -1048,15 +1224,8 @@ function buildDeterministicReply({
 
   const nextStep = deriveNextStep(persona, history, latestMessage);
   if (nextStep) {
-    const successReplies: Record<Persona, string> = {
-      host: "Got it. I shaped that into a draft event brief.",
-      creative: "Got it — I shaped that into your creative profile draft.",
-      venue: "Got it — I shaped that into your space profile draft.",
-      fan: "Got it. I tuned that into your event feed setup.",
-    };
-
     return {
-      reply: successReplies[persona],
+      reply: buildSuccessReply(persona, extractedFields, nextStep),
       nextStep,
       persona,
       extractedFields: {
@@ -1066,7 +1235,7 @@ function buildDeterministicReply({
       diagnostics: {
         operation: `sagasan_${persona}_intake`,
         selectedReplySource: "deterministic_fallback",
-        fallbackReason,
+        fallbackReason: fallbackReason === "validation_failed" ? "validation_failed" : fallbackReason === "provider_failed" ? "provider_failed" : null,
         providerState,
         model: getConfiguredModel(),
         configuredMode,
@@ -1088,53 +1257,22 @@ function buildDeterministicReply({
       },
     };
   }
-
-  let reply = "Got it. What should I help shape next?";
-  if (persona === "host") {
-    if (!extractedFields.projectIdea) {
-      reply = "Got it. What are you planning to host?";
-    } else if (!extractedFields.city) {
-      reply = "Got it. What city should I anchor this in?";
-    } else if (!extractedFields.scale) {
-      reply = "Got it. About how big should this feel?";
-    } else {
-      reply = "Got it. What should the vibe feel like?";
-    }
-  } else if (persona === "creative") {
-    if (extractedFields.roles.length === 0) {
-      reply = "Got it — what kind of creative work do you want most?";
-    } else if (!extractedFields.city) {
-      reply = "Got it — what city are you based in?";
-    } else {
-      reply = "Got it — where can I see your work?";
-    }
-  } else if (persona === "venue") {
-    if (!extractedFields.venueType) {
-      reply = "Got it — what kind of space is it?";
-    } else if (!extractedFields.city && !extractedFields.neighborhood) {
-      reply = "Got it — what city is the space in?";
-    } else if (!extractedFields.scale) {
-      reply = "Got it — about how many people can it hold?";
-    } else {
-      reply = "Got it — what dates or weekends are usually open?";
-    }
-  } else if (persona === "fan") {
-    if (!extractedFields.city) {
-      reply = "Got it. What city or scene should I look around?";
-    } else {
-      reply = "Got it. What kind of nights or fandoms should I tune for?";
-    }
-  }
+  const followUp = buildPersonaFollowUp(persona, extractedFields);
 
   return {
-    reply,
+    reply: followUp.reply,
     nextStep: null,
     persona,
     extractedFields,
     diagnostics: {
       operation: `sagasan_${persona}_intake`,
       selectedReplySource: "deterministic_fallback",
-      fallbackReason,
+      fallbackReason:
+        fallbackReason === "validation_failed"
+          ? "validation_failed"
+          : fallbackReason === "provider_failed"
+            ? "provider_failed"
+            : followUp.templateId,
       providerState,
       model: getConfiguredModel(),
       configuredMode,
@@ -1157,18 +1295,18 @@ function buildDeterministicReply({
 
 export function buildUiFallbackReply(persona: Persona | null) {
   if (persona === "host") {
-    return "Got it. I lost that turn for a second — what city should I anchor this in?";
+    return "Got it. I lost the live turn for a second — what city should I anchor this in?";
   }
   if (persona === "creative") {
-    return "Got it — I lost that turn for a second. What city are you based in?";
+    return "Got it — I lost the live turn for a second. What city should I anchor your profile around?";
   }
   if (persona === "venue") {
-    return "Got it — I lost that turn for a second. What city is the space in?";
+    return "Got it — I lost the live turn for a second. What city is the space in?";
   }
   if (persona === "fan") {
-    return "Got it. I lost that turn for a second — what city should I look around?";
+    return "Got it. I lost the live turn for a second — what city should I look around?";
   }
-  return "Got it. I lost that turn for a second — are you here as a host, creative, venue, or fan?";
+  return "Got it. I lost the live turn for a second — are you here as a host, creative, venue, or fan?";
 }
 
 export function buildMockAgentReply({
@@ -1289,7 +1427,7 @@ export async function generateAgentReply({
           configuredMode: "active_live",
           activeLiveAllowed: false,
           blockingGate: "missing_api_key",
-          fallbackReason: "missing_api_key",
+          fallbackReason: "provider_failed",
         },
       },
     };
@@ -1332,7 +1470,10 @@ export async function generateAgentReply({
           activeLiveAllowed: true,
           shadowMode: false,
           model: getConfiguredModel(),
-          fallbackReason: response.errorCategory,
+          fallbackReason:
+            response.errorCategory === "validation_failed"
+              ? "validation_failed"
+              : "provider_failed",
           blockingGate: response.errorCategory,
         },
       },

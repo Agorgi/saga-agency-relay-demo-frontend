@@ -37,6 +37,19 @@ function metadataValue(value: unknown) {
   return typeof value === "string" && value ? value : "none";
 }
 
+function validationStatus(value: string | null) {
+  if (value === "openai_called_succeeded") {
+    return "validated";
+  }
+  if (value === "openai_called_validation_failed") {
+    return "validation_failed";
+  }
+  if (value === "openai_called_failed") {
+    return "provider_failed";
+  }
+  return "not_called";
+}
+
 export default async function WebChatSessionDetailPage({
   params,
 }: {
@@ -138,6 +151,16 @@ export default async function WebChatSessionDetailPage({
                 return null;
               }
 
+              const nextStepRecord =
+                latestAssistant.nextStep &&
+                typeof latestAssistant.nextStep === "object" &&
+                !Array.isArray(latestAssistant.nextStep)
+                  ? (latestAssistant.nextStep as {
+                      label?: unknown;
+                      prefill?: Record<string, unknown>;
+                    })
+                  : null;
+
               return (
                 <div className="grid gap-3 rounded-lg border border-zinc-800 bg-zinc-950/70 p-4 md:grid-cols-2 xl:grid-cols-4">
                   <div>
@@ -204,6 +227,30 @@ export default async function WebChatSessionDetailPage({
                       {metadataValue(latestAssistant.effectiveMode)}
                     </p>
                   </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+                      Validation
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-100">
+                      {validationStatus(latestAssistant.providerState)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+                      Next label
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-100">
+                      {metadataValue(nextStepRecord?.label ?? null)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+                      Prefill keys
+                    </p>
+                    <p className="mt-1 text-sm text-zinc-100">
+                      {metadataValue(nextStepRecord?.prefill ? Object.keys(nextStepRecord.prefill) : [])}
+                    </p>
+                  </div>
                   <div className="md:col-span-2 xl:col-span-4">
                     <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
                       Next step
@@ -211,6 +258,14 @@ export default async function WebChatSessionDetailPage({
                     <pre className="mt-2 whitespace-pre-wrap break-words rounded-md border border-zinc-800 bg-black/50 p-3 text-xs leading-relaxed text-zinc-300">
                       {metadataValue(latestAssistant.nextStep)}
                     </pre>
+                  </div>
+                  <div className="md:col-span-2 xl:col-span-4">
+                    <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+                      Handoff telemetry
+                    </p>
+                    <p className="mt-2 rounded-md border border-zinc-800 bg-black/50 p-3 text-xs leading-relaxed text-zinc-400">
+                      CTA click and prefill hydration are client-side Sagasan telemetry events in this pass. They are available in the live browser session, but not persisted in the legacy production web-chat schema yet.
+                    </p>
                   </div>
                   <div className="md:col-span-2 xl:col-span-4">
                     <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">

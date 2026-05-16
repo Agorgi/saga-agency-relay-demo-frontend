@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { requestWebChatReset } from "@/components/web-chat/useWebChat";
+import { recordSagasanTelemetry } from "@/lib/sagasanTelemetry";
 import { useSagaNavigation } from "@/lib/useSagaNavigation";
 
 export function PebbleMark() {
@@ -11,6 +12,9 @@ export function PebbleMark() {
   return (
     <motion.button
       onClick={() => {
+        recordSagasanTelemetry({
+          name: "reset_to_landing_clicked",
+        });
         requestWebChatReset();
         goHome();
       }}

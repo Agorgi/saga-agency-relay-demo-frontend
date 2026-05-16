@@ -11,6 +11,8 @@ The public web-chat route returns:
   "reply": "Sagasan reply text",
   "turn": 0,
   "mode": "autonomous | holding",
+  "selectedReplySource": "openai_selected | deterministic_fallback | holding_template",
+  "fallbackReason": "string | null",
   "nextStep": {
     "label": "Continue",
     "route": "/projects/new",
@@ -22,6 +24,8 @@ The public web-chat route returns:
 ```
 
 `nextStep` is optional and only appears when Sagasan has enough minimum-crucial info to route the user forward.
+
+If the backend is running in legacy DB mode and cannot persist `nextStep` metadata on the assistant row yet, the client preserves the latest valid handoff in session storage so the user-facing CTA path still works.
 
 ## Approved routes
 
@@ -98,6 +102,30 @@ Allowed keys:
 - prefill is encoded into `?prefill=<base64url-json>`
 - unsafe keys are removed before encoding
 - payload size is capped to avoid leaking large or sensitive data into the URL
+
+## Handoff hydration
+
+Destination pages resolve handoff data in this order:
+
+1. `?prefill=...` in the URL
+2. matching pending next-step state from session storage
+
+Routes currently hydrated:
+
+- `/projects/new`
+- `/me`
+- `/spaces`
+- `/feed`
+
+## Client telemetry
+
+This pass records session-local handoff telemetry for:
+
+- `next_step_emitted`
+- `next_step_clicked`
+- `handoff_loaded`
+- `prefill_hydrated`
+- `reset_to_landing_clicked`
 
 ## Admin QA metadata
 

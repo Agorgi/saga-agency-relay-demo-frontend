@@ -107,6 +107,8 @@ function successResponse({
   mode,
   sessionCookieValue,
   nextStep = null,
+  selectedReplySource = null,
+  fallbackReason = null,
 }: {
   conversationId: string;
   persona: Persona | null;
@@ -115,6 +117,8 @@ function successResponse({
   mode: ReplyMode;
   sessionCookieValue?: string;
   nextStep?: unknown;
+  selectedReplySource?: string | null;
+  fallbackReason?: string | null;
 }) {
   return json(
     {
@@ -124,6 +128,8 @@ function successResponse({
       turn,
       mode,
       nextStep,
+      selectedReplySource,
+      fallbackReason,
     },
     undefined,
     {
@@ -257,6 +263,8 @@ export async function POST(req: NextRequest) {
         mode: "holding",
         sessionCookieValue,
         nextStep: holdingReply.nextStep,
+        selectedReplySource: "holding_template",
+        fallbackReason: holdingReply.diagnostics.fallbackReason,
       });
     }
 
@@ -312,6 +320,8 @@ export async function POST(req: NextRequest) {
       mode: replyMode,
       sessionCookieValue,
       nextStep: result.data.nextStep,
+      selectedReplySource: result.data.diagnostics.selectedReplySource,
+      fallbackReason: result.data.diagnostics.fallbackReason,
     });
   } catch (error) {
     console.error("Web chat request failed", error);
@@ -366,6 +376,8 @@ export async function POST(req: NextRequest) {
       turn,
       mode: "holding",
       sessionCookieValue,
+      selectedReplySource: "holding_template",
+      fallbackReason: "provider_failed",
     });
   }
 }

@@ -13,6 +13,7 @@ import {
   useWebChat,
 } from "@/components/web-chat/useWebChat";
 import { PERSONA_OPTIONS, type Persona } from "@/lib/sagasanPersonas";
+import { recordSagasanTelemetry } from "@/lib/sagasanTelemetry";
 import { buildNextStepHref, type WebChatNextStep } from "@/lib/webChatNextStep";
 
 type HeroChatMorphProps = {
@@ -115,6 +116,13 @@ export function HeroChatMorph({
     }
 
     setIsExpanded(true);
+    recordSagasanTelemetry({
+      name: "chat_opened",
+      persona: fallbackPersona,
+      details: {
+        source: "freeform_launcher",
+      },
+    });
     await submitCurrentDraft({
       persona: fallbackPersona,
     });
@@ -131,6 +139,20 @@ export function HeroChatMorph({
     }
 
     setIsExpanded(true);
+    recordSagasanTelemetry({
+      name: "chat_opened",
+      persona: option.persona,
+      details: {
+        source: "persona_chip",
+      },
+    });
+    recordSagasanTelemetry({
+      name: "persona_chip_clicked",
+      persona: option.persona,
+      details: {
+        label: option.label,
+      },
+    });
     await submitCurrentDraft({
       message: option.firstTurn,
       persona: option.persona,
@@ -138,6 +160,11 @@ export function HeroChatMorph({
   }
 
   function handleNextStep(nextStep: WebChatNextStep) {
+    recordSagasanTelemetry({
+      name: "next_step_clicked",
+      persona: getPersonaFromRoute(nextStep.route),
+      nextStep,
+    });
     router.push(buildNextStepHref(nextStep));
   }
 
@@ -347,4 +374,12 @@ export function HeroChatMorph({
       </motion.section>
     </motion.div>
   );
+}
+
+function getPersonaFromRoute(route: string) {
+  if (route === "/projects/new") return "host" as const;
+  if (route === "/me") return "creative" as const;
+  if (route === "/spaces") return "venue" as const;
+  if (route === "/feed") return "fan" as const;
+  return null;
 }

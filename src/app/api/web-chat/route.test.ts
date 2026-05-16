@@ -100,6 +100,8 @@ test("web chat POST returns an autonomous mock reply in mock mode", async () => 
   const data = (await response.json()) as {
     reply: string;
     mode: string;
+    selectedReplySource?: string | null;
+    fallbackReason?: string | null;
     nextStep?: { route?: string };
   };
 
@@ -107,6 +109,8 @@ test("web chat POST returns an autonomous mock reply in mock mode", async () => 
   assert.equal(data.mode, "autonomous");
   assert.ok(data.reply.length > 0);
   assert.equal(data.nextStep?.route, "/projects/new");
+  assert.equal(data.selectedReplySource, "deterministic_fallback");
+  assert.equal(typeof data.fallbackReason === "string" || data.fallbackReason === null, true);
 });
 
 test("persona chips pass structured hints through the route", async () => {
@@ -330,7 +334,7 @@ test("live mode without a key falls back to deterministic Sagasan copy", async (
 
   assert.equal(response.status, 200);
   assert.equal(data.mode, "autonomous");
-  assert.match(data.reply, /what city|what are you planning|draft event brief/i);
+  assert.match(data.reply, /build your event page|review the brief|what city|what are you planning/i);
   assert.doesNotMatch(data.reply, /we['’]ve logged your message/i);
 });
 
@@ -355,7 +359,7 @@ test("web chat POST stays up without database env vars", async () => {
 
   assert.equal(response.status, 200);
   assert.equal(data.mode, "holding");
-  assert.match(data.reply, /what are you hosting|what city should i anchor|what are you planning to host/i);
+  assert.match(data.reply, /what are you trying to put together|what city should i anchor/i);
 });
 
 test("holding mode keeps the next-step handoff when the brief is routeable", async () => {
@@ -384,6 +388,33 @@ test("holding mode keeps the next-step handoff when the brief is routeable", asy
   assert.match(data.nextStep?.prefill?.projectIdea || "", /anime picnic/i);
 });
 
+test("creative route returns a usable top-level reply and nextStep", async () => {
+  process.env.DATABASE_URL = TEST_DATABASE_URL;
+  process.env.POSTGRES_URL_NON_POOLING = TEST_DATABASE_URL;
+  process.env.LLM_MODE = "mock_active";
+  process.env.OPENAI_API_KEY = "";
+  process.env.WEB_CHAT_AUTONOMOUS_RESPONSES_ENABLED = "true";
+
+  const response = await POST(
+    createRequest({
+      message: "I'm a photographer in LA looking for anime event gigs.",
+    }),
+  );
+
+  const data = (await response.json()) as {
+    persona: string | null;
+    reply: string;
+    nextStep?: { route?: string; label?: string; prefill?: { city?: string } };
+  };
+
+  assert.equal(response.status, 200);
+  assert.equal(data.persona, "creative");
+  assert.match(data.reply, /Open your feed|profile/i);
+  assert.equal(data.nextStep?.route, "/me");
+  assert.equal((data.nextStep?.label?.split(/\s+/).length || 0) <= 5, true);
+  assert.equal(data.nextStep?.prefill?.city, "Los Angeles");
+});
+
 test("production-like legacy DB mode still returns reply and nextStep", async () => {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
   process.env.POSTGRES_URL_NON_POOLING = TEST_DATABASE_URL;
@@ -407,7 +438,7 @@ test("production-like legacy DB mode still returns reply and nextStep", async ()
 
   assert.equal(response.status, 200);
   assert.equal(data.mode, "autonomous");
-  assert.match(data.reply, /draft event brief|build your event draft|what city/i);
+  assert.match(data.reply, /build your event page|review the brief|what city/i);
   assert.equal(data.nextStep?.route, "/projects/new");
   assert.equal(data.nextStep?.prefill?.city, "Silver Lake");
 
@@ -459,6 +490,6 @@ test("legacy GET session payload keeps assistant content even when metadata colu
   assert.equal(getData.persona, "host");
   const assistantMessage = getData.messages.find((message) => message.role === "assistant");
   assert.ok(assistantMessage);
-  assert.match(assistantMessage?.content || "", /draft event brief|what city/i);
+  assert.match(assistantMessage?.content || "", /build your event page|review the brief|what city/i);
   assert.equal(assistantMessage?.nextStep ?? null, null);
 });

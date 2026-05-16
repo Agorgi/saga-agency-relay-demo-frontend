@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { normalizePersona, type Persona } from "@/lib/sagasanPersonas";
+import { recordSagasanTelemetry } from "@/lib/sagasanTelemetry";
 import { useSessionPersona, writeSessionPersona } from "@/lib/useSessionPersona";
 import {
   clearPendingNextStep,
@@ -334,8 +335,54 @@ export function parseWebChatResponse(value: unknown): WebChatResponse | null {
     reply,
     turn: turnCandidate,
     mode: isChatMode(modeCandidate) ? modeCandidate : "holding",
+    selectedReplySource:
+      typeof record.selectedReplySource === "string"
+        ? record.selectedReplySource
+        : typeof nested?.selectedReplySource === "string"
+          ? nested.selectedReplySource
+          : null,
+    fallbackReason:
+      typeof record.fallbackReason === "string"
+        ? record.fallbackReason
+        : typeof nested?.fallbackReason === "string"
+          ? nested.fallbackReason
+          : null,
     nextStep: sanitizeNextStepPayload(nextStepCandidate),
   };
+}
+
+function maybeRecordPersonaTransition({
+  previousPersona,
+  nextPersona,
+  requestedPersona,
+}: {
+  previousPersona: Persona | null;
+  nextPersona: Persona | null;
+  requestedPersona: Persona | null;
+}) {
+  if (!nextPersona || nextPersona === previousPersona) {
+    return;
+  }
+
+  if (previousPersona) {
+    recordSagasanTelemetry({
+      name: "persona_pivoted",
+      persona: nextPersona,
+      details: {
+        from: previousPersona,
+        to: nextPersona,
+        source: requestedPersona ? "explicit" : "inferred",
+      },
+    });
+    return;
+  }
+
+  if (!requestedPersona) {
+    recordSagasanTelemetry({
+      name: "persona_inferred",
+      persona: nextPersona,
+    });
+  }
 }
 
 function getUiChatFallbackReply(persona: Persona | null) {
@@ -635,6 +682,7 @@ export function useWebChat({
     const requestedPersona = normalizePersona(options?.persona);
     const nextPersona = requestedPersona ?? persona ?? fallbackPersona;
     const uiFallbackReply = getUiChatFallbackReply(nextPersona ?? null);
+    const previousPersona = persona ?? fallbackPersona ?? null;
 
     if (requestedPersona && requestedPersona !== persona) {
       clearPendingNextStep();
@@ -699,6 +747,11 @@ export function useWebChat({
       }
 
       const resolvedPersona = parsed.persona ?? nextPersona ?? null;
+      maybeRecordPersonaTransition({
+        previousPersona,
+        nextPersona: resolvedPersona,
+        requestedPersona,
+      });
 
       window.sessionStorage.removeItem(WEB_CHAT_SUPPRESS_RESTORE_KEY);
       window.sessionStorage.removeItem(WEB_CHAT_RESET_REQUEST_KEY);
@@ -722,8 +775,46 @@ export function useWebChat({
       setMessages(nextMessages);
       if (parsed.nextStep) {
         persistPendingNextStep(parsed.nextStep);
+        recordSagasanTelemetry({
+          name: "next_step_emitted",
+          persona: resolvedPersona,
+          conversationId: parsed.conversationId,
+          selectedReplySource: parsed.selectedReplySource,
+          fallbackReason: parsed.fallbackReason,
+          nextStep: parsed.nextStep,
+        });
       } else {
         clearPendingNextStep();
+      }
+      recordSagasanTelemetry({
+        name: "sagasan_reply_generated",
+        persona: resolvedPersona,
+        conversationId: parsed.conversationId,
+        selectedReplySource: parsed.selectedReplySource,
+        fallbackReason: parsed.fallbackReason,
+        nextStep: parsed.nextStep,
+        details: {
+          mode: parsed.mode,
+        },
+      });
+      if (parsed.selectedReplySource && parsed.selectedReplySource !== "openai_selected") {
+        recordSagasanTelemetry({
+          name: "fallback_used",
+          persona: resolvedPersona,
+          conversationId: parsed.conversationId,
+          selectedReplySource: parsed.selectedReplySource,
+          fallbackReason: parsed.fallbackReason,
+          nextStep: parsed.nextStep,
+        });
+      }
+      if (parsed.fallbackReason === "validation_failed") {
+        recordSagasanTelemetry({
+          name: "validation_failed",
+          persona: resolvedPersona,
+          conversationId: parsed.conversationId,
+          selectedReplySource: parsed.selectedReplySource,
+          fallbackReason: parsed.fallbackReason,
+        });
       }
       persistConversationCache(parsed.conversationId, resolvedPersona, nextMessages);
 

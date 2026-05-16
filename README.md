@@ -51,3 +51,25 @@ npm run demo:prod
 - `src/components/FocusOverlay.tsx` — creator focus mode
 - `src/components/AssemblyView.tsx` — team assembly board
 - `src/components/ProjectDetailView.tsx` — launched project page
+
+## Sagasan QA
+
+Run the Sagasan verification sweep with:
+
+```bash
+npm run test:sagasan-agent
+npm run test:sagasan-model-preflight
+npm run lint
+npm run typecheck
+npm run build
+npm run lint:copy
+```
+
+Useful docs:
+
+- `docs/sagasan-agent-readiness-v2.md`
+- `docs/sagasan-voice-guide.md`
+- `docs/sagasan-eval-suite.md`
+- `docs/sagasan-runtime-modes.md`
+- `docs/sagasan-handoff-schema.md`
+- `docs/sagasan-responses-api-migration-plan.md`

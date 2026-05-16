@@ -1,12 +1,30 @@
 "use client";
 
 import { requestWebChatReset } from "@/components/web-chat/useWebChat";
+import { useHandoffPrefill } from "@/lib/useHandoffPrefill";
 import { useSagaNavigation } from "@/lib/useSagaNavigation";
 import { useThemeMode } from "@/lib/useThemeMode";
 
-export function SpacesView() {
+export function SpacesView({
+  encodedPrefill = null,
+}: {
+  encodedPrefill?: string | null;
+}) {
   const { goHome } = useSagaNavigation();
   const isDark = useThemeMode() === "dark";
+  const prefill = useHandoffPrefill({
+    encodedPrefill,
+    route: "/spaces",
+  });
+  const handoffLines = [
+    typeof prefill?.venueType === "string" && prefill.venueType
+      ? `Space: ${prefill.venueType}`
+      : null,
+    typeof prefill?.city === "string" && prefill.city ? `City: ${prefill.city}` : null,
+    typeof prefill?.capacity === "string" && prefill.capacity
+      ? `Capacity: ${prefill.capacity}`
+      : null,
+  ].filter((line): line is string => Boolean(line));
 
   return (
     <div
@@ -36,6 +54,32 @@ export function SpacesView() {
             Requests and listings.
           </p>
         </section>
+
+        {handoffLines.length > 0 ? (
+          <section
+            className={`rounded-[24px] border p-5 ${
+              isDark
+                ? "border-white/8 bg-white/[0.04]"
+                : "border-black/8 bg-white/88 shadow-[0_16px_40px_rgba(17,17,17,0.06)]"
+            }`}
+          >
+            <p className={`text-[10px] uppercase tracking-[0.22em] ${isDark ? "text-white/42" : "text-ink-light"}`}>
+              Sagasan handoff
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {handoffLines.map((line) => (
+                <span
+                  key={line}
+                  className={`rounded-pill px-3 py-1.5 text-xs font-medium ${
+                    isDark ? "bg-white/8 text-white/72" : "bg-canvas text-ink-light"
+                  }`}
+                >
+                  {line}
+                </span>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <section
           className={`rounded-[26px] border p-6 ${

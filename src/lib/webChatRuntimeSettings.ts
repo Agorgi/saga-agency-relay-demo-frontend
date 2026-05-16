@@ -233,10 +233,39 @@ export async function getWebChatRuntimeDashboard() {
       ? "active_live"
       : "active_mock";
 
+  const providerEffective =
+    latest?.providerState === "openai_called_succeeded" ? "OpenAI live" : "Deterministic Sagasan";
+  const providerConfigured = openAiConfigured ? "OpenAI configured" : "OpenAI missing";
+  const validationStatus =
+    latest?.providerState === "openai_called_validation_failed"
+      ? "validation_failed"
+      : latest?.providerState === "openai_called_succeeded"
+        ? "validated"
+        : latest?.providerState === "openai_called_failed"
+          ? "provider_failed"
+          : "not_called";
+  const runtimeExplanation = !snapshot.envEnabled
+    ? "Live OpenAI is disabled by the environment ceiling. Users are seeing holding replies."
+    : !snapshot.requestedAutonomousEnabled
+      ? "The runtime toggle is set to holding. Users are seeing holding replies."
+      : configuredMode !== "active_live"
+        ? "Live OpenAI is disabled. Users are seeing deterministic Sagasan replies."
+        : !openAiConfigured
+          ? "OpenAI is not configured. Users are seeing deterministic Sagasan replies."
+          : latest?.providerState === "openai_called_validation_failed"
+            ? "OpenAI responded, but the reply failed validation. Users are seeing deterministic Sagasan replies."
+            : latest?.providerState === "openai_called_failed"
+              ? "OpenAI failed on the recent call. Users are seeing deterministic Sagasan replies."
+              : latest?.providerState === "openai_called_succeeded"
+                ? "Live OpenAI is active for recent Sagasan turns."
+                : "Sagasan is ready to call OpenAI when a new active_live turn arrives.";
+
   return {
     configuredModel,
     configuredMode,
     effectiveMode,
+    providerConfigured,
+    providerEffective,
     envEnabled: snapshot.envEnabled,
     requestedAutonomousEnabled: snapshot.requestedAutonomousEnabled,
     effectiveAutonomousEnabled: snapshot.effectiveAutonomousEnabled,
@@ -254,6 +283,8 @@ export async function getWebChatRuntimeDashboard() {
       openAiConfigured,
     shadowMode: configuredMode !== "active_live",
     publicLaunchGate,
+    validationStatus,
+    runtimeExplanation,
     recentAssistantCount,
     recentFallbackCount,
     fallbackRate,

@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useMemo } from "react";
 import { buildBriefDraftFromHostPrefill, buildProjectFromDraft } from "@/data/sagaAgencyData";
 import { requestWebChatReset } from "@/components/web-chat/useWebChat";
-import { decodePrefillPayload, readPendingNextStep } from "@/lib/webChatNextStep";
+import { useHandoffPrefill } from "@/lib/useHandoffPrefill";
 import { useSagaNavigation } from "@/lib/useSagaNavigation";
 import { useThemeMode } from "@/lib/useThemeMode";
 import { useAgencyStore } from "@/store/useAgencyStore";
@@ -20,14 +20,10 @@ export function ProjectPreviewView({
   const isDark = useThemeMode() === "dark";
   const { goHome } = useSagaNavigation();
 
-  const prefill = useMemo(() => {
-    const decoded = decodePrefillPayload(encodedPrefill);
-    if (decoded) {
-      return decoded;
-    }
-
-    return readPendingNextStep("/projects/new")?.prefill ?? null;
-  }, [encodedPrefill]);
+  const prefill = useHandoffPrefill({
+    encodedPrefill,
+    route: "/projects/new",
+  });
   const draft = useMemo(
     () =>
       prefill

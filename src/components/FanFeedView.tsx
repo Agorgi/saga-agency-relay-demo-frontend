@@ -2,14 +2,29 @@
 
 import Image from "next/image";
 import { motion } from "framer-motion";
+import { useHandoffPrefill } from "@/lib/useHandoffPrefill";
 import { useSagaNavigation } from "@/lib/useSagaNavigation";
 import { useThemeMode } from "@/lib/useThemeMode";
 import { useAppStore } from "@/store/useAppStore";
 
-export function FanFeedView() {
+export function FanFeedView({
+  encodedPrefill = null,
+}: {
+  encodedPrefill?: string | null;
+}) {
   const events = useAppStore((state) => state.events);
   const { openEvent } = useSagaNavigation();
   const isDark = useThemeMode() === "dark";
+  const prefill = useHandoffPrefill({
+    encodedPrefill,
+    route: "/feed",
+  });
+  const handoffLines = [
+    typeof prefill?.city === "string" && prefill.city ? `City: ${prefill.city}` : null,
+    Array.isArray(prefill?.interests) && prefill.interests.length > 0
+      ? `Interests: ${prefill.interests.join(", ")}`
+      : null,
+  ].filter((line): line is string => Boolean(line));
 
   return (
     <div
@@ -41,6 +56,32 @@ export function FanFeedView() {
             Pick something nearby.
           </p>
         </motion.section>
+
+        {handoffLines.length > 0 ? (
+          <section
+            className={`rounded-[24px] border p-5 ${
+              isDark
+                ? "border-white/8 bg-white/[0.04]"
+                : "border-black/8 bg-white/88 shadow-[0_16px_40px_rgba(17,17,17,0.06)]"
+            }`}
+          >
+            <p className={`text-[10px] uppercase tracking-[0.22em] ${isDark ? "text-white/42" : "text-ink-light"}`}>
+              Sagasan handoff
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {handoffLines.map((line) => (
+                <span
+                  key={line}
+                  className={`rounded-pill px-3 py-1.5 text-xs font-medium ${
+                    isDark ? "bg-white/8 text-white/72" : "bg-canvas text-ink-light"
+                  }`}
+                >
+                  {line}
+                </span>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <div className="space-y-4">
           {events.slice(0, 5).map((event, index) => (

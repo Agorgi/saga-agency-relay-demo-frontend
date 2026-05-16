@@ -158,6 +158,8 @@ export default async function WebChatSessionsPage({
           <MetricCard label="Configured mode" value={runtime.configuredMode} />
           <MetricCard label="Effective mode" value={runtime.effectiveMode} />
           <MetricCard label="Model" value={runtime.configuredModel} />
+          <MetricCard label="Provider configured" value={runtime.providerConfigured} />
+          <MetricCard label="Provider effective" value={runtime.providerEffective} />
           <MetricCard
             label="OpenAI configured"
             value={runtime.openAiConfigured ? "yes" : "no"}
@@ -186,6 +188,7 @@ export default async function WebChatSessionsPage({
             label="Public launch gate"
             value={runtime.publicLaunchGate ? "on" : "off"}
           />
+          <MetricCard label="Validation" value={runtime.validationStatus} />
         </section>
 
         <section className="rounded-lg border border-zinc-800 bg-black p-5">
@@ -214,6 +217,12 @@ export default async function WebChatSessionsPage({
             <p className="mt-1 text-sm text-zinc-300">
               {runtime.blockingGate || "No blocking gate. Sagasan can call OpenAI when active_live is enabled and the runtime toggle stays on."}
             </p>
+          </div>
+          <div className="mt-4">
+            <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+              Plain English
+            </p>
+            <p className="mt-1 text-sm text-zinc-300">{runtime.runtimeExplanation}</p>
           </div>
         </section>
       </div>
