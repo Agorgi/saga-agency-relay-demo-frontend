@@ -49,33 +49,22 @@ function isString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-function textFromValue(value: unknown, depth = 0): string | null {
+function textFromValue(value: unknown): string | null {
   if (isString(value)) return value;
-  if (depth > 3 || !value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
 
   const record = value as Record<string, unknown>;
   for (const key of [
-    "data",
-    "reply",
     "replyText",
-    "selectedReply",
-    "selectedReplyText",
     "message",
     "body",
     "selectedText",
     "organizerFacingSummary",
   ]) {
-    const nested = textFromValue(record[key], depth + 1);
-    if (nested) return nested;
+    if (isString(record[key])) return record[key];
   }
 
-  const keys = Object.keys(record).filter(
-    (key) =>
-      record[key] !== undefined &&
-      !["prompt", "instructions", "apiKey", "authorization"].includes(key),
-  );
+  const keys = Object.keys(record).filter((key) => record[key] !== undefined);
   return keys.length ? `Structured output fields: ${keys.join(", ")}` : null;
 }
 

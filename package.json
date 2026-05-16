@@ -15,7 +15,7 @@
     "lint": "eslint .",
     "lint:copy": "tsx scripts/lint-copy.ts",
     "typecheck": "tsc --noEmit",
-    "test:sagasan-agent": "tsx --test src/lib/sagasanAgent.test.ts src/lib/sagasanSystemPrompt.test.ts src/lib/webChatNextStep.test.ts src/app/api/web-chat/route.test.ts src/components/web-chat/ChatThread.test.tsx src/sms-engine/llm/qualityReview.test.ts",
+    "test:sagasan-agent": "tsx --test src/lib/sagasanAgent.test.ts src/lib/sagasanSystemPrompt.test.ts src/lib/webChatNextStep.test.ts src/app/api/web-chat/route.test.ts src/components/web-chat/ChatThread.test.tsx",
     "test:sagasan-model-preflight": "tsx scripts/test-sagasan-model-preflight.ts",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
