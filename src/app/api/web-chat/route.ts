@@ -316,42 +316,48 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error("Web chat request failed", error);
     const reply = buildUiFallbackReply(persona);
-    const turn = await appendTurn({
-      sessionId: session.session.id,
-      conversationId,
-      userMessage: latestMessage,
-      assistantReply: reply,
-      mode: "holding",
-      sessionPersona: persona,
-      assistantMeta: {
-        persona,
-        route: null,
-        nextStep: null,
-        extractedFields: {
+    let turn = history.filter((message) => message.role === "assistant").length;
+
+    try {
+      turn = await appendTurn({
+        sessionId: session.session.id,
+        conversationId,
+        userMessage: latestMessage,
+        assistantReply: reply,
+        mode: "holding",
+        sessionPersona: persona,
+        assistantMeta: {
           persona,
-          city: null,
-          neighborhood: null,
-          dateWindow: null,
-          roles: [],
-          vibeTags: [],
-          venueType: null,
-          projectIdea: null,
-          interests: [],
-          portfolio: null,
-          availability: null,
-          rates: null,
-          scale: null,
-          nextRoute: null,
+          route: null,
+          nextStep: null,
+          extractedFields: {
+            persona,
+            city: null,
+            neighborhood: null,
+            dateWindow: null,
+            roles: [],
+            vibeTags: [],
+            venueType: null,
+            projectIdea: null,
+            interests: [],
+            portfolio: null,
+            availability: null,
+            rates: null,
+            scale: null,
+            nextRoute: null,
+          },
+          operation: persona ? `sagasan_${persona}_intake` : "sagasan_router",
+          selectedReplySource: "holding_template",
+          fallbackReason: "request_failed",
+          providerState: "openai_called_failed",
+          model: process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini",
+          configuredMode: normalizeRouteLlmMode(process.env.LLM_MODE),
+          effectiveMode: "holding",
         },
-        operation: persona ? `sagasan_${persona}_intake` : "sagasan_router",
-        selectedReplySource: "holding_template",
-        fallbackReason: "request_failed",
-        providerState: "openai_called_failed",
-        model: process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini",
-        configuredMode: normalizeRouteLlmMode(process.env.LLM_MODE),
-        effectiveMode: "holding",
-      },
-    });
+      });
+    } catch (persistError) {
+      console.error("Web chat fallback persistence failed", persistError);
+    }
 
     return successResponse({
       conversationId,

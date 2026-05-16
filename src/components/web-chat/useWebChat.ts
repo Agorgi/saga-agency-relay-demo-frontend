@@ -6,6 +6,7 @@ import { useSessionPersona, writeSessionPersona } from "@/lib/useSessionPersona"
 import {
   clearPendingNextStep,
   persistPendingNextStep,
+  sanitizeNextStepPayload,
   type WebChatNextStep,
 } from "@/lib/webChatNextStep";
 
@@ -57,6 +58,60 @@ export const SAGASAN_AVATAR_SRC = "/branding/sagasan-contact.png";
 export const DEFAULT_CHAT_DESCRIPTION = "";
 export const DEFAULT_CHAT_PLACEHOLDER = "Message Sagasan...";
 export const DEFAULT_WELCOME_MESSAGE = "";
+
+function isChatMode(value: unknown): value is ChatMode {
+  return value === "autonomous" || value === "holding";
+}
+
+function extractReplyText(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+export function parseWebChatResponse(value: unknown): WebChatResponse | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const nested =
+    record.data && typeof record.data === "object"
+      ? (record.data as Record<string, unknown>)
+      : null;
+
+  const conversationId =
+    typeof record.conversationId === "string" && record.conversationId.trim().length > 0
+      ? record.conversationId
+      : typeof nested?.conversationId === "string" &&
+          nested.conversationId.trim().length > 0
+        ? nested.conversationId
+        : null;
+  const reply =
+    extractReplyText(record.reply) ||
+    extractReplyText(record.message) ||
+    extractReplyText(nested?.reply) ||
+    extractReplyText(nested?.message);
+  const turnCandidate = typeof record.turn === "number" ? record.turn : nested?.turn;
+  const modeCandidate = record.mode ?? nested?.mode;
+  const nextStepCandidate = record.nextStep ?? nested?.nextStep;
+  const personaCandidate = record.persona ?? nested?.persona;
+
+  if (!conversationId || !reply || typeof turnCandidate !== "number") {
+    return null;
+  }
+
+  return {
+    conversationId,
+    persona:
+      typeof personaCandidate === "string"
+        ? normalizePersona(personaCandidate)
+        : null,
+    reply,
+    turn: turnCandidate,
+    mode: isChatMode(modeCandidate) ? modeCandidate : "holding",
+    nextStep: sanitizeNextStepPayload(nextStepCandidate),
+  };
+}
+
 function getUiChatFallbackReply(persona: Persona | null) {
   if (persona === "host") {
     return "Got it. I lost that turn for a second — what city should I anchor this in?";
@@ -354,11 +409,12 @@ export function useWebChat({
       });
 
       const data = (await response.json().catch(() => null)) as
-        | WebChatResponse
+        | Record<string, unknown>
         | { error?: string }
         | null;
+      const parsed = parseWebChatResponse(data);
 
-      if (!response.ok || !data || typeof data !== "object" || !("reply" in data)) {
+      if (!response.ok || !parsed) {
         setError(uiFallbackReply);
         setMessages([
           ...optimisticMessages,
@@ -374,33 +430,33 @@ export function useWebChat({
         return false;
       }
 
-      const resolvedPersona = data.persona ?? nextPersona ?? null;
+      const resolvedPersona = parsed.persona ?? nextPersona ?? null;
 
       window.sessionStorage.removeItem(WEB_CHAT_SUPPRESS_RESTORE_KEY);
       window.sessionStorage.removeItem(WEB_CHAT_RESET_REQUEST_KEY);
-      window.localStorage.setItem(CONVERSATION_STORAGE_KEY, data.conversationId);
+      window.localStorage.setItem(CONVERSATION_STORAGE_KEY, parsed.conversationId);
       if (resolvedPersona) {
         setPersona(resolvedPersona);
       }
-      setConversationId(data.conversationId);
+      setConversationId(parsed.conversationId);
 
       const nextMessages = [
         ...optimisticMessages,
         {
-          id: `assistant-${data.turn}-${Date.now()}`,
+          id: `assistant-${parsed.turn}-${Date.now()}`,
           role: "assistant" as const,
-          content: data.reply,
+          content: parsed.reply,
           persona: resolvedPersona,
-          mode: data.mode,
-          nextStep: data.nextStep ?? null,
+          mode: parsed.mode,
+          nextStep: parsed.nextStep ?? null,
         },
       ];
 
       setMessages(nextMessages);
-      if (data.nextStep) {
-        persistPendingNextStep(data.nextStep);
+      if (parsed.nextStep) {
+        persistPendingNextStep(parsed.nextStep);
       }
-      persistConversationCache(data.conversationId, resolvedPersona, nextMessages);
+      persistConversationCache(parsed.conversationId, resolvedPersona, nextMessages);
 
       return true;
     } catch {

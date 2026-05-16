@@ -46,6 +46,29 @@ type AssistantRuntimeSnapshot = Pick<
 
 const memorySessions = new Map<string, MemorySession>();
 const memoryMessages: MemoryStoredMessage[] = [];
+let webChatLegacyDbMode = false;
+
+const LEGACY_WEB_CHAT_SCHEMA_MARKERS = [
+  "WebSession.persona",
+  "column `persona` does not exist",
+  "WebChatMessage.persona",
+  "WebChatMessage.route",
+  "WebChatMessage.nextStep",
+  "WebChatMessage.extractedFields",
+  "WebChatMessage.selectedReplySource",
+  "WebChatMessage.fallbackReason",
+  "WebChatMessage.providerState",
+  "WebChatMessage.configuredMode",
+  "WebChatMessage.effectiveMode",
+  "The column `route` does not exist",
+  "The column `nextStep` does not exist",
+  "The column `extractedFields` does not exist",
+  "The column `selectedReplySource` does not exist",
+  "The column `fallbackReason` does not exist",
+  "The column `providerState` does not exist",
+  "The column `configuredMode` does not exist",
+  "The column `effectiveMode` does not exist",
+];
 
 export type StoredExtractedFields = {
   persona: Persona | null;
@@ -103,6 +126,124 @@ function normalizedUserAgent(req: NextRequest) {
   return value ? value.slice(0, 512) : null;
 }
 
+function inLegacyDbMode() {
+  return hasWebChatDatabase() && webChatLegacyDbMode;
+}
+
+function isRecoverableLegacySchemaError(error: unknown) {
+  if (
+    !(error instanceof Prisma.PrismaClientKnownRequestError) &&
+    !(error instanceof Prisma.PrismaClientUnknownRequestError)
+  ) {
+    return false;
+  }
+
+  const message = error.message || "";
+  return LEGACY_WEB_CHAT_SCHEMA_MARKERS.some((marker) => message.includes(marker));
+}
+
+function activateLegacyDbMode(error: unknown) {
+  if (!isRecoverableLegacySchemaError(error)) {
+    return false;
+  }
+
+  if (!webChatLegacyDbMode) {
+    console.warn("Web chat metadata columns are unavailable; using legacy DB mode.");
+  }
+  webChatLegacyDbMode = true;
+  return true;
+}
+
+export function __setLegacyWebChatDbModeForTests(value: boolean | null) {
+  webChatLegacyDbMode = value === true;
+}
+
+function withNullPersona<
+  T extends {
+    id: string;
+    createdAt: Date;
+    lastSeenAt: Date;
+    userAgent: string | null;
+    ipHash: string | null;
+  },
+>(session: T) {
+  return {
+    ...session,
+    persona: null as Persona | null,
+  };
+}
+
+async function getOrCreateLegacyDbSession(req: NextRequest) {
+  const db = getDb();
+  const cookieSessionId = req.cookies.get(WEB_SESSION_COOKIE_NAME)?.value?.trim();
+  const userAgent = normalizedUserAgent(req);
+
+  if (cookieSessionId) {
+    const existing = await db.webSession.findUnique({
+      where: { id: cookieSessionId },
+      select: {
+        id: true,
+        createdAt: true,
+        lastSeenAt: true,
+        userAgent: true,
+        ipHash: true,
+      },
+    });
+    if (existing) {
+      const session = await db.webSession.update({
+        where: { id: existing.id },
+        data: {
+          lastSeenAt: new Date(),
+          userAgent: existing.userAgent ?? userAgent,
+        },
+        select: {
+          id: true,
+          createdAt: true,
+          lastSeenAt: true,
+          userAgent: true,
+          ipHash: true,
+        },
+      });
+      return { session: withNullPersona(session), isNew: false as const };
+    }
+  }
+
+  const session = await db.webSession.create({
+    data: {
+      userAgent,
+      ipHash: null,
+    },
+    select: {
+      id: true,
+      createdAt: true,
+      lastSeenAt: true,
+      userAgent: true,
+      ipHash: true,
+    },
+  });
+  return { session: withNullPersona(session), isNew: true as const };
+}
+
+async function getExistingLegacyDbSession(req: NextRequest) {
+  const sessionId = req.cookies.get(WEB_SESSION_COOKIE_NAME)?.value?.trim();
+  if (!sessionId) {
+    return null;
+  }
+
+  const session = await getDb().webSession.findUnique({
+    where: { id: sessionId },
+    select: {
+      id: true,
+      createdAt: true,
+      lastSeenAt: true,
+      userAgent: true,
+      ipHash: true,
+    },
+  });
+
+  return session ? withNullPersona(session) : null;
+}
+
 export function hasWebChatDatabase() {
   return Boolean(process.env.DATABASE_URL?.trim());
 }
@@ -138,34 +279,45 @@ export async function getOrCreateSession(req: NextRequest) {
     return { session, isNew: true as const };
   }
 
+  if (inLegacyDbMode()) {
+    return getOrCreateLegacyDbSession(req);
+  }
+
   const db = getDb();
   const cookieSessionId = req.cookies.get(WEB_SESSION_COOKIE_NAME)?.value?.trim();
   const userAgent = normalizedUserAgent(req);
 
-  if (cookieSessionId) {
-    const existing = await db.webSession.findUnique({
-      where: { id: cookieSessionId },
-    });
-    if (existing) {
-      const session = await db.webSession.update({
-        where: { id: existing.id },
-        data: {
-          lastSeenAt: new Date(),
-          userAgent: existing.userAgent ?? userAgent,
-        },
+  try {
+    if (cookieSessionId) {
+      const existing = await db.webSession.findUnique({
+        where: { id: cookieSessionId },
       });
-      return { session, isNew: false as const };
+      if (existing) {
+        const session = await db.webSession.update({
+          where: { id: existing.id },
+          data: {
+            lastSeenAt: new Date(),
+            userAgent: existing.userAgent ?? userAgent,
+          },
+        });
+        return { session, isNew: false as const };
+      }
     }
-  }
 
-  const session = await db.webSession.create({
-    data: {
-      userAgent,
-      ipHash: null,
-      persona: null,
-    },
-  });
-  return { session, isNew: true as const };
+    const session = await db.webSession.create({
+      data: {
+        userAgent,
+        ipHash: null,
+        persona: null,
+      },
+    });
+    return { session, isNew: true as const };
+  } catch (error) {
+    if (activateLegacyDbMode(error)) {
+      return getOrCreateLegacyDbSession(req);
+    }
+    throw error;
+  }
 }
 
 export async function getExistingSession(req: NextRequest) {
@@ -178,8 +330,61 @@ export async function getExistingSession(req: NextRequest) {
     return getMemorySession(sessionId);
   }
 
-  return getDb().webSession.findUnique({
-    where: { id: sessionId },
+  if (inLegacyDbMode()) {
+    return getExistingLegacyDbSession(req);
+  }
+
+  try {
+    return await getDb().webSession.findUnique({
+      where: { id: sessionId },
+    });
+  } catch (error) {
+    if (activateLegacyDbMode(error)) {
+      return getExistingLegacyDbSession(req);
+    }
+    throw error;
+  }
+}
+
+async function appendLegacyTurn({
+  sessionId,
+  conversationId,
+  userMessage,
+  assistantReply,
+  mode,
+}: {
+  sessionId: string;
+  conversationId: string;
+  userMessage: string;
+  assistantReply: string;
+  mode: ReplyMode;
+}) {
+  const db = getDb();
+  return db.$transaction(async (tx) => {
+    const turn = await tx.webChatMessage.count({
+      where: { sessionId, conversationId, role: "assistant" },
+    });
+    await tx.webChatMessage.createMany({
+      data: [
+        {
+          sessionId,
+          conversationId,
+          role: "user",
+          content: userMessage,
+          mode: null,
+          turn,
+        },
+        {
+          sessionId,
+          conversationId,
+          role: "assistant",
+          content: assistantReply,
+          mode,
+          turn,
+        },
+      ],
+    });
+    return turn;
   });
 }
 
@@ -263,57 +468,80 @@ export async function appendTurn({
     return turn;
   }
 
+  if (inLegacyDbMode()) {
+    return appendLegacyTurn({
+      sessionId,
+      conversationId,
+      userMessage,
+      assistantReply,
+      mode,
+    });
+  }
+
   const db = getDb();
-  return db.$transaction(async (tx) => {
-    const turn = await tx.webChatMessage.count({
-      where: { sessionId, conversationId, role: "assistant" },
-    });
-    await tx.webSession.update({
-      where: { id: sessionId },
-      data: {
-        persona: sessionPersona,
-      },
-    });
-    await tx.webChatMessage.createMany({
-      data: [
-        {
-          sessionId,
-          conversationId,
-          role: "user",
-          content: userMessage,
-          mode: null,
+  try {
+    return await db.$transaction(async (tx) => {
+      const turn = await tx.webChatMessage.count({
+        where: { sessionId, conversationId, role: "assistant" },
+      });
+      await tx.webSession.update({
+        where: { id: sessionId },
+        data: {
           persona: sessionPersona,
-          turn,
         },
-        {
-          sessionId,
-          conversationId,
-          role: "assistant",
-          content: assistantReply,
-          mode,
-          persona: assistantMeta.persona,
-          route: assistantMeta.route,
-          nextStep:
-            assistantMeta.nextStep === null
-              ? Prisma.JsonNull
-              : (assistantMeta.nextStep as Prisma.InputJsonValue),
-          extractedFields:
-            assistantMeta.extractedFields === null
-              ? Prisma.JsonNull
-              : (assistantMeta.extractedFields as Prisma.InputJsonValue),
-          selectedReplySource: assistantMeta.selectedReplySource,
-          fallbackReason: assistantMeta.fallbackReason,
-          providerState: assistantMeta.providerState,
-          model: assistantMeta.model,
-          configuredMode: assistantMeta.configuredMode,
-          effectiveMode: assistantMeta.effectiveMode,
-          operation: assistantMeta.operation,
-          turn,
-        },
-      ],
+      });
+      await tx.webChatMessage.createMany({
+        data: [
+          {
+            sessionId,
+            conversationId,
+            role: "user",
+            content: userMessage,
+            mode: null,
+            persona: sessionPersona,
+            turn,
+          },
+          {
+            sessionId,
+            conversationId,
+            role: "assistant",
+            content: assistantReply,
+            mode,
+            persona: assistantMeta.persona,
+            route: assistantMeta.route,
+            nextStep:
+              assistantMeta.nextStep === null
+                ? Prisma.JsonNull
+                : (assistantMeta.nextStep as Prisma.InputJsonValue),
+            extractedFields:
+              assistantMeta.extractedFields === null
+                ? Prisma.JsonNull
+                : (assistantMeta.extractedFields as Prisma.InputJsonValue),
+            selectedReplySource: assistantMeta.selectedReplySource,
+            fallbackReason: assistantMeta.fallbackReason,
+            providerState: assistantMeta.providerState,
+            model: assistantMeta.model,
+            configuredMode: assistantMeta.configuredMode,
+            effectiveMode: assistantMeta.effectiveMode,
+            operation: assistantMeta.operation,
+            turn,
+          },
+        ],
+      });
+      return turn;
     });
-    return turn;
-  });
+  } catch (error) {
+    if (activateLegacyDbMode(error)) {
+      return appendLegacyTurn({
+        sessionId,
+        conversationId,
+        userMessage,
+        assistantReply,
+        mode,
+      });
+    }
+    throw error;
+  }
 }
 
 export async function loadConversationMessages({
@@ -356,29 +584,79 @@ export async function loadConversationMessages({
       }));
   }
 
-  const messages = await getDb().webChatMessage.findMany({
-    where: { sessionId, conversationId },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    select: {
-      id: true,
-      role: true,
-      content: true,
-      mode: true,
-      persona: true,
-      route: true,
-      nextStep: true,
-      extractedFields: true,
-      selectedReplySource: true,
-      fallbackReason: true,
-      providerState: true,
-      model: true,
-      configuredMode: true,
-      effectiveMode: true,
-      operation: true,
-      turn: true,
-      createdAt: true,
-    },
-  });
+  const legacyLoadConversationMessages = async () => {
+    const messages = await getDb().webChatMessage.findMany({
+      where: { sessionId, conversationId },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        role: true,
+        content: true,
+        mode: true,
+        turn: true,
+        createdAt: true,
+      },
+    });
+
+    return messages.map((message) => ({
+      id: message.id,
+      role: message.role === "assistant" ? "assistant" : "user",
+      content: message.content,
+      mode:
+        message.mode === "autonomous" || message.mode === "holding"
+          ? message.mode
+          : null,
+      persona: null,
+      route: null,
+      nextStep: null,
+      extractedFields: null,
+      selectedReplySource: null,
+      fallbackReason: null,
+      providerState: null,
+      model: null,
+      configuredMode: null,
+      effectiveMode: null,
+      operation: null,
+      turn: message.turn,
+      createdAt: message.createdAt.toISOString(),
+    })) satisfies StoredWebChatMessage[];
+  };
+
+  if (inLegacyDbMode()) {
+    return legacyLoadConversationMessages();
+  }
+
+  let messages;
+  try {
+    messages = await getDb().webChatMessage.findMany({
+      where: { sessionId, conversationId },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      select: {
+        id: true,
+        role: true,
+        content: true,
+        mode: true,
+        persona: true,
+        route: true,
+        nextStep: true,
+        extractedFields: true,
+        selectedReplySource: true,
+        fallbackReason: true,
+        providerState: true,
+        model: true,
+        configuredMode: true,
+        effectiveMode: true,
+        operation: true,
+        turn: true,
+        createdAt: true,
+      },
+    });
+  } catch (error) {
+    if (activateLegacyDbMode(error)) {
+      return legacyLoadConversationMessages();
+    }
+    throw error;
+  }
 
   return messages.map((message) => ({
     id: message.id,
@@ -485,19 +763,55 @@ export async function loadRecentAssistantMessagesForRuntime(limit = 100) {
       })) satisfies AssistantRuntimeSnapshot[];
   }
 
-  return getDb().webChatMessage.findMany({
-    where: { role: "assistant" },
-    orderBy: { createdAt: "desc" },
-    take: limit,
-    select: {
-      mode: true,
-      providerState: true,
-      fallbackReason: true,
-      selectedReplySource: true,
-      model: true,
-      configuredMode: true,
-      effectiveMode: true,
-      createdAt: true,
-    },
-  });
+  const legacyLoadRuntimeMessages = async () =>
+    getDb().webChatMessage.findMany({
+      where: { role: "assistant" },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: {
+        mode: true,
+        createdAt: true,
+      },
+    }).then((messages) =>
+      messages.map((message) => ({
+        mode:
+          message.mode === "autonomous" || message.mode === "holding"
+            ? message.mode
+            : null,
+        providerState: null,
+        fallbackReason: null,
+        selectedReplySource: null,
+        model: null,
+        configuredMode: null,
+        effectiveMode: null,
+        createdAt: message.createdAt,
+      })),
+    );
+
+  if (inLegacyDbMode()) {
+    return legacyLoadRuntimeMessages();
+  }
+
+  try {
+    return await getDb().webChatMessage.findMany({
+      where: { role: "assistant" },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: {
+        mode: true,
+        providerState: true,
+        fallbackReason: true,
+        selectedReplySource: true,
+        model: true,
+        configuredMode: true,
+        effectiveMode: true,
+        createdAt: true,
+      },
+    });
+  } catch (error) {
+    if (activateLegacyDbMode(error)) {
+      return legacyLoadRuntimeMessages();
+    }
+    throw error;
+  }
 }

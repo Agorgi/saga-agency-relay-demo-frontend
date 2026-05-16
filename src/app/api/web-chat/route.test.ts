@@ -4,6 +4,7 @@ import test from "node:test";
 import { PrismaClient } from "@prisma/client";
 import { NextRequest } from "next/server";
 import { POST } from "@/app/api/web-chat/route";
+import { __setLegacyWebChatDbModeForTests } from "@/lib/webChatSessionStore";
 
 const TEST_DATABASE_URL =
   process.env.PR_L_TEST_DATABASE_URL ||
@@ -51,6 +52,7 @@ function createRequest(body: Record<string, unknown>) {
 
 test.beforeEach(async () => {
   await resetWebChatTables();
+  __setLegacyWebChatDbModeForTests(null);
   process.env.WEB_CHAT_AUTONOMOUS_RESPONSES_ENABLED = "true";
   delete process.env.OPENAI_BASE_URL;
   delete process.env.OPENAI_MODEL;
@@ -353,4 +355,37 @@ test("holding mode keeps the next-step handoff when the brief is routeable", asy
   assert.equal(data.nextStep?.route, "/projects/new");
   assert.equal(data.nextStep?.prefill?.city, "Silver Lake");
   assert.match(data.nextStep?.prefill?.projectIdea || "", /anime picnic/i);
+});
+
+test("production-like legacy DB mode still returns reply and nextStep", async () => {
+  process.env.DATABASE_URL = TEST_DATABASE_URL;
+  process.env.POSTGRES_URL_NON_POOLING = TEST_DATABASE_URL;
+  process.env.LLM_MODE = "mock_active";
+  process.env.OPENAI_API_KEY = "";
+  process.env.WEB_CHAT_AUTONOMOUS_RESPONSES_ENABLED = "true";
+  __setLegacyWebChatDbModeForTests(true);
+
+  const response = await POST(
+    createRequest({
+      message:
+        "I want to throw a 100-person anime picnic in Silver Lake next month with a playful neon vibe.",
+    }),
+  );
+
+  const data = (await response.json()) as {
+    reply: string;
+    mode: string;
+    nextStep?: { route?: string; prefill?: { city?: string } };
+  };
+
+  assert.equal(response.status, 200);
+  assert.equal(data.mode, "autonomous");
+  assert.match(data.reply, /draft event brief|build your event draft|what city/i);
+  assert.equal(data.nextStep?.route, "/projects/new");
+  assert.equal(data.nextStep?.prefill?.city, "Silver Lake");
+
+  const assistantMessage = await readLatestAssistantMessage();
+  assert.ok(assistantMessage);
+  assert.equal(assistantMessage?.role, "assistant");
+  assert.equal(assistantMessage?.content.length > 0, true);
 });
