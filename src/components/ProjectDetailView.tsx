@@ -2,6 +2,10 @@
 
 import Image from "next/image";
 import { motion } from "framer-motion";
+import {
+  PUBLIC_TICKETING_COPY,
+  shouldShowPublicBackstagePanel,
+} from "@/lib/publicEventPresentation";
 import { useSagaNavigation } from "@/lib/useSagaNavigation";
 import { useAppStore } from "@/store/useAppStore";
 
@@ -178,7 +182,11 @@ export function ProjectDetailView({ eventSlug }: { eventSlug?: string }) {
           </div>
 
           <div className="space-y-5 xl:sticky xl:top-28 xl:self-start">
-            <DarkSection title="Get Tickets" eyebrow="Tickets, tailored" compact>
+            <DarkSection
+              title={PUBLIC_TICKETING_COPY.sidebarTitle}
+              eyebrow={PUBLIC_TICKETING_COPY.sidebarEyebrow}
+              compact
+            >
               <div className="space-y-3">
                 {event.ticketTiers.map((tier) => (
                   <div key={tier.id} className="rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
@@ -204,7 +212,7 @@ export function ProjectDetailView({ eventSlug }: { eventSlug?: string }) {
               </div>
 
               <div className="mt-5 space-y-3">
-                <PrimaryButton onClick={() => openTickets(event.id)} label="Get Tickets" />
+                <PrimaryButton onClick={() => openTickets(event.id)} label={PUBLIC_TICKETING_COPY.eventCta} />
                 <OutlineButton onClick={() => openApply(event.id)} label="Apply" fullWidth />
                 <button
                   onClick={() => toggleRsvp(event.id)}
@@ -213,9 +221,13 @@ export function ProjectDetailView({ eventSlug }: { eventSlug?: string }) {
                   {isRsvped ? "RSVP'd" : "RSVP"}
                 </button>
               </div>
+              <p className="mt-4 text-sm leading-6 text-white/58">
+                {PUBLIC_TICKETING_COPY.sidebarHelper}
+              </p>
             </DarkSection>
 
-            <DarkSection title="Backstage production" eyebrow="Host demo" compact>
+            {shouldShowPublicBackstagePanel() ? (
+              <DarkSection title="Backstage production" eyebrow="Host demo" compact>
               <div className="space-y-3 rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
                 <StatRow label="Launch readiness" value={`${event.productionPlan.launchReadiness}%`} />
                 <StatRow label="Estimated reach" value={event.productionPlan.estimatedReach.toLocaleString()} />
@@ -228,14 +240,15 @@ export function ProjectDetailView({ eventSlug }: { eventSlug?: string }) {
               <div className="mt-5">
                 <PrimaryButton onClick={() => openWorkspace(event.id)} label="Open Production Workspace" />
               </div>
-            </DarkSection>
+              </DarkSection>
+            ) : null}
           </div>
         </div>
       </div>
 
       <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-[calc(100vw-1rem)] max-w-[460px] -translate-x-1/2 md:hidden">
         <div className="rounded-[28px] border border-white/8 bg-[#111624]/92 p-3 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl">
-          <PrimaryButton onClick={() => openTickets(event.id)} label="Get Tickets" />
+          <PrimaryButton onClick={() => openTickets(event.id)} label={PUBLIC_TICKETING_COPY.eventCta} />
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  hasFreshConversationFlag,
   isUiChatFallbackReply,
   mergeRestoredMessages,
   parseWebChatHistoryResponse,
@@ -230,4 +231,11 @@ test("parseWebChatResponse rejects unusable payloads", () => {
     }),
     null,
   );
+});
+
+test("fresh conversation flags suppress restore when requested", () => {
+  assert.equal(hasFreshConversationFlag("?new=1"), true);
+  assert.equal(hasFreshConversationFlag("?fresh=true"), true);
+  assert.equal(hasFreshConversationFlag("?new=&intent=host"), true);
+  assert.equal(hasFreshConversationFlag("?intent=host"), false);
 });

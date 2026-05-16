@@ -259,12 +259,12 @@ function whySagaMatched(
   scored?: ReturnType<typeof matchCreatorToQuery>
 ) {
   const reasons = [
-    `Strong portfolio fit for ${project.projectType.toLowerCase()} work in ${project.city}.`,
+    scored?.bestRole === roleName ? `Saga ranks them highly for the ${roleName.toLowerCase()} role.` : null,
+    talent.projectTypes.includes(project.projectType) ? `Has direct ${project.projectType.toLowerCase()} experience.` : null,
     talent.tags[0] ? `Shows recurring ${talent.tags[0]} cues across the portfolio.` : null,
     talent.credits[0] ? `Recent credits include ${talent.credits[0]}.` : null,
     budgetFit(project, talent) >= 85 ? `Budget aligns with your ${project.budgetRange} range.` : null,
-    talent.projectTypes.includes(project.projectType) ? `Has direct ${project.projectType.toLowerCase()} experience.` : null,
-    scored?.bestRole === roleName ? `Saga ranks them highly for the ${roleName.toLowerCase()} role.` : null,
+    `Strong portfolio fit for ${project.projectType.toLowerCase()} work in ${project.city}.`,
   ].filter(Boolean) as string[];
 
   return reasons.slice(0, 4);
@@ -839,13 +839,17 @@ export function buildBriefDraftFromHostPrefill(input: {
   helpNeeded?: string | null;
   projectType?: string | null;
   suggestedRoles?: string[] | null;
+  projectIdea?: string | null;
 }): BriefDraft {
   const normalizedProjectType = PROJECT_TYPES.includes(
     input.projectType as ProjectType,
   )
     ? (input.projectType as ProjectType)
     : inferHostProjectTypeFromLabel(input.eventType || "");
-  const titleBase = input.eventType?.trim() || "New project";
+  const titleBase =
+    input.projectIdea?.trim() ||
+    input.eventType?.trim() ||
+    "New project";
   const vibeSentence = input.vibe?.trim() || "A new creative project staffed by Saga.";
   const helpNeeded = input.helpNeeded?.trim();
 

@@ -1,10 +1,17 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useMemo } from "react";
-import { buildBriefDraftFromHostPrefill, buildProjectFromDraft } from "@/data/sagaAgencyData";
+import { useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { requestWebChatReset } from "@/components/web-chat/useWebChat";
-import { decodePrefillPayload, readPendingNextStep } from "@/lib/webChatNextStep";
+import {
+  buildHostBriefDraft,
+  buildHostBriefProject,
+  encodeHostBriefPrefill,
+  persistHostBriefHandoff,
+  resolveHostBriefPrefill,
+} from "@/lib/hostBriefHandoff";
+import { readPendingNextStep } from "@/lib/webChatNextStep";
 import { useSagaNavigation } from "@/lib/useSagaNavigation";
 import { useThemeMode } from "@/lib/useThemeMode";
 import { useAgencyStore } from "@/store/useAgencyStore";
@@ -17,44 +24,46 @@ export function ProjectPreviewView({
   const createProjectFromBriefDraft = useAgencyStore(
     (state) => state.createProjectFromBriefDraft,
   );
+  const projects = useAgencyStore((state) => state.projects);
   const isDark = useThemeMode() === "dark";
   const { goHome } = useSagaNavigation();
+  const router = useRouter();
 
   const prefill = useMemo(() => {
-    const decoded = decodePrefillPayload(encodedPrefill);
-    if (decoded) {
-      return decoded;
+    const fromQueryOrSession = resolveHostBriefPrefill({ encodedPrefill });
+    if (fromQueryOrSession) {
+      return fromQueryOrSession;
     }
 
     return readPendingNextStep("/projects/new")?.prefill ?? null;
   }, [encodedPrefill]);
   const draft = useMemo(
-    () =>
-      prefill
-        ? buildBriefDraftFromHostPrefill({
-            eventType:
-              typeof prefill.eventType === "string" ? prefill.eventType : null,
-            city: typeof prefill.city === "string" ? prefill.city : null,
-            scale: typeof prefill.scale === "string" ? prefill.scale : null,
-            vibe: typeof prefill.vibe === "string" ? prefill.vibe : null,
-            date: typeof prefill.date === "string" ? prefill.date : null,
-            helpNeeded:
-              typeof prefill.helpNeeded === "string" ? prefill.helpNeeded : null,
-            projectType:
-              typeof prefill.projectType === "string" ? prefill.projectType : null,
-            suggestedRoles:
-              Array.isArray(prefill.suggestedRoles) &&
-              prefill.suggestedRoles.every((item: unknown) => typeof item === "string")
-                ? prefill.suggestedRoles
-                : null,
-          })
-        : null,
+    () => (prefill ? buildHostBriefDraft(prefill) : null),
     [prefill],
   );
   const previewProject = useMemo(
-    () => (draft ? buildProjectFromDraft(draft) : null),
-    [draft],
+    () => (prefill ? buildHostBriefProject(prefill) : null),
+    [prefill],
   );
+  const recentProjects = useMemo(
+    () => projects.slice(0, 3),
+    [projects],
+  );
+  const encodedResolvedPrefill = useMemo(
+    () => encodeHostBriefPrefill(prefill),
+    [prefill],
+  );
+
+  useEffect(() => {
+    if (!prefill || !previewProject) {
+      return;
+    }
+
+    persistHostBriefHandoff({
+      projectId: previewProject.id,
+      prefill,
+    });
+  }, [prefill, previewProject]);
 
   if (!prefill || !draft || !previewProject) {
     return (
@@ -82,7 +91,7 @@ export function ProjectPreviewView({
               data-copy-lint="subhead"
               className={`mt-3 text-sm leading-7 ${isDark ? "text-white/62" : "text-ink-light"}`}
             >
-              Build the brief in chat.
+              Start in chat first.
             </p>
           </section>
 
@@ -102,7 +111,63 @@ export function ProjectPreviewView({
             >
               Talk to Sagasan
             </button>
+
+            <p className={`mt-3 text-sm leading-7 ${isDark ? "text-white/60" : "text-ink-light"}`}>
+              Describe the concept, city, and timing. Sagasan will turn that into a project draft here.
+            </p>
           </section>
+
+          {recentProjects.length ? (
+            <section
+              className={`rounded-[26px] border p-6 ${
+                isDark
+                  ? "border-white/8 bg-white/[0.04]"
+                  : "border-black/8 bg-white/88 shadow-[0_16px_40px_rgba(17,17,17,0.06)]"
+              }`}
+            >
+              <h2 className={`text-2xl font-semibold tracking-tight ${isDark ? "text-white" : "text-ink"}`}>
+                Recent drafts.
+              </h2>
+              <div className="mt-4 space-y-3">
+                {recentProjects.map((project) => (
+                  <button
+                    key={project.id}
+                    onClick={() => router.push(`/projects/${project.slug}`)}
+                    className={`block w-full rounded-[22px] px-4 py-3 text-left ${
+                      isDark ? "bg-white/[0.05]" : "bg-canvas"
+                    }`}
+                  >
+                    <p className={`text-sm font-medium ${isDark ? "text-white" : "text-ink"}`}>
+                      {project.title}
+                    </p>
+                    <p className={`mt-1 text-xs uppercase tracking-[0.16em] ${isDark ? "text-white/42" : "text-ink-light"}`}>
+                      {project.city} · {project.dateLabel}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {encodedResolvedPrefill ? (
+            <section
+              className={`rounded-[26px] border p-6 ${
+                isDark
+                  ? "border-white/8 bg-white/[0.04]"
+                  : "border-black/8 bg-white/88 shadow-[0_16px_40px_rgba(17,17,17,0.06)]"
+              }`}
+            >
+              <h2 className={`text-2xl font-semibold tracking-tight ${isDark ? "text-white" : "text-ink"}`}>
+                Continue latest draft.
+              </h2>
+              <button
+                onClick={() => router.push(`/projects/new?prefill=${encodeURIComponent(encodedResolvedPrefill)}`)}
+                className="brand-button-primary mt-4 rounded-pill px-4 py-2.5 text-sm font-medium"
+              >
+                Continue draft
+              </button>
+            </section>
+          ) : null}
         </div>
       </div>
     );
@@ -147,9 +212,11 @@ export function ProjectPreviewView({
           }`}
         >
           <div className="grid gap-4 sm:grid-cols-2">
+            <PreviewLine label="Project idea" value={String(prefill.projectIdea || previewProject.title)} />
             <PreviewLine label="Event type" value={String(prefill.eventType || draft.projectType)} />
             <PreviewLine label="City" value={String(prefill.city || draft.city)} />
             <PreviewLine label="Scale" value={String(prefill.scale || "TBD")} />
+            <PreviewLine label="Timing" value={String(prefill.date || draft.dateLabel)} />
             <PreviewLine label="Vibe" value={String(prefill.vibe || draft.description)} />
           </div>
 
@@ -176,13 +243,21 @@ export function ProjectPreviewView({
               onClick={() => {
                 const nextProject = createProjectFromBriefDraft(draft);
                 const firstRole = nextProject.requiredRoles[0]?.name || null;
+                const nextPrefill = encodedResolvedPrefill;
+                persistHostBriefHandoff({
+                  projectId: nextProject.id,
+                  prefill,
+                });
                 const params = new URLSearchParams({
                   projectId: nextProject.id,
                 });
                 if (firstRole) {
                   params.set("role", firstRole);
                 }
-                window.location.assign(`/explore?${params.toString()}`);
+                if (nextPrefill) {
+                  params.set("prefill", nextPrefill);
+                }
+                router.push(`/explore?${params.toString()}`);
               }}
               className="brand-button-primary rounded-pill px-5 py-3 text-sm font-medium"
             >
@@ -192,8 +267,8 @@ export function ProjectPreviewView({
             <button
               onClick={() => {
                 requestWebChatReset("host");
-                window.location.assign(
-                  `/?intent=host&prefill=${encodeURIComponent(encodedPrefill || "")}`,
+                router.push(
+                  `/?intent=host&prefill=${encodeURIComponent(encodedResolvedPrefill || "")}`,
                 );
               }}
               className={`text-sm font-medium ${

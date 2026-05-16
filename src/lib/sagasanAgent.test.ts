@@ -453,6 +453,49 @@ test("host next-step prefill keeps the routeable project details", () => {
   assert.equal(result.nextStep?.prefill.projectIdea, "throw a 100-person anime picnic in Silver Lake next month with a playful neon vibe");
 });
 
+test("creative extraction does not inherit stale host event timing or vibe", () => {
+  const result = buildMockAgentReply({
+    persona: "creative",
+    history: [
+      {
+        role: "user",
+        content:
+          "I want to throw a 100-person anime picnic in Silver Lake next month with a playful neon vibe.",
+      },
+    ],
+    latestMessage: "I'm a photographer in LA looking for anime event gigs.",
+  });
+
+  assert.equal(result.persona, "creative");
+  assert.equal(result.nextStep?.route, "/me");
+  assert.equal(result.nextStep?.prefill.city, "Los Angeles");
+  assert.deepEqual(result.nextStep?.prefill.roles, ["Photographer"]);
+  assert.equal("availability" in (result.nextStep?.prefill ?? {}), false);
+  assert.equal("rates" in (result.nextStep?.prefill ?? {}), false);
+});
+
+test("trust-boundary questions override persona keyword routing", () => {
+  const latestMessage = "Are these people confirmed for my event?";
+  const persona = resolvePersona({
+    personaHint: null,
+    explicitPersona: null,
+    sessionPersona: null,
+    cookiePersona: null,
+    latestMessage,
+  });
+  const result = buildMockAgentReply({
+    persona,
+    history: [],
+    latestMessage,
+  });
+
+  assert.match(
+    result.reply,
+    /Not yet\. Saga can help prepare the shortlist, but no one is confirmed or contacted until a human reviews and approves it\./i,
+  );
+  assert.equal(result.nextStep, null);
+});
+
 test("live reply uses the provided OpenAI call and preserves nextStep", async () => {
   let capturedPrompt = "";
   let capturedInstructions = "";

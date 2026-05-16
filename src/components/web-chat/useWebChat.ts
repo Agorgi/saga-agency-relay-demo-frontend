@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { clearHostBriefHandoff } from "@/lib/hostBriefHandoff";
 import { normalizePersona, type Persona } from "@/lib/sagasanPersonas";
 import { useSessionPersona, writeSessionPersona } from "@/lib/useSessionPersona";
 import {
@@ -60,6 +61,7 @@ export const SAGASAN_AVATAR_SRC = "/branding/sagasan-contact.png";
 export const DEFAULT_CHAT_DESCRIPTION = "";
 export const DEFAULT_CHAT_PLACEHOLDER = "Message Sagasan...";
 export const DEFAULT_WELCOME_MESSAGE = "";
+export const WEB_CHAT_NEW_QUERY_KEYS = ["new", "fresh"] as const;
 
 function isChatMode(value: unknown): value is ChatMode {
   return value === "autonomous" || value === "holding";
@@ -363,6 +365,14 @@ function conversationCacheKey(conversationId: string) {
   return `${CONVERSATION_CACHE_PREFIX}${conversationId}`;
 }
 
+export function hasFreshConversationFlag(search: string) {
+  const params = new URLSearchParams(search);
+  return WEB_CHAT_NEW_QUERY_KEYS.some((key) => {
+    const value = params.get(key);
+    return value === "" || value === "1" || value === "true";
+  });
+}
+
 function readConversationCache(conversationId: string): CachedConversation | null {
   if (typeof window === "undefined") {
     return null;
@@ -404,13 +414,25 @@ function persistConversationCache(
   );
 }
 
+function clearStoredConversationCache() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(CONVERSATION_STORAGE_KEY);
+  Object.keys(window.localStorage)
+    .filter((key) => key.startsWith(CONVERSATION_CACHE_PREFIX))
+    .forEach((key) => window.localStorage.removeItem(key));
+}
+
 export function requestWebChatReset(nextPersona?: Persona | null) {
   if (typeof window === "undefined") {
     return;
   }
 
   clearPendingNextStep();
-  window.localStorage.removeItem(CONVERSATION_STORAGE_KEY);
+  clearHostBriefHandoff();
+  clearStoredConversationCache();
   window.sessionStorage.setItem(WEB_CHAT_SUPPRESS_RESTORE_KEY, "1");
   window.sessionStorage.setItem(WEB_CHAT_RESET_REQUEST_KEY, `${Date.now()}`);
   writeSessionPersona(normalizePersona(nextPersona));
@@ -588,6 +610,18 @@ export function useWebChat({
 
     async function bootstrap() {
       try {
+        if (hasFreshConversationFlag(window.location.search)) {
+          clearPendingNextStep();
+          clearHostBriefHandoff();
+          clearStoredConversationCache();
+          writeSessionPersona(null);
+          window.history.replaceState({}, "", window.location.pathname);
+          if (!cancelled && isActiveRef.current) {
+            resetChatState();
+          }
+          return;
+        }
+
         if (window.sessionStorage.getItem(WEB_CHAT_SUPPRESS_RESTORE_KEY) === "1") {
           if (!cancelled && isActiveRef.current) {
             resetChatState();

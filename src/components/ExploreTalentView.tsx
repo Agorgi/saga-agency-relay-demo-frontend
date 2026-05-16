@@ -2,10 +2,21 @@
 
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { requestWebChatReset } from "@/components/web-chat/useWebChat";
 import { scoreTalentForProject } from "@/data/sagaAgencyData";
+import {
+  getExplorerCandidateStatus,
+  getExplorerCandidateSummary,
+  getExplorerCardImage,
+} from "@/lib/explorerPresentation";
+import {
+  buildHostBriefDraft,
+  buildHostBriefProject,
+  persistHostBriefHandoff,
+  resolveHostBriefPrefill,
+} from "@/lib/hostBriefHandoff";
 import { useSagaNavigation } from "@/lib/useSagaNavigation";
 import { useThemeMode } from "@/lib/useThemeMode";
 import { useAgencyStore } from "@/store/useAgencyStore";
@@ -18,16 +29,21 @@ export function ExploreTalentView() {
   const talentSearchQuery = useAgencyStore((state) => state.talentSearchQuery);
   const talentFilters = useAgencyStore((state) => state.talentFilters);
   const selectProjectBySlug = useAgencyStore((state) => state.selectProjectBySlug);
+  const createProjectFromBriefDraft = useAgencyStore(
+    (state) => state.createProjectFromBriefDraft,
+  );
   const setTalentSearchQuery = useAgencyStore((state) => state.setTalentSearchQuery);
   const updateTalentFilters = useAgencyStore((state) => state.updateTalentFilters);
   const resetTalentFilters = useAgencyStore((state) => state.resetTalentFilters);
   const addTalentToShortlist = useAgencyStore((state) => state.addTalentToShortlist);
   const { goHome, openTalentProfile } = useSagaNavigation();
   const isDark = useThemeMode() === "dark";
+  const hydratedBriefRef = useRef<string | null>(null);
 
   const projectSlug = searchParams.get("project");
   const roleParam = searchParams.get("role");
   const projectIdParam = searchParams.get("projectId");
+  const encodedPrefill = searchParams.get("prefill");
 
   useEffect(() => {
     if (projectSlug) selectProjectBySlug(projectSlug);
@@ -39,8 +55,52 @@ export function ExploreTalentView() {
     }
   }, [roleParam, updateTalentFilters]);
 
+  const handoffPrefill = useMemo(
+    () =>
+      resolveHostBriefPrefill({
+        encodedPrefill,
+        projectId: projectIdParam,
+      }),
+    [encodedPrefill, projectIdParam],
+  );
+  const handoffProject = useMemo(
+    () => (handoffPrefill ? buildHostBriefProject(handoffPrefill) : null),
+    [handoffPrefill],
+  );
+  const handoffDraft = useMemo(
+    () => (handoffPrefill ? buildHostBriefDraft(handoffPrefill) : null),
+    [handoffPrefill],
+  );
+
+  useEffect(() => {
+    if (
+      !handoffDraft ||
+      !handoffProject ||
+      !projectIdParam ||
+      projects.some((project) => project.id === projectIdParam) ||
+      hydratedBriefRef.current === projectIdParam
+    ) {
+      return;
+    }
+
+    const createdProject = createProjectFromBriefDraft(handoffDraft);
+    persistHostBriefHandoff({
+      projectId: createdProject.id,
+      prefill: handoffPrefill || {},
+    });
+    hydratedBriefRef.current = projectIdParam;
+  }, [
+    createProjectFromBriefDraft,
+    handoffDraft,
+    handoffPrefill,
+    handoffProject,
+    projectIdParam,
+    projects,
+  ]);
+
   const activeProject =
     projects.find((project) => project.id === projectIdParam) ||
+    (projectIdParam ? handoffProject : null) ||
     projects.find((project) => project.slug === projectSlug) ||
     projects.find((project) => project.id === selectedProjectId) ||
     null;
@@ -144,6 +204,28 @@ export function ExploreTalentView() {
   const shortlistTarget = activeProject || projects.find((project) => project.id === selectedProjectId) || null;
   const gridCards = derivedCards.slice(0, 18);
   const topPicks = gridCards.slice(0, 4);
+  const briefSummaryLines = useMemo(() => {
+    if (!activeProject) {
+      return [];
+    }
+
+    const lines = [
+      handoffPrefill?.projectIdea
+        ? `Brief: ${handoffPrefill.projectIdea}`
+        : `Brief: ${activeProject.title}`,
+      `City: ${handoffPrefill?.city || activeProject.city}`,
+      `Timing: ${handoffPrefill?.date || activeProject.dateLabel}`,
+      `Scale: ${handoffPrefill?.scale || activeProject.budgetRange}`,
+      `Vibe: ${handoffPrefill?.vibe || activeProject.description}`,
+      `Roles: ${
+        Array.isArray(handoffPrefill?.suggestedRoles) && handoffPrefill?.suggestedRoles.length
+          ? handoffPrefill.suggestedRoles.join(", ")
+          : activeProject.requiredRoles.map((role) => role.name).join(", ")
+      }`,
+    ];
+
+    return lines;
+  }, [activeProject, handoffPrefill]);
 
   return (
     <div className={`brand-page absolute inset-0 overflow-y-auto px-4 pb-32 pt-24 md:px-6 md:pb-16 md:pt-28 lg:px-8 ${
@@ -208,6 +290,21 @@ export function ExploreTalentView() {
               >
                 Open chat
               </button>
+            </div>
+          ) : null}
+
+          {briefSummaryLines.length ? (
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {briefSummaryLines.map((line) => (
+                <div
+                  key={line}
+                  className={`rounded-[22px] border px-4 py-3 text-sm ${
+                    isDark ? "border-white/10 bg-white/8 text-white/72" : "border-black/8 bg-white text-ink"
+                  }`}
+                >
+                  {line}
+                </div>
+              ))}
             </div>
           ) : null}
 
@@ -300,11 +397,16 @@ export function ExploreTalentView() {
                 className="overflow-hidden rounded-[24px] border border-black/8 bg-white/88 text-left shadow-[0_16px_40px_rgba(17,17,17,0.06)]"
               >
                 <div className="relative h-[180px]">
-                  <Image src={card.portfolioImages[0]} alt={card.name} fill sizes="(max-width: 1280px) 50vw, 25vw" className="object-cover" />
+                  <Image src={getExplorerCardImage(card)} alt={card.name} fill sizes="(max-width: 1280px) 50vw, 25vw" className="object-cover" />
                 </div>
                 <div className="space-y-2 p-4">
-                  <p className="text-lg font-semibold tracking-tight text-ink">{card.name}</p>
-                  <p className="text-sm text-ink-light">{card.whySagaMatched[0]}</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-lg font-semibold tracking-tight text-ink">{card.name}</p>
+                    <span className="rounded-pill bg-canvas px-3 py-1 text-[11px] font-medium text-ink-light">
+                      {getExplorerCandidateStatus(card)}
+                    </span>
+                  </div>
+                  <p className="text-sm text-ink-light">{getExplorerCandidateSummary(card, activeProject)}</p>
                 </div>
               </button>
             ))}
@@ -320,7 +422,7 @@ export function ExploreTalentView() {
               className="overflow-hidden rounded-[28px] border border-white/8 bg-white/78 shadow-[0_16px_40px_rgba(17,17,17,0.06)] backdrop-blur-xl"
             >
               <div className="relative h-[250px]">
-                <Image src={card.portfolioImages[0]} alt={card.name} fill sizes="(max-width: 1200px) 50vw, 33vw" className="object-cover" />
+                <Image src={getExplorerCardImage(card)} alt={card.name} fill sizes="(max-width: 1200px) 50vw, 33vw" className="object-cover" />
                 <div className="absolute left-4 top-4 rounded-pill bg-white/92 px-3 py-1.5 text-xs font-medium text-ink shadow-sm">
                   {card.primaryRole}
                 </div>
@@ -330,6 +432,9 @@ export function ExploreTalentView() {
                   <div>
                     <h3 className="text-xl font-semibold tracking-tight text-ink">{card.name}</h3>
                     <p className="mt-1 text-sm text-ink-light">{card.city}</p>
+                    <p className="mt-3 text-sm leading-6 text-ink-light">
+                      {getExplorerCandidateSummary(card, activeProject)}
+                    </p>
                   </div>
                   <div className="rounded-pill bg-canvas px-3 py-1.5 text-xs font-medium text-ink">
                     {card.availabilitySignal}
@@ -337,7 +442,10 @@ export function ExploreTalentView() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {card.credits.slice(0, 2).map((credit) => (
+                  <span className="rounded-pill bg-canvas px-3 py-1.5 text-[11px] font-medium text-ink-light">
+                    {getExplorerCandidateStatus(card)}
+                  </span>
+                  {card.credits.slice(0, 1).map((credit) => (
                     <span key={credit} className="rounded-pill bg-canvas px-3 py-1.5 text-[11px] font-medium text-ink-light">
                       {credit}
                     </span>

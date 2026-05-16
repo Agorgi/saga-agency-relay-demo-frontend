@@ -2,17 +2,17 @@
 
 import Image from "next/image";
 import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { requestWebChatReset } from "@/components/web-chat/useWebChat";
-import { useSagaNavigation } from "@/lib/useSagaNavigation";
 
 export function PebbleMark() {
-  const { goHome } = useSagaNavigation();
+  const router = useRouter();
 
   return (
     <motion.button
       onClick={() => {
         requestWebChatReset();
-        goHome();
+        router.push("/?new=1");
       }}
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}

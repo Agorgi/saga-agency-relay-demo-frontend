@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useMemo } from "react";
+import { PUBLIC_TICKETING_COPY } from "@/lib/publicEventPresentation";
 import { useSagaNavigation } from "@/lib/useSagaNavigation";
 import { useThemeMode } from "@/lib/useThemeMode";
 import { useAppStore } from "@/store/useAppStore";
@@ -48,10 +49,12 @@ export function TicketCheckoutView({ eventSlug }: { eventSlug?: string }) {
         >
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className={`text-[10px] uppercase tracking-[0.3em] ${isDark ? "text-white/40" : "text-ink-light"}`}>Get Tickets</p>
+              <p className={`text-[10px] uppercase tracking-[0.3em] ${isDark ? "text-white/40" : "text-ink-light"}`}>
+                {PUBLIC_TICKETING_COPY.checkoutEyebrow}
+              </p>
               <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">{event.title}</h1>
               <p className={`mt-3 text-sm leading-6 ${isDark ? "text-white/58" : "text-ink-light"}`}>
-                Choose a tier, set your quantity, and drop a mock pass into My Events.
+                {PUBLIC_TICKETING_COPY.checkoutHelper}
               </p>
               <p className={`mt-4 text-sm ${isDark ? "text-white/42" : "text-ink-light"}`}>
                 {event.dateLabel} · {event.timeLabel} · {event.venueName}
@@ -146,7 +149,7 @@ export function TicketCheckoutView({ eventSlug }: { eventSlug?: string }) {
                   {totalPrice > 0 ? `$${totalPrice}` : totalQuantity ? "Free" : "$0"}
                 </p>
                 <p className={`mt-3 text-sm leading-6 ${isDark ? "text-white/56" : "text-ink-light"}`}>
-                  Mock purchase only. No real payments or external ticketing provider required.
+                  These are demo ticket tiers only. Sagasan is not processing checkout here.
                 </p>
               </div>
 
@@ -158,7 +161,9 @@ export function TicketCheckoutView({ eventSlug }: { eventSlug?: string }) {
                 disabled={totalQuantity === 0}
                 className="brand-button-primary mt-5 w-full rounded-pill px-4 py-3 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {totalQuantity === 0 ? "Select tickets" : `Purchase ${totalQuantity} ticket${totalQuantity > 1 ? "s" : ""}`}
+                {totalQuantity === 0
+                  ? PUBLIC_TICKETING_COPY.checkoutButtonIdle
+                  : PUBLIC_TICKETING_COPY.checkoutButtonAction}
               </button>
             </div>
           </motion.aside>
@@ -175,7 +180,9 @@ export function TicketCheckoutView({ eventSlug }: { eventSlug?: string }) {
             disabled={totalQuantity === 0}
             className="brand-button-primary w-full rounded-pill px-4 py-3 text-sm font-medium disabled:opacity-40"
           >
-            {totalQuantity === 0 ? "Select tickets" : `Purchase ${totalQuantity} ticket${totalQuantity > 1 ? "s" : ""}`}
+            {totalQuantity === 0
+              ? PUBLIC_TICKETING_COPY.checkoutButtonIdle
+              : PUBLIC_TICKETING_COPY.checkoutButtonAction}
           </button>
         </div>
       </div>

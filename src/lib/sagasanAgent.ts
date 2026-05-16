@@ -373,6 +373,18 @@ function isGuaranteeBoundary(message: string) {
   );
 }
 
+function isTrustBoundary(message: string) {
+  return (
+    /\b(?:confirmed|available)\b/i.test(message) &&
+      /\b(?:people|person|team|talent|photographer|dj|artist|cosplayer|venue|event)\b/i.test(
+        message,
+      ) ||
+    /\bdid you contact\b|\bdid saga contact\b|\bare these people confirmed\b|\bare they available\b/i.test(
+      message,
+    )
+  );
+}
+
 function isOutboundActionBoundary(message: string) {
   return (
     /\b(?:dm|message|text|email|call|contact|invite|reach out to|send this to)\b/i.test(
@@ -392,6 +404,7 @@ function isOffTopic(message: string) {
 function isBoundaryPriorityMessage(message: string) {
   return (
     shouldAnswerTickets(message) ||
+    isTrustBoundary(message) ||
     isOutboundActionBoundary(message) ||
     isPaidWorkBoundary(message) ||
     isGuaranteeBoundary(message) ||
@@ -574,16 +587,39 @@ function inferHostEventType(projectType: ProjectType, raw: string) {
   return inferProjectIdea(raw) || "Creative project";
 }
 
+function getSignalMatcher(persona: Persona | null) {
+  if (persona === "creative") return strongCreativeSignal;
+  if (persona === "venue") return strongVenueSignal;
+  if (persona === "fan") return strongFanSignal;
+  if (persona === "host") return strongHostSignal;
+  return null;
+}
+
 function getUserTranscript(
   history: ChatMessage[],
   latestMessage: string,
+  persona: Persona | null,
 ) {
-  return [...history, { role: "user" as const, content: latestMessage }]
+  const userMessages = [...history, { role: "user" as const, content: latestMessage }]
     .filter((message) => message.role === "user")
     .map((message) => message.content.trim())
     .filter(Boolean)
-    .filter((content) => !GENERIC_PERSONA_STARTERS.has(content.toLowerCase()))
-    .join("\n");
+    .filter((content) => !GENERIC_PERSONA_STARTERS.has(content.toLowerCase()));
+
+  const signalMatcher = getSignalMatcher(persona);
+  if (!signalMatcher || userMessages.length <= 1) {
+    return userMessages.join("\n");
+  }
+
+  let anchorIndex = 0;
+  for (let index = userMessages.length - 1; index >= 0; index -= 1) {
+    if (signalMatcher(userMessages[index] || "")) {
+      anchorIndex = index;
+      break;
+    }
+  }
+
+  return userMessages.slice(anchorIndex).join("\n");
 }
 
 export function extractStructuredFields({
@@ -595,21 +631,21 @@ export function extractStructuredFields({
   history: ChatMessage[];
   latestMessage: string;
 }): StoredExtractedFields {
-  const transcript = getUserTranscript(history, latestMessage);
-  const city = inferCity(transcript);
-  const neighborhood = inferNeighborhood(transcript);
-  const dateWindow = inferDateWindow(transcript);
-  const projectIdea = inferProjectIdea(transcript);
-  const roles = inferCreativeRoles(transcript);
-  const venueType = inferVenueType(transcript);
-  const availability = inferAvailabilityHint(transcript);
-  const rates = inferRateHint(transcript);
-  const portfolio = inferPortfolioLink(transcript);
-  const interests = inferInterestTags(transcript).filter(
+  const scopedTranscript = getUserTranscript(history, latestMessage, persona);
+  const city = inferCity(scopedTranscript);
+  const neighborhood = inferNeighborhood(scopedTranscript);
+  const dateWindow = inferDateWindow(scopedTranscript);
+  const projectIdea = inferProjectIdea(scopedTranscript);
+  const roles = inferCreativeRoles(scopedTranscript);
+  const venueType = inferVenueType(scopedTranscript);
+  const availability = inferAvailabilityHint(scopedTranscript);
+  const rates = inferRateHint(scopedTranscript);
+  const portfolio = inferPortfolioLink(scopedTranscript);
+  const interests = inferInterestTags(scopedTranscript).filter(
     (interest) => !city || !city.toLowerCase().includes(interest.toLowerCase()),
   );
-  const vibeTags = inferVibeTags(transcript);
-  const scale = inferScale(transcript) || inferCapacity(transcript);
+  const vibeTags = inferVibeTags(scopedTranscript);
+  const scale = inferScale(scopedTranscript) || inferCapacity(scopedTranscript);
 
   const route =
     persona && PERSONA_ROUTE_MAP[persona]
@@ -921,7 +957,7 @@ function buildCreativeNextStep(
     prefill: {
       city: fields.city || "Flexible",
       roles: fields.roles,
-      portfolio: fields.portfolio || "Sample shared in chat",
+      portfolio: fields.portfolio || "",
       availability: fields.availability || "",
       rates: fields.rates || "",
     },
@@ -1019,7 +1055,7 @@ function buildCapabilityReply(persona: Persona | null, fields: StoredExtractedFi
 }
 
 function buildBoundaryReply(
-  kind: "ticketing" | "paid_work" | "guarantee" | "off_topic" | "external_action",
+  kind: "ticketing" | "paid_work" | "guarantee" | "off_topic" | "external_action" | "trust_boundary",
   persona: Persona | null,
   fields: StoredExtractedFields,
   latestMessage: string,
@@ -1042,6 +1078,9 @@ function buildBoundaryReply(
   } else if (kind === "off_topic") {
     reply =
       "I stay focused on creative plans, opportunities, spaces, and scenes. What are you trying to make or find?";
+  } else if (kind === "trust_boundary") {
+    reply =
+      "Not yet. Saga can help prepare the shortlist, but no one is confirmed or contacted until a human reviews and approves it. Who are you trying to line up?";
   } else if (kind === "external_action") {
     reply =
       "Saga can help prepare outreach, but it won't contact anyone until a human reviews and approves it. Who are you trying to reach, and for what project?";
@@ -1093,6 +1132,9 @@ function buildDeterministicReply({
 
   if (shouldAnswerTickets(latestMessage)) {
     return buildBoundaryReply("ticketing", persona, extractedFields, latestMessage);
+  }
+  if (isTrustBoundary(latestMessage)) {
+    return buildBoundaryReply("trust_boundary", persona, extractedFields, latestMessage);
   }
   if (isOutboundActionBoundary(latestMessage)) {
     return buildBoundaryReply("external_action", persona, extractedFields, latestMessage);
