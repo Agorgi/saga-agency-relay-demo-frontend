@@ -51,3 +51,15 @@ npm run demo:prod
 - `src/components/FocusOverlay.tsx` — creator focus mode
 - `src/components/AssemblyView.tsx` — team assembly board
 - `src/components/ProjectDetailView.tsx` — launched project page
+
+## Sagasan Internal Dogfood
+
+Internal testing docs:
+
+- `docs/sagasan-internal-dogfood-v3.md`
+- `docs/sagasan-dogfood-test-script.md`
+- `docs/sagasan-dogfood-feedback-form.md`
+- `docs/sagasan-dogfood-scoring-rubric.md`
+- `docs/sagasan-dogfood-issue-log-template.md`
+- `docs/sagasan-dogfood-analytics-checklist.md`
+- `docs/sagasan-internal-tester-instructions.md`
