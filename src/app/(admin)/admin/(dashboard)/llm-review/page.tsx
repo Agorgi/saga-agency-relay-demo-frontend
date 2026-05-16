@@ -23,16 +23,29 @@ function metadataText(value: unknown) {
   return typeof value === "string" && value ? value : "none";
 }
 
-function textBlock(value?: string | null) {
+function textBlock(value?: string | null, emptyState = "Not captured for this operation.") {
   return value ? (
     <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-md border border-zinc-900 bg-zinc-950 p-3 text-xs leading-relaxed text-zinc-300">
       {value}
     </pre>
   ) : (
     <p className="mt-2 rounded-md border border-zinc-900 bg-zinc-950 p-3 text-xs text-zinc-600">
-      Not captured for this operation.
+      {emptyState}
     </p>
   );
+}
+
+function llmEmptyState(item: ReturnType<typeof safeLlmReviewItemForDisplay>) {
+  if (item.selectedReplySource === "deterministic_fallback" && item.fallbackReason) {
+    return `OpenAI not selected. Deterministic fallback was used because ${item.fallbackReason}.`;
+  }
+  if (item.fallbackUsed && item.fallbackReason) {
+    return `OpenAI output missing. Fallback was used because ${item.fallbackReason}.`;
+  }
+  if (item.mode !== "active_live") {
+    return "OpenAI not called because active_live was not enabled for this operation.";
+  }
+  return "OpenAI output was not captured for this operation.";
 }
 
 export default async function LlmReviewPage() {
@@ -111,17 +124,16 @@ export default async function LlmReviewPage() {
                     {item.operation}
                   </h3>
                   <p className="mt-1 text-xs text-zinc-500">
-                    {item.createdAt.toLocaleString()} | {item.provider} |{" "}
-                    {item.model} | {item.mode}
+                    {item.createdAt.toLocaleString()}
                   </p>
                 </div>
                 <div className="text-right text-xs text-zinc-500">
-                  <p>Selected: {metadataText(item.selectedReplySource)}</p>
+                  <p>Provider: {metadataText(item.provider)}</p>
+                  <p>Model: {metadataText(item.model)}</p>
+                  <p>Mode: {metadataText(item.mode)}</p>
+                  <p>Selected reply: {metadataText(item.selectedReplySource)}</p>
                   <p>Fallback reason: {metadataText(item.fallbackReason)}</p>
-                  <p>
-                    Forbidden claims:{" "}
-                    {metadataText(item.forbiddenClaimsDetected)}
-                  </p>
+                  <p>Forbidden claims: {metadataText(item.forbiddenClaimsDetected)}</p>
                 </div>
               </div>
 
@@ -134,7 +146,7 @@ export default async function LlmReviewPage() {
                 </div>
                 <div>
                   <p className="font-medium text-zinc-200">LLM output</p>
-                  {textBlock(item.llmText)}
+                  {textBlock(item.llmText, llmEmptyState(item))}
                 </div>
                 <div>
                   <p className="font-medium text-zinc-200">Selected reply</p>

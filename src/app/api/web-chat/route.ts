@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import {
+  buildMockAgentReply,
+  buildUiFallbackReply,
   generateAgentReply,
   normalizeRouteLlmMode,
   resolvePersona,
@@ -26,8 +28,6 @@ import {
 } from "@/lib/webChatRuntimeSettings";
 
 type ReplyMode = "autonomous" | "holding";
-
-const HOLDING_REPLY = "Thanks - we've logged your message and will reply soon.";
 
 export const dynamic = "force-dynamic";
 
@@ -134,8 +134,10 @@ function successResponse({
 }
 
 export async function GET(req: NextRequest) {
-  const persona = normalizePersona(req.cookies.get(PERSONA_COOKIE_NAME)?.value);
   const session = await getExistingSession(req);
+  const persona = normalizePersona(
+    req.cookies.get(PERSONA_COOKIE_NAME)?.value || session?.persona || null,
+  );
   if (!session) {
     return json({ conversationId: null, persona, messages: [] });
   }
@@ -185,10 +187,12 @@ export async function POST(req: NextRequest) {
     message,
     conversationId: rawConversationId,
     persona: rawPersona,
+    personaHint: rawPersonaHint,
   } = body as {
     conversationId?: unknown;
     message?: unknown;
     persona?: unknown;
+    personaHint?: unknown;
   };
 
   if (typeof message !== "string" || message.trim().length === 0) {
@@ -206,7 +210,9 @@ export async function POST(req: NextRequest) {
     conversationId,
   });
   const persona = resolvePersona({
+    personaHint: rawPersonaHint,
     explicitPersona: rawPersona,
+    sessionPersona: session.session.persona,
     cookiePersona: req.cookies.get(PERSONA_COOKIE_NAME)?.value,
     latestMessage,
   });
@@ -216,21 +222,41 @@ export async function POST(req: NextRequest) {
     const effectiveAutonomous = await getEffectiveAutonomous();
 
     if (!effectiveAutonomous) {
+      const holdingReply = buildMockAgentReply({
+        persona,
+        history,
+        latestMessage,
+      });
       const turn = await appendTurn({
         sessionId: session.session.id,
         conversationId,
         userMessage: latestMessage,
-        assistantReply: HOLDING_REPLY,
+        assistantReply: holdingReply.reply,
         mode: "holding",
+        sessionPersona: persona,
+        assistantMeta: {
+          persona,
+          route: holdingReply.nextStep?.route ?? null,
+          nextStep: holdingReply.nextStep,
+          extractedFields: holdingReply.extractedFields,
+          operation: holdingReply.diagnostics.operation,
+          selectedReplySource: "holding_template",
+          fallbackReason: "runtime_gate_closed",
+          providerState: "openai_not_called_gate_closed",
+          model: holdingReply.diagnostics.model,
+          configuredMode: holdingReply.diagnostics.configuredMode,
+          effectiveMode: "holding",
+        },
       });
 
       return successResponse({
         conversationId,
         persona,
-        reply: HOLDING_REPLY,
+        reply: holdingReply.reply,
         turn,
         mode: "holding",
         sessionCookieValue,
+        nextStep: holdingReply.nextStep,
       });
     }
 
@@ -249,30 +275,33 @@ export async function POST(req: NextRequest) {
         errorMessage: result.errorMessage,
       });
       await recordSystemHoldingFallback();
-      const turn = await appendTurn({
-        sessionId: session.session.id,
-        conversationId,
-        userMessage: latestMessage,
-        assistantReply: HOLDING_REPLY,
-        mode: "holding",
-      });
-
-      return successResponse({
-        conversationId,
-        persona,
-        reply: HOLDING_REPLY,
-        turn,
-        mode: "holding",
-        sessionCookieValue,
-      });
     }
+
+    const replyMode: ReplyMode =
+      result.data.diagnostics.providerState === "openai_not_called_gate_closed"
+        ? "holding"
+        : "autonomous";
 
     const turn = await appendTurn({
       sessionId: session.session.id,
       conversationId,
       userMessage: latestMessage,
       assistantReply: result.data.reply,
-      mode: "autonomous",
+      mode: replyMode,
+      sessionPersona: result.data.persona,
+      assistantMeta: {
+        persona: result.data.persona,
+        route: result.data.nextStep?.route ?? null,
+        nextStep: result.data.nextStep,
+        extractedFields: result.data.extractedFields,
+        operation: result.data.diagnostics.operation,
+        selectedReplySource: result.data.diagnostics.selectedReplySource,
+        fallbackReason: result.data.diagnostics.fallbackReason,
+        providerState: result.data.diagnostics.providerState,
+        model: result.data.diagnostics.model,
+        configuredMode: result.data.diagnostics.configuredMode,
+        effectiveMode: result.data.diagnostics.effectiveMode,
+      },
     });
 
     return successResponse({
@@ -280,12 +309,57 @@ export async function POST(req: NextRequest) {
       persona: result.data.persona,
       reply: result.data.reply,
       turn,
-      mode: "autonomous",
+      mode: replyMode,
       sessionCookieValue,
       nextStep: result.data.nextStep,
     });
   } catch (error) {
     console.error("Web chat request failed", error);
-    return json({ error: "Engine error" }, { status: 502 });
+    const reply = buildUiFallbackReply(persona);
+    const turn = await appendTurn({
+      sessionId: session.session.id,
+      conversationId,
+      userMessage: latestMessage,
+      assistantReply: reply,
+      mode: "holding",
+      sessionPersona: persona,
+      assistantMeta: {
+        persona,
+        route: null,
+        nextStep: null,
+        extractedFields: {
+          persona,
+          city: null,
+          neighborhood: null,
+          dateWindow: null,
+          roles: [],
+          vibeTags: [],
+          venueType: null,
+          projectIdea: null,
+          interests: [],
+          portfolio: null,
+          availability: null,
+          rates: null,
+          scale: null,
+          nextRoute: null,
+        },
+        operation: persona ? `sagasan_${persona}_intake` : "sagasan_router",
+        selectedReplySource: "holding_template",
+        fallbackReason: "request_failed",
+        providerState: "openai_called_failed",
+        model: process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini",
+        configuredMode: normalizeRouteLlmMode(process.env.LLM_MODE),
+        effectiveMode: "holding",
+      },
+    });
+
+    return successResponse({
+      conversationId,
+      persona,
+      reply,
+      turn,
+      mode: "holding",
+      sessionCookieValue,
+    });
   }
 }

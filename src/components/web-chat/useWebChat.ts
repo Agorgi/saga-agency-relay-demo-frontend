@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { normalizePersona, type Persona } from "@/lib/sagasanPersonas";
 import { useSessionPersona, writeSessionPersona } from "@/lib/useSessionPersona";
-import { type WebChatNextStep } from "@/lib/webChatNextStep";
+import {
+  clearPendingNextStep,
+  persistPendingNextStep,
+  type WebChatNextStep,
+} from "@/lib/webChatNextStep";
 
 export type ChatRole = "user" | "assistant";
 export type ChatMode = "autonomous" | "holding";
@@ -13,6 +17,7 @@ export type ChatEntry = {
   content: string;
   role: ChatRole;
   mode?: ChatMode;
+  persona?: Persona | null;
   nextStep?: WebChatNextStep | null;
 };
 
@@ -22,6 +27,8 @@ type WebChatResponse = {
   reply: string;
   turn: number;
   mode: ChatMode;
+  selectedReplySource?: string | null;
+  fallbackReason?: string | null;
   nextStep?: WebChatNextStep | null;
 };
 
@@ -32,7 +39,9 @@ type WebChatHistoryResponse = {
     id: string;
     role: ChatRole;
     content: string;
+    persona: Persona | null;
     mode: ChatMode | null;
+    nextStep: WebChatNextStep | null;
     turn: number;
     createdAt: string;
   }>;
@@ -48,6 +57,21 @@ export const SAGASAN_AVATAR_SRC = "/branding/sagasan-contact.png";
 export const DEFAULT_CHAT_DESCRIPTION = "";
 export const DEFAULT_CHAT_PLACEHOLDER = "Message Sagasan...";
 export const DEFAULT_WELCOME_MESSAGE = "";
+function getUiChatFallbackReply(persona: Persona | null) {
+  if (persona === "host") {
+    return "Got it. I lost that turn for a second — what city should I anchor this in?";
+  }
+  if (persona === "creative") {
+    return "Got it — I lost that turn for a second. What city are you based in?";
+  }
+  if (persona === "venue") {
+    return "Got it — I lost that turn for a second. What city is the space in?";
+  }
+  if (persona === "fan") {
+    return "Got it. I lost that turn for a second — what city should I look around?";
+  }
+  return "Got it. I lost that turn for a second — are you here as a host, creative, venue, or fan?";
+}
 
 type CachedConversation = {
   persona: Persona | null;
@@ -102,6 +126,7 @@ export function requestWebChatReset(nextPersona?: Persona | null) {
     return;
   }
 
+  clearPendingNextStep();
   window.localStorage.removeItem(CONVERSATION_STORAGE_KEY);
   window.sessionStorage.setItem(WEB_CHAT_SUPPRESS_RESTORE_KEY, "1");
   window.sessionStorage.setItem(WEB_CHAT_RESET_REQUEST_KEY, `${Date.now()}`);
@@ -119,6 +144,7 @@ function createInitialMessages(welcomeMessage: string): ChatEntry[] {
       id: "assistant-welcome",
       role: "assistant",
       content: welcomeMessage,
+      persona: null,
       nextStep: null,
     },
   ];
@@ -215,30 +241,29 @@ export function useWebChat({
             id: `${message.id}-${message.turn}-${message.role}-${index}`,
             role: message.role,
             content: message.content,
+            persona: message.persona,
             mode: message.role === "assistant" ? message.mode ?? undefined : undefined,
-            nextStep: null,
+            nextStep: message.role === "assistant" ? message.nextStep ?? null : null,
           })) satisfies ChatEntry[];
+
+          const latestNextStep = [...restoredMessages]
+            .reverse()
+            .find((message) => message.role === "assistant" && message.nextStep)?.nextStep;
+          if (latestNextStep) {
+            persistPendingNextStep(latestNextStep);
+          }
 
           const cached = data.conversationId
             ? readConversationCache(data.conversationId)
             : null;
-          const hydratedMessages = restoredMessages.map((message, index) => ({
-            ...message,
-            nextStep:
-              message.role === "assistant" &&
-              cached?.messages[index]?.role === "assistant" &&
-              cached.messages[index]?.content === message.content
-                ? cached.messages[index]?.nextStep ?? null
-                : null,
-          }));
 
-          setMessages(hydratedMessages);
+          setMessages(restoredMessages);
 
           if (data.conversationId) {
             persistConversationCache(
               data.conversationId,
               restoredPersona ?? cached?.persona ?? null,
-              hydratedMessages,
+              restoredMessages,
             );
           }
         } else {
@@ -295,13 +320,15 @@ export function useWebChat({
       return false;
     }
 
-    const nextPersona =
-      normalizePersona(options?.persona) ?? persona ?? fallbackPersona;
+    const requestedPersona = normalizePersona(options?.persona);
+    const nextPersona = requestedPersona ?? persona ?? fallbackPersona;
+    const uiFallbackReply = getUiChatFallbackReply(nextPersona ?? null);
 
     const userMessage: ChatEntry = {
       id: `user-${Date.now()}`,
       role: "user",
       content: message,
+      persona: nextPersona ?? null,
       nextStep: null,
     };
 
@@ -321,7 +348,8 @@ export function useWebChat({
         body: JSON.stringify({
           conversationId,
           message,
-          persona: nextPersona,
+          persona: requestedPersona,
+          personaHint: requestedPersona,
         }),
       });
 
@@ -331,7 +359,18 @@ export function useWebChat({
         | null;
 
       if (!response.ok || !data || typeof data !== "object" || !("reply" in data)) {
-        setError("Couldn't send - try again.");
+        setError(uiFallbackReply);
+        setMessages([
+          ...optimisticMessages,
+          {
+            id: `assistant-ui-fallback-${Date.now()}`,
+            role: "assistant",
+            content: uiFallbackReply,
+            persona: nextPersona ?? null,
+            mode: "holding",
+            nextStep: null,
+          },
+        ]);
         return false;
       }
 
@@ -351,17 +390,32 @@ export function useWebChat({
           id: `assistant-${data.turn}-${Date.now()}`,
           role: "assistant" as const,
           content: data.reply,
+          persona: resolvedPersona,
           mode: data.mode,
           nextStep: data.nextStep ?? null,
         },
       ];
 
       setMessages(nextMessages);
+      if (data.nextStep) {
+        persistPendingNextStep(data.nextStep);
+      }
       persistConversationCache(data.conversationId, resolvedPersona, nextMessages);
 
       return true;
     } catch {
-      setError("Couldn't send - try again.");
+      setError(uiFallbackReply);
+      setMessages([
+        ...optimisticMessages,
+        {
+          id: `assistant-ui-fallback-${Date.now()}`,
+          role: "assistant",
+          content: uiFallbackReply,
+          persona: nextPersona ?? null,
+          mode: "holding",
+          nextStep: null,
+        },
+      ]);
       return false;
     } finally {
       setIsSending(false);

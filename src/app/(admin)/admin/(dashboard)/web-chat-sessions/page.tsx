@@ -3,7 +3,7 @@ import { ArrowUpRight } from "lucide-react";
 import { getDb } from "@/sms-engine/db";
 import {
   getRecentAudit,
-  getRuntimeSettingSnapshot,
+  getWebChatRuntimeDashboard,
 } from "@/lib/webChatRuntimeSettings";
 import { toggleAutonomousAction } from "@/app/(admin)/admin/(dashboard)/web-chat-sessions/actions";
 
@@ -57,7 +57,7 @@ export default async function WebChatSessionsPage({
       take: 50,
       include: { _count: { select: { messages: true } } },
     }),
-    getRuntimeSettingSnapshot(),
+    getWebChatRuntimeDashboard(),
     getRecentAudit(),
     searchParams,
   ]);
@@ -153,6 +153,69 @@ export default async function WebChatSessionsPage({
             </div>
           </details>
         </section>
+
+        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <MetricCard label="Configured mode" value={runtime.configuredMode} />
+          <MetricCard label="Effective mode" value={runtime.effectiveMode} />
+          <MetricCard label="Model" value={runtime.configuredModel} />
+          <MetricCard
+            label="OpenAI configured"
+            value={runtime.openAiConfigured ? "yes" : "no"}
+          />
+          <MetricCard
+            label="OpenAI called"
+            value={runtime.openAiActuallyCalled ? "yes" : "no"}
+          />
+          <MetricCard
+            label="Recent fallbacks"
+            value={`${runtime.recentFallbackCount}/${runtime.recentAssistantCount || 0}`}
+          />
+          <MetricCard
+            label="Fallback rate"
+            value={`${Math.round(runtime.fallbackRate * 100)}%`}
+          />
+          <MetricCard
+            label="Active live allowed"
+            value={runtime.activeLiveAllowed ? "yes" : "no"}
+          />
+          <MetricCard
+            label="Shadow mode"
+            value={runtime.shadowMode ? "yes" : "no"}
+          />
+          <MetricCard
+            label="Public launch gate"
+            value={runtime.publicLaunchGate ? "on" : "off"}
+          />
+        </section>
+
+        <section className="rounded-lg border border-zinc-800 bg-black p-5">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+                Provider state
+              </p>
+              <p className="mt-1 text-sm text-zinc-100">
+                {runtime.providerState || "No web-chat assistant turns yet."}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+                Fallback reason
+              </p>
+              <p className="mt-1 text-sm text-zinc-100">
+                {runtime.fallbackReason || "none"}
+              </p>
+            </div>
+          </div>
+          <div className="mt-4">
+            <p className="text-[11px] uppercase tracking-[0.12em] text-zinc-500">
+              Blocking gate
+            </p>
+            <p className="mt-1 text-sm text-zinc-300">
+              {runtime.blockingGate || "No blocking gate. Sagasan can call OpenAI when active_live is enabled and the runtime toggle stays on."}
+            </p>
+          </div>
+        </section>
       </div>
 
       <section className="overflow-hidden rounded-lg border border-zinc-800 bg-black">
@@ -209,6 +272,15 @@ export default async function WebChatSessionsPage({
           </tbody>
         </table>
       </section>
+    </div>
+  );
+}
+
+function MetricCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-zinc-800 bg-black p-4">
+      <p className="text-xs uppercase text-zinc-500">{label}</p>
+      <p className="mt-1 text-sm font-medium text-zinc-100">{value}</p>
     </div>
   );
 }

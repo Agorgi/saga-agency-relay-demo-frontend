@@ -9,25 +9,57 @@ import {
 } from "@/lib/sagasanPersonas";
 import { buildSystemPrompt } from "@/lib/sagasanSystemPrompt";
 import {
-  clampNextStepLabel,
-  webChatNextStepSchema,
+  sanitizeNextStepPayload,
   type WebChatNextStep,
   type WebChatPrefill,
 } from "@/lib/webChatNextStep";
+import type { StoredExtractedFields } from "@/lib/webChatSessionStore";
 import type { ProjectType } from "@/types/sagaAgency";
 
 export type ChatRole = "user" | "assistant";
 export type RouteLlmMode = "active_mock" | "active_live";
+export type ProviderState =
+  | "openai_not_called_gate_closed"
+  | "openai_not_called_mode_mock"
+  | "openai_not_called_missing_key"
+  | "openai_called_succeeded"
+  | "openai_called_failed"
+  | "openai_called_validation_failed";
+export type ModelPreflightStatus =
+  | "ok"
+  | "skipped"
+  | "model_not_found"
+  | "auth_error"
+  | "rate_limit"
+  | "provider_error";
 
 export type ChatMessage = {
   role: ChatRole;
   content: string;
 };
 
+export type AgentDiagnostics = {
+  operation: string;
+  selectedReplySource: "openai_selected" | "deterministic_fallback" | "holding_template";
+  fallbackReason: string | null;
+  providerState: ProviderState;
+  model: string;
+  configuredMode: RouteLlmMode;
+  effectiveMode: "autonomous_live" | "autonomous_mock" | "holding";
+  openAiConfigured: boolean;
+  openAiCalled: boolean;
+  activeLiveAllowed: boolean;
+  shadowMode: boolean;
+  blockingGate: string | null;
+  publicLaunchGate: boolean;
+};
+
 export type AgentReply = {
   reply: string;
   nextStep: WebChatNextStep | null;
   persona: Persona | null;
+  extractedFields: StoredExtractedFields;
+  diagnostics: AgentDiagnostics;
 };
 
 type OpenAiStructuredResult<T> =
@@ -38,7 +70,7 @@ type OpenAiStructuredResult<T> =
     }
   | {
       ok: false;
-      errorCategory: string;
+      errorCategory: ModelPreflightStatus | "validation_failed";
       errorMessage: string;
       statusCode?: number | null;
       responseId: string | null;
@@ -57,82 +89,73 @@ type LiveStructuredCall = (input: {
 
 type PersonaSignal = Persona | null;
 
-type BaseFields = {
-  city: string | null;
-};
-
-type HostPrefill = BaseFields & {
-  eventType: string | null;
-  scale: string | null;
-  vibe: string | null;
-  date: string | null;
-  helpNeeded: string | null;
-  projectType: ProjectType;
-  suggestedRoles: string[];
-};
-
-type CreativePrefill = BaseFields & {
-  roles: string[];
-  portfolio: string | null;
-  availability: string | null;
-  rates: string | null;
-};
-
-type VenuePrefill = {
-  capacity: string | null;
-  neighborhood: string | null;
-  availabilityHint: string | null;
-};
-
-type FanPrefill = BaseFields & {
-  interests: string[];
-  email: string | null;
-};
-
-const liveAgentReplySchema = z.object({
-  message: z.string().trim().min(1),
-  nextStep: webChatNextStepSchema.nullable().optional(),
-});
-
 type LiveAgentReply = z.infer<typeof liveAgentReplySchema>;
 
 const TICKET_REPLY = "Tickets live elsewhere — Saga doesn't handle those.";
+const BASE_MODEL = "gpt-4o-mini";
+const GENERIC_PERSONA_STARTERS = new Set(
+  PERSONA_OPTIONS.map((option) => option.firstTurn.toLowerCase()),
+);
 
-const CITY_PATTERNS = [
-  "Los Angeles",
-  "LA",
-  "Pasadena",
-  "New York",
-  "NYC",
-  "Brooklyn",
-  "Miami",
-  "San Francisco",
-  "SF",
-  "Oakland",
-  "Chicago",
-  "Seattle",
+const liveAgentReplySchema = z.object({
+  message: z.string().trim().min(1),
+  nextStep: z.unknown().nullable().optional(),
+});
+
+const PERSONA_ROUTE_MAP: Record<Persona, string> = {
+  host: "/projects/new",
+  creative: "/me",
+  venue: "/spaces",
+  fan: "/feed",
+};
+
+const CREATIVE_ROLE_PATTERNS: Array<[RegExp, string]> = [
+  [/\bphotographer\b/i, "Photographer"],
+  [/\bdj\b/i, "DJ"],
+  [/\bvideographer\b|\bdp\b|\bcinematographer\b/i, "Videographer"],
+  [/\billustrator\b/i, "Illustrator"],
+  [/\bdesigner\b|\bgraphic designer\b/i, "Designer"],
+  [/\bcosplayer\b/i, "Cosplayer"],
+  [/\bstylist\b/i, "Stylist"],
+  [/\bmakeup\b|\bhmua\b|\bmakeup artist\b/i, "HMUA"],
+  [/\bproducer\b/i, "Producer"],
+  [/\beditor\b/i, "Editor"],
+  [/\bhost\b/i, "Host"],
 ];
 
-const ROLE_KEYWORDS = [
-  "photographer",
-  "producer",
-  "host",
-  "dj",
-  "stylist",
-  "hmua",
-  "editor",
-  "director",
-  "dp",
-  "set designer",
-  "vendor lead",
-  "vendor",
-  "cosplayer",
-  "social producer",
-  "social manager",
-  "art director",
-  "creative director",
-  "creator",
-  "performer",
+const INTEREST_PATTERNS: Array<[RegExp, string]> = [
+  [/\banime\b/i, "Anime"],
+  [/\bcosplay\b/i, "Cosplay"],
+  [/\bdj\b|\bdance\b|\bnightlife\b/i, "DJ nights"],
+  [/\bpop-?up\b/i, "Pop-ups"],
+  [/\bgaming\b/i, "Gaming"],
+  [/\bj[- ]?fashion\b/i, "J-fashion"],
+  [/\bcreator\b/i, "Creator events"],
+];
+
+const VENUE_TYPE_PATTERNS: Array<[RegExp, string]> = [
+  [/\bevent space\b/i, "Event space"],
+  [/\bwarehouse\b/i, "Warehouse"],
+  [/\bstudio\b/i, "Studio"],
+  [/\bcafe\b/i, "Cafe"],
+  [/\bgallery\b/i, "Gallery"],
+  [/\bclub\b/i, "Club"],
+  [/\bbar\b/i, "Bar"],
+  [/\bstorefront\b/i, "Storefront"],
+];
+
+const CITY_PATTERNS: Array<[RegExp, string]> = [
+  [/\blos angeles\b|\bla\b/i, "Los Angeles"],
+  [/\bsilver lake\b/i, "Silver Lake"],
+  [/\barts district\b/i, "Arts District"],
+  [/\bbrooklyn\b/i, "Brooklyn"],
+  [/\bnew york\b|\bnyc\b/i, "New York"],
+  [/\bmiami\b/i, "Miami"],
+  [/\bseattle\b/i, "Seattle"],
+  [/\bchicago\b/i, "Chicago"],
+  [/\bsan francisco\b|\bsf\b/i, "San Francisco"],
+  [/\boakland\b/i, "Oakland"],
+  [/\bpasadena\b/i, "Pasadena"],
 ];
 
 const FAN_INTEREST_STOP_WORDS = new Set([
@@ -157,15 +180,36 @@ const FAN_INTEREST_STOP_WORDS = new Set([
   "stuff",
   "scene",
   "scenes",
+  "events",
+  "event",
+  "near",
+  "me",
+  "what",
+  "happening",
+  "things",
+  "attend",
 ]);
-
-const GENERIC_PERSONA_STARTERS = new Set(
-  PERSONA_OPTIONS.map((option) => option.firstTurn.toLowerCase()),
-);
 
 let cachedClient: OpenAI | null = null;
 let cachedApiKey: string | null = null;
 let cachedBaseUrl: string | null = null;
+
+function uniqueStrings(values: string[]) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function trimSentence(text: string, maxLength = 160) {
+  return text.trim().replace(/\s+/g, " ").slice(0, maxLength);
+}
+
+function normalizeProjectIdea(text: string) {
+  return trimSentence(
+    text
+      .replace(/^i (want to|need to|am looking to)\s+/i, "")
+      .replace(/^we (want to|need to|are looking to)\s+/i, ""),
+    120,
+  );
+}
 
 function getOpenAiClient({
   apiKey,
@@ -191,6 +235,49 @@ function getOpenAiClient({
   cachedApiKey = apiKey;
   cachedBaseUrl = normalizedBaseUrl;
   return cachedClient;
+}
+
+function classifyOpenAiError(error: unknown): {
+  category: ModelPreflightStatus;
+  message: string;
+  statusCode: number | null;
+} {
+  const statusCode =
+    error && typeof error === "object" && "status" in error
+      ? Number((error as { status?: number }).status) || null
+      : null;
+  const message =
+    error instanceof Error ? error.message : "Unknown OpenAI error.";
+
+  if (statusCode === 401 || statusCode === 403) {
+    return {
+      category: "auth_error",
+      message,
+      statusCode,
+    };
+  }
+
+  if (statusCode === 404 || /model/i.test(message)) {
+    return {
+      category: "model_not_found",
+      message,
+      statusCode,
+    };
+  }
+
+  if (statusCode === 429) {
+    return {
+      category: "rate_limit",
+      message,
+      statusCode,
+    };
+  }
+
+  return {
+    category: "provider_error",
+    message,
+    statusCode,
+  };
 }
 
 async function callLiveStructured(input: {
@@ -228,7 +315,7 @@ async function callLiveStructured(input: {
     if (!response.output_parsed) {
       return {
         ok: false,
-        errorCategory: "empty_output",
+        errorCategory: "validation_failed",
         errorMessage: "OpenAI returned no parsed output.",
         responseId: response.id || null,
       };
@@ -240,15 +327,12 @@ async function callLiveStructured(input: {
       responseId: response.id || null,
     };
   } catch (error) {
+    const classified = classifyOpenAiError(error);
     return {
       ok: false,
-      errorCategory: "openai_error",
-      errorMessage:
-        error instanceof Error ? error.message : "Unknown OpenAI error.",
-      statusCode:
-        error && typeof error === "object" && "status" in error
-          ? Number((error as { status?: number }).status) || null
-          : null,
+      errorCategory: classified.category,
+      errorMessage: classified.message,
+      statusCode: classified.statusCode,
       responseId: null,
     };
   }
@@ -262,8 +346,28 @@ export function normalizeRouteLlmMode(value: string | undefined): RouteLlmMode {
   return "active_mock";
 }
 
+export function getConfiguredModel() {
+  return process.env.OPENAI_MODEL?.trim() || BASE_MODEL;
+}
+
 export function shouldAnswerTickets(message: string) {
   return /\bticket|tickets|admission|entry pass|passes\b/i.test(message);
+}
+
+function isCapabilityQuestion(message: string) {
+  return /\bwhat do you do\b|\bwhat can you do\b|\bhow can you help\b/i.test(message);
+}
+
+function isPaidWorkBoundary(message: string) {
+  return /\bpaid work\b|\bget paid\b|\bbook me\b|\bguarantee\b/i.test(message);
+}
+
+function isGuaranteeBoundary(message: string) {
+  return /\bguarantee\b|\bpromise\b|\bconfirm(ed)? team\b|\bbookings?\b/i.test(message);
+}
+
+function isOffTopic(message: string) {
+  return /\bcapital of france\b|\bweather\b|\bstock price\b|\brecipe\b/i.test(message);
 }
 
 function summarizeTranscript(history: ChatMessage[], latestMessage: string) {
@@ -275,62 +379,33 @@ function summarizeTranscript(history: ChatMessage[], latestMessage: string) {
 }
 
 function inferCity(value: string) {
-  const lower = value.toLowerCase();
-  const found = CITY_PATTERNS.find((city) =>
-    lower.includes(city.toLowerCase()),
-  );
-
-  if (!found) {
-    return null;
+  for (const [pattern, label] of CITY_PATTERNS) {
+    if (pattern.test(value)) {
+      return label;
+    }
   }
-
-  if (found === "LA") return "Los Angeles";
-  if (found === "NYC") return "New York";
-  if (found === "SF") return "San Francisco";
-  return found;
-}
-
-function inferHostProjectType(value: string): ProjectType {
-  const lower = value.toLowerCase();
-  if (/pop-?up|activation|launch/.test(lower)) return "Pop-up / activation";
-  if (/fan|gala|watch party|meetup/.test(lower)) return "Fan event";
-  if (/editorial|lookbook|photoshoot|photo shoot/.test(lower)) return "Photoshoot";
-  if (/music video/.test(lower)) return "Music video";
-  if (/video|trailer|film/.test(lower)) return "Video shoot";
-  if (/brand|campaign|product/.test(lower)) return "Brand campaign";
-  if (/creator/.test(lower)) return "Creator collaboration";
-  if (/performance|concert|show/.test(lower)) return "Live performance";
-  return "Other";
-}
-
-function inferEventTypeLabel(projectType: ProjectType, raw: string) {
-  if (projectType !== "Other") {
-    return projectType;
-  }
-
-  const normalized = raw.trim().replace(/\s+/g, " ");
-  return normalized.split(/[.!?]/)[0]?.slice(0, 48) || "Creative project";
-}
-
-function inferScale(value: string) {
-  const explicit =
-    value.match(/(\d+)\s*[- ]?(?:person|people|guest|guests|attendees?)/i) ||
-    value.match(/\b(\d+)\s*cap\b/i);
-  if (explicit) {
-    return `${explicit[1]} people`;
-  }
-
-  if (/\bintimate\b/i.test(value)) return "intimate";
-  if (/\b(mid|medium)\b/i.test(value)) return "mid";
-  if (/\b(big|large|huge)\b/i.test(value)) return "big";
   return null;
 }
 
-function inferDateHint(value: string) {
+function inferNeighborhood(value: string) {
+  const match =
+    value.match(/\b(arts district|silver lake|echo park|williamsburg|soho|hollywood|dtla)\b/i) ||
+    value.match(/\b(?:in|near)\s+(arts district|silver lake|echo park|williamsburg|soho|hollywood|dtla)\b/i);
+  return match ? match[1].replace(/\b\w/g, (char) => char.toUpperCase()) : null;
+}
+
+function inferDateWindow(value: string) {
   const match = value.match(
-    /\b(next month|next week|this weekend|this month|next season|summer|fall|winter|spring|tonight|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|jan(?:uary)?(?:\s+\d{1,2})?|feb(?:ruary)?(?:\s+\d{1,2})?|mar(?:ch)?(?:\s+\d{1,2})?|apr(?:il)?(?:\s+\d{1,2})?|may(?:\s+\d{1,2})?|jun(?:e)?(?:\s+\d{1,2})?|jul(?:y)?(?:\s+\d{1,2})?|aug(?:ust)?(?:\s+\d{1,2})?|sep(?:tember)?(?:\s+\d{1,2})?|oct(?:ober)?(?:\s+\d{1,2})?|nov(?:ember)?(?:\s+\d{1,2})?|dec(?:ember)?(?:\s+\d{1,2})?)\b/i,
+    /\b(next month|next week|this weekend|this month|tonight|tomorrow|next friday|next saturday|next sunday|friday|saturday|sunday|summer|fall|winter|spring|jan(?:uary)?(?:\s+\d{1,2})?|feb(?:ruary)?(?:\s+\d{1,2})?|mar(?:ch)?(?:\s+\d{1,2})?|apr(?:il)?(?:\s+\d{1,2})?|may(?:\s+\d{1,2})?|jun(?:e)?(?:\s+\d{1,2})?|jul(?:y)?(?:\s+\d{1,2})?|aug(?:ust)?(?:\s+\d{1,2})?|sep(?:tember)?(?:\s+\d{1,2})?|oct(?:ober)?(?:\s+\d{1,2})?|nov(?:ember)?(?:\s+\d{1,2})?|dec(?:ember)?(?:\s+\d{1,2})?)\b/i,
   );
   return match ? match[1] : null;
+}
+
+function inferAvailabilityHint(value: string) {
+  const match = value.match(
+    /\b(available[^.?!,]*|open[^.?!,]*|weeknights[^.?!,]*|weekends[^.?!,]*|after \d{1,2}(?::\d{2})?\s*(?:am|pm)?[^.?!,]*|this month[^.?!,]*|next month[^.?!,]*)\b/i,
+  );
+  return match ? trimSentence(match[1], 80) : null;
 }
 
 function inferPortfolioLink(value: string) {
@@ -355,18 +430,18 @@ function inferRateHint(value: string) {
   return null;
 }
 
-function inferAvailabilityHint(value: string) {
-  const match = value.match(
-    /\b(available[^.?!,]*|open[^.?!,]*|after \d{1,2}(?::\d{2})?\s*(?:am|pm)?[^.?!,]*|this month[^.?!,]*|next month[^.?!,]*)\b/i,
-  );
-  return match ? match[1] : null;
-}
+function inferScale(value: string) {
+  const explicit =
+    value.match(/(\d+)\s*[- ]?(?:person|people|guest|guests|attendees?)/i) ||
+    value.match(/\b(\d+)\s*cap\b/i);
+  if (explicit) {
+    return `${explicit[1]} people`;
+  }
 
-function inferNeighborhood(value: string) {
-  const match =
-    value.match(/\b(?:in|near)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})/) ||
-    value.match(/\b(downtown|arts district|silver lake|echo park|brooklyn|hollywood|dtla|soho|williamsburg)\b/i);
-  return match ? match[1] || match[0] : null;
+  if (/\bintimate\b/i.test(value)) return "intimate";
+  if (/\b(mid|medium)\b/i.test(value)) return "mid";
+  if (/\b(big|large|huge)\b/i.test(value)) return "big";
+  return null;
 }
 
 function inferCapacity(value: string) {
@@ -382,23 +457,34 @@ function inferCapacity(value: string) {
   return null;
 }
 
-function normalizeRoleLabel(role: string) {
-  return role
-    .split(/[,/]| and /i)
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .map((part) => part.replace(/\b\w/g, (char) => char.toUpperCase()))
-    .join(", ");
+function inferVenueType(value: string) {
+  for (const [pattern, label] of VENUE_TYPE_PATTERNS) {
+    if (pattern.test(value)) {
+      return label;
+    }
+  }
+  return null;
 }
 
 function inferCreativeRoles(value: string) {
-  const lower = value.toLowerCase();
-  return ROLE_KEYWORDS.filter((role) => lower.includes(role)).map((role) =>
-    normalizeRoleLabel(role),
+  return uniqueStrings(
+    CREATIVE_ROLE_PATTERNS.filter(([pattern]) => pattern.test(value)).map(
+      ([, label]) => label,
+    ),
   );
 }
 
-function inferFanInterests(value: string) {
+function inferInterestTags(value: string) {
+  const matched = uniqueStrings(
+    INTEREST_PATTERNS.filter(([pattern]) => pattern.test(value)).map(
+      ([, label]) => label,
+    ),
+  );
+
+  if (matched.length > 0) {
+    return matched.slice(0, 3);
+  }
+
   return value
     .toLowerCase()
     .replace(/[^a-z0-9,\s/-]/g, " ")
@@ -406,167 +492,333 @@ function inferFanInterests(value: string) {
     .map((part) => part.trim())
     .filter(
       (part) =>
-        (part.length > 2 || part === "dj") &&
-        !FAN_INTEREST_STOP_WORDS.has(part),
+        part.length > 2 &&
+        !FAN_INTEREST_STOP_WORDS.has(part) &&
+        !CITY_PATTERNS.some(([pattern]) => pattern.test(part)),
     )
     .slice(0, 3)
     .map((part) => part.replace(/\b\w/g, (char) => char.toUpperCase()));
 }
 
-function inferEmail(value: string) {
-  const match = value.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
-  return match ? match[0] : null;
+function inferVibeTags(value: string) {
+  return uniqueStrings(
+    [
+      /\banime\b/i.test(value) ? "anime" : null,
+      /\bcosplay\b/i.test(value) ? "cosplay" : null,
+      /\bneon\b/i.test(value) ? "neon" : null,
+      /\bpicnic\b/i.test(value) ? "picnic" : null,
+      /\bpop-?up\b/i.test(value) ? "pop-up" : null,
+      /\blaunch\b/i.test(value) ? "launch" : null,
+      /\bdj\b/i.test(value) ? "dj" : null,
+      /\bplayful\b/i.test(value) ? "playful" : null,
+    ].filter(Boolean) as string[],
+  ).slice(0, 4);
+}
+
+function inferHostProjectType(value: string): ProjectType {
+  const lower = value.toLowerCase();
+  if (/pop-?up|activation|launch/.test(lower)) return "Pop-up / activation";
+  if (/fan|gala|watch party|meetup|picnic/.test(lower)) return "Fan event";
+  if (/editorial|lookbook|photoshoot|photo shoot/.test(lower)) return "Photoshoot";
+  if (/music video/.test(lower)) return "Music video";
+  if (/video|trailer|film/.test(lower)) return "Video shoot";
+  if (/brand|campaign|product/.test(lower)) return "Brand campaign";
+  if (/creator/.test(lower)) return "Creator collaboration";
+  if (/performance|concert|show/.test(lower)) return "Live performance";
+  return "Other";
+}
+
+function inferProjectIdea(value: string) {
+  const normalized = normalizeProjectIdea(value);
+  if (!normalized) {
+    return null;
+  }
+  return normalized.split(/[.!?]/)[0]?.slice(0, 90) || null;
+}
+
+function inferHostEventType(projectType: ProjectType, raw: string) {
+  if (projectType !== "Other") {
+    return projectType;
+  }
+  return inferProjectIdea(raw) || "Creative project";
 }
 
 function getUserTranscript(
   history: ChatMessage[],
   latestMessage: string,
-  persona: Persona | null,
 ) {
-  const baseTranscript = [...history, { role: "user" as const, content: latestMessage }]
+  return [...history, { role: "user" as const, content: latestMessage }]
     .filter((message) => message.role === "user")
     .map((message) => message.content.trim())
-    .filter(Boolean);
-
-  const filtered = baseTranscript.filter((content) => {
-    if (!GENERIC_PERSONA_STARTERS.has(content.toLowerCase())) {
-      return true;
-    }
-
-    return false;
-  });
-
-  if (filtered.length > 0) {
-    return filtered.join("\n");
-  }
-
-  if (!persona) {
-    return baseTranscript.join("\n");
-  }
-
-  return "";
+    .filter(Boolean)
+    .filter((content) => !GENERIC_PERSONA_STARTERS.has(content.toLowerCase()))
+    .join("\n");
 }
 
-function extractHostPrefill(
-  history: ChatMessage[],
-  latestMessage: string,
-): HostPrefill {
-  const transcript = getUserTranscript(history, latestMessage, "host");
-  const projectType = inferHostProjectType(transcript);
-  return {
-    eventType: transcript ? inferEventTypeLabel(projectType, transcript) : null,
-    city: inferCity(transcript),
-    scale: inferScale(transcript),
-    vibe:
-      transcript
-        .split(/[.!?]/)
-        .map((part) => part.trim())
-        .find(Boolean) || null,
-    date: inferDateHint(transcript),
-    helpNeeded: /need ([^.?!]+)/i.test(transcript)
-      ? transcript.match(/need ([^.?!]+)/i)?.[1] || null
-      : null,
-    projectType,
-    suggestedRoles: getSuggestedRoles(projectType),
-  };
-}
-
-function extractCreativePrefill(
-  history: ChatMessage[],
-  latestMessage: string,
-): CreativePrefill {
-  const transcript = getUserTranscript(history, latestMessage, "creative");
-  return {
-    roles: inferCreativeRoles(transcript),
-    city: inferCity(transcript),
-    portfolio: inferPortfolioLink(transcript),
-    availability: inferAvailabilityHint(transcript),
-    rates: inferRateHint(transcript),
-  };
-}
-
-function extractVenuePrefill(
-  history: ChatMessage[],
-  latestMessage: string,
-): VenuePrefill {
-  const transcript = getUserTranscript(history, latestMessage, "venue");
-  return {
-    capacity: inferCapacity(transcript),
-    neighborhood: inferNeighborhood(transcript),
-    availabilityHint: inferDateHint(transcript) || inferAvailabilityHint(transcript),
-  };
-}
-
-function extractFanPrefill(
-  history: ChatMessage[],
-  latestMessage: string,
-): FanPrefill {
-  const transcript = getUserTranscript(history, latestMessage, "fan");
+export function extractStructuredFields({
+  persona,
+  history,
+  latestMessage,
+}: {
+  persona: Persona | null;
+  history: ChatMessage[];
+  latestMessage: string;
+}): StoredExtractedFields {
+  const transcript = getUserTranscript(history, latestMessage);
   const city = inferCity(transcript);
-  const blockedInterestTokens = new Set(
-    (city || "")
-      .toLowerCase()
-      .split(/\s+/)
-      .filter(Boolean),
+  const neighborhood = inferNeighborhood(transcript);
+  const dateWindow = inferDateWindow(transcript);
+  const projectIdea = inferProjectIdea(transcript);
+  const roles = inferCreativeRoles(transcript);
+  const venueType = inferVenueType(transcript);
+  const availability = inferAvailabilityHint(transcript);
+  const rates = inferRateHint(transcript);
+  const portfolio = inferPortfolioLink(transcript);
+  const interests = inferInterestTags(transcript).filter(
+    (interest) => !city || !city.toLowerCase().includes(interest.toLowerCase()),
   );
+  const vibeTags = inferVibeTags(transcript);
+  const scale = inferScale(transcript) || inferCapacity(transcript);
+
+  const route =
+    persona && PERSONA_ROUTE_MAP[persona]
+      ? PERSONA_ROUTE_MAP[persona]
+      : null;
 
   return {
+    persona,
     city,
-    interests: inferFanInterests(transcript).filter(
-      (interest) => !blockedInterestTokens.has(interest.toLowerCase()),
-    ),
-    email: inferEmail(transcript),
+    neighborhood,
+    dateWindow,
+    roles,
+    vibeTags,
+    venueType,
+    projectIdea,
+    interests,
+    portfolio,
+    availability,
+    rates,
+    scale,
+    nextRoute: route,
   };
 }
 
-function hostNeeds(prefill: HostPrefill) {
-  const missing: string[] = [];
-  if (!prefill.eventType) missing.push("eventType");
-  if (!prefill.city) missing.push("city");
-  if (!prefill.scale) missing.push("scale");
-  if (!prefill.vibe) missing.push("vibe");
-  return missing;
+type PersonaScores = Record<Persona, number>;
+
+const CREATIVE_SIGNAL_PATTERNS = [
+  /\bphotographer\b/i,
+  /\bvideographer\b/i,
+  /\bdj\b/i,
+  /\billustrator\b/i,
+  /\bdesigner\b/i,
+  /\bcosplayer\b/i,
+  /\bperformer\b/i,
+  /\bartist\b/i,
+  /\blooking for gigs\b/i,
+  /\blooking for work\b/i,
+  /\bavailable for events\b/i,
+  /\bbook me\b/i,
+  /\bhire me\b/i,
+  /\bportfolio\b/i,
+  /\bmy work\b/i,
+];
+
+const VENUE_SIGNAL_PATTERNS = [
+  /\bi run (?:a|an)?(?:\s+\w+){0,2}\s+venue\b/i,
+  /\bi run (?:a|an)?(?:\s+\w+){0,2}\s+space\b/i,
+  /\bmy venue\b/i,
+  /\bmy space\b/i,
+  /\bstudio\b/i,
+  /\bcafe\b/i,
+  /\bgallery\b/i,
+  /\bevent space\b/i,
+  /\bwe host events\b/i,
+  /\brent out my space\b/i,
+];
+
+const FAN_SIGNAL_PATTERNS = [
+  /\bfind events\b/i,
+  /\bdiscover events\b/i,
+  /\bcool events\b/i,
+  /\bthings near me\b/i,
+  /\bwhat'?s happening\b/i,
+  /\bi want to attend\b/i,
+  /\banime events near me\b/i,
+  /\bshows near me\b/i,
+  /\bcool stuff\b/i,
+  /\bevents near me\b/i,
+];
+
+const HOST_SIGNAL_PATTERNS = [
+  /\bi want to host\b/i,
+  /\bi want to throw\b/i,
+  /\bi want to organize\b/i,
+  /\bi want to produce\b/i,
+  /\bputting on an event\b/i,
+  /\bplanning an event\b/i,
+  /\bcreating a project\b/i,
+  /\bi want to put on\b/i,
+];
+
+function matchesAnyPattern(message: string, patterns: RegExp[]) {
+  return patterns.some((pattern) => pattern.test(message));
 }
 
-function creativeNeeds(prefill: CreativePrefill) {
-  const missing: string[] = [];
-  if (!prefill.roles.length) missing.push("roles");
-  if (!prefill.city) missing.push("city");
-  if (!prefill.portfolio) missing.push("portfolio");
-  return missing;
+function strongCreativeSignal(message: string) {
+  return (
+    /\bactually\b.*\b(dj|photographer|videographer|illustrator|designer|cosplayer|performer|artist)\b/i.test(
+      message,
+    ) ||
+    /\bi(?:'m| am)\s+(?:the\s+)?(dj|photographer|videographer|illustrator|designer|cosplayer|performer|artist)\b/i.test(
+      message,
+    ) ||
+    matchesAnyPattern(message, CREATIVE_SIGNAL_PATTERNS)
+  );
 }
 
-function venueNeeds(prefill: VenuePrefill) {
-  const missing: string[] = [];
-  if (!prefill.capacity) missing.push("capacity");
-  if (!prefill.neighborhood) missing.push("neighborhood");
-  if (!prefill.availabilityHint) missing.push("availabilityHint");
-  return missing;
+function strongVenueSignal(message: string) {
+  return (
+    /\bactually\b.*\b(?:run(?:ning)? (?:a|an)?(?:\s+\w+){0,2}\s+(?:space|venue))\b/i.test(
+      message,
+    ) ||
+    /\bi run (?:a|an)?(?:\s+\w+){0,2}\s+(?:space|venue)\b|\bour (?:space|venue)\b/i.test(
+      message,
+    ) ||
+    matchesAnyPattern(message, VENUE_SIGNAL_PATTERNS)
+  );
 }
 
-function fanNeeds(prefill: FanPrefill) {
-  const missing: string[] = [];
-  if (!prefill.city) missing.push("city");
-  if (!prefill.interests.length) missing.push("interests");
-  return missing;
+function strongFanSignal(message: string) {
+  return (
+    /\bactually\b.*\b(find|discover|attend)\b/i.test(message) ||
+    /\bi want to attend\b|\bwhat'?s happening\b/i.test(message) ||
+    matchesAnyPattern(message, FAN_SIGNAL_PATTERNS)
+  );
 }
 
-function buildHostNextStep(prefill: HostPrefill): WebChatNextStep | null {
-  if (hostNeeds(prefill).length > 0 || !prefill.eventType || !prefill.city || !prefill.scale || !prefill.vibe) {
+function strongHostSignal(message: string) {
+  return (
+    /\bactually\b.*\b(host|throw|organize|produce|put on)\b/i.test(message) ||
+    /\bi want to (?:host|throw|organize|produce|put on)\b/i.test(message) ||
+    matchesAnyPattern(message, HOST_SIGNAL_PATTERNS)
+  );
+}
+
+function scorePersona(message: string): PersonaScores {
+  const lower = message.toLowerCase();
+  return {
+    host:
+      (matchesAnyPattern(message, HOST_SIGNAL_PATTERNS) ? 6 : 0) +
+      (/\bproject\b|\bbrief\b|\bhiring\b|\bneed a\b|\bneed help\b/.test(lower)
+        ? 2
+        : 0),
+    creative:
+      (matchesAnyPattern(message, CREATIVE_SIGNAL_PATTERNS) ? 6 : 0) +
+      (/\bportfolio\b|\breel\b|\bsamples?\b/.test(lower) ? 2 : 0) +
+      (/\bfor hire\b|\bavailable\b/.test(lower) ? 1 : 0),
+    venue:
+      (matchesAnyPattern(message, VENUE_SIGNAL_PATTERNS) ? 7 : 0) +
+      (/\bavailability\b|\bopen dates\b|\bcapacity\b/.test(lower) ? 1 : 0),
+    fan:
+      (matchesAnyPattern(message, FAN_SIGNAL_PATTERNS) ? 7 : 0) +
+      (/\bscene\b|\bscenes\b|\bnights\b|\bfandom\b/.test(lower) ? 2 : 0),
+  };
+}
+
+export function inferPersonaFromMessage(message: string): PersonaSignal {
+  const scores = scorePersona(message);
+  const ranked = (Object.entries(scores) as Array<[Persona, number]>)
+    .sort((a, b) => b[1] - a[1]);
+  if (!ranked[0] || ranked[0][1] <= 0) {
+    return null;
+  }
+  return ranked[0][0];
+}
+
+function detectPersonaPivot(message: string, currentPersona: Persona | null) {
+  if (!currentPersona) {
+    return null;
+  }
+
+  if (currentPersona !== "creative" && strongCreativeSignal(message)) {
+    return "creative";
+  }
+  if (currentPersona !== "venue" && strongVenueSignal(message)) {
+    return "venue";
+  }
+  if (currentPersona !== "fan" && strongFanSignal(message)) {
+    return "fan";
+  }
+  if (currentPersona !== "host" && strongHostSignal(message)) {
+    return "host";
+  }
+  return null;
+}
+
+export function resolvePersona({
+  personaHint,
+  explicitPersona,
+  sessionPersona,
+  cookiePersona,
+  latestMessage,
+}: {
+  personaHint?: unknown;
+  explicitPersona?: unknown;
+  sessionPersona?: string | null | undefined;
+  cookiePersona?: string | null | undefined;
+  latestMessage: string;
+}) {
+  const normalizedHint =
+    typeof personaHint === "string" ? normalizePersona(personaHint) : null;
+  const normalizedExplicit =
+    typeof explicitPersona === "string" ? normalizePersona(explicitPersona) : null;
+  const anchoredPersona = normalizedHint || normalizedExplicit;
+  const rememberedPersona =
+    normalizePersona(sessionPersona) || normalizePersona(cookiePersona);
+  const currentPersona = anchoredPersona || rememberedPersona;
+  const pivotPersona = detectPersonaPivot(latestMessage, currentPersona);
+  if (pivotPersona) {
+    return pivotPersona;
+  }
+
+  const inferred = inferPersonaFromMessage(latestMessage);
+  if (anchoredPersona) {
+    return anchoredPersona;
+  }
+
+  if (inferred) {
+    return inferred;
+  }
+
+  return rememberedPersona;
+}
+
+function buildHostNextStep(fields: StoredExtractedFields): WebChatNextStep | null {
+  const projectType = inferHostProjectType(fields.projectIdea || "");
+  const eventType = inferHostEventType(projectType, fields.projectIdea || "");
+  const hasMinimum =
+    Boolean(fields.projectIdea) &&
+    Boolean(fields.city) &&
+    Boolean(fields.scale || fields.dateWindow || fields.vibeTags.length > 0);
+
+  if (!hasMinimum || !fields.city) {
     return null;
   }
 
   const payload: WebChatPrefill = {
-    eventType: prefill.eventType,
-    city: prefill.city,
-    scale: prefill.scale,
-    vibe: prefill.vibe,
-    projectType: prefill.projectType,
-    suggestedRoles: prefill.suggestedRoles,
+    eventType,
+    city: fields.city,
+    scale: fields.scale || "mid",
+    vibe:
+      fields.vibeTags.join(", ") || fields.projectIdea || "Creative event",
+    projectType,
+    suggestedRoles: getSuggestedRoles(projectType),
+    projectIdea: fields.projectIdea || eventType,
   };
 
-  if (prefill.date) payload.date = prefill.date;
-  if (prefill.helpNeeded) payload.helpNeeded = prefill.helpNeeded;
+  if (fields.dateWindow) {
+    payload.date = fields.dateWindow;
+  }
 
   return {
     label: "Build my event",
@@ -575,34 +827,33 @@ function buildHostNextStep(prefill: HostPrefill): WebChatNextStep | null {
   };
 }
 
-function buildCreativeNextStep(prefill: CreativePrefill): WebChatNextStep | null {
-  if (creativeNeeds(prefill).length > 0 || !prefill.city || !prefill.portfolio) {
+function buildCreativeNextStep(
+  fields: StoredExtractedFields,
+): WebChatNextStep | null {
+  const hasMinimum =
+    fields.roles.length > 0 && Boolean(fields.city || fields.portfolio);
+  if (!hasMinimum) {
     return null;
   }
-
-  const payload: WebChatPrefill = {
-    city: prefill.city,
-    roles: prefill.roles,
-    portfolio: prefill.portfolio,
-  };
-
-  if (prefill.availability) payload.availability = prefill.availability;
-  if (prefill.rates) payload.rates = prefill.rates;
 
   return {
     label: "Open my feed",
     route: "/me",
-    prefill: payload,
+    prefill: {
+      city: fields.city || "Flexible",
+      roles: fields.roles,
+      portfolio: fields.portfolio || "Sample shared in chat",
+      availability: fields.availability || "",
+      rates: fields.rates || "",
+    },
   };
 }
 
-function buildVenueNextStep(prefill: VenuePrefill): WebChatNextStep | null {
-  if (
-    venueNeeds(prefill).length > 0 ||
-    !prefill.capacity ||
-    !prefill.neighborhood ||
-    !prefill.availabilityHint
-  ) {
+function buildVenueNextStep(fields: StoredExtractedFields): WebChatNextStep | null {
+  const hasMinimum =
+    Boolean(fields.venueType || fields.scale) &&
+    Boolean(fields.city || fields.neighborhood);
+  if (!hasMinimum) {
     return null;
   }
 
@@ -610,218 +861,313 @@ function buildVenueNextStep(prefill: VenuePrefill): WebChatNextStep | null {
     label: "Open my spaces",
     route: "/spaces",
     prefill: {
-      capacity: prefill.capacity,
-      neighborhood: prefill.neighborhood,
-      availabilityHint: prefill.availabilityHint,
+      city: fields.city || "",
+      capacity: fields.scale || "",
+      neighborhood: fields.neighborhood || fields.city || "",
+      availabilityHint: fields.dateWindow || fields.availability || "",
+      venueType: fields.venueType || "",
     },
   };
 }
 
-function buildFanNextStep(prefill: FanPrefill): WebChatNextStep | null {
-  if (fanNeeds(prefill).length > 0 || !prefill.city || prefill.interests.length === 0) {
+function buildFanNextStep(fields: StoredExtractedFields): WebChatNextStep | null {
+  const hasMinimum =
+    fields.interests.length > 0 || Boolean(fields.city && fields.projectIdea);
+  if (!hasMinimum) {
     return null;
   }
-
-  const payload: WebChatPrefill = {
-    city: prefill.city,
-    interests: prefill.interests,
-  };
-
-  if (prefill.email) payload.email = prefill.email;
 
   return {
     label: "See events",
     route: "/feed",
-    prefill: payload,
+    prefill: {
+      city: fields.city || "",
+      interests: fields.interests.length > 0 ? fields.interests : ["Events"],
+    },
   };
 }
 
-export function inferPersonaFromMessage(message: string): PersonaSignal {
-  const lower = message.toLowerCase();
-
-  if (/creative looking for work|portfolio|freelance|available for work/.test(lower)) {
-    return "creative";
+export function deriveNextStep(
+  persona: Persona | null,
+  history: ChatMessage[],
+  latestMessage: string,
+) {
+  const fields = extractStructuredFields({
+    persona,
+    history,
+    latestMessage,
+  });
+  if (persona === "host") {
+    return sanitizeNextStepPayload(buildHostNextStep(fields));
   }
-
-  if (/run a space|our venue|my venue|my space/.test(lower)) {
-    return "venue";
+  if (persona === "creative") {
+    return sanitizeNextStepPayload(buildCreativeNextStep(fields));
   }
-
-  if (/find cool stuff|what's on|looking for events|things to do/.test(lower)) {
-    return "fan";
+  if (persona === "venue") {
+    return sanitizeNextStepPayload(buildVenueNextStep(fields));
   }
-
-  if (message.trim()) {
-    return "host";
+  if (persona === "fan") {
+    return sanitizeNextStepPayload(buildFanNextStep(fields));
   }
-
   return null;
 }
 
-export function resolvePersona({
-  explicitPersona,
-  cookiePersona,
-  latestMessage,
-}: {
-  explicitPersona: unknown;
-  cookiePersona: string | null | undefined;
-  latestMessage: string;
-}) {
-  const normalizedExplicit =
-    typeof explicitPersona === "string" ? normalizePersona(explicitPersona) : null;
-  return (
-    normalizedExplicit ||
-    normalizePersona(cookiePersona) ||
-    inferPersonaFromMessage(latestMessage)
-  );
-}
-
-function buildMockFollowUp(persona: Persona, history: ChatMessage[], latestMessage: string) {
-  if (persona === "host") {
-    const prefill = extractHostPrefill(history, latestMessage);
-    const nextStep = buildHostNextStep(prefill);
-    if (nextStep) {
-      return {
-        reply: `That’s enough to start shaping the event. I turned it into a draft crew brief for you.`,
-        nextStep,
-      };
-    }
-
-    const missing = hostNeeds(prefill);
-    if (missing[0] === "eventType") {
-      return {
-        reply: "What are you hosting?",
-        nextStep: null,
-      };
-    }
-    if (missing[0] === "city") {
-      return {
-        reply: "What city should Saga anchor this in?",
-        nextStep: null,
-      };
-    }
-    if (missing[0] === "scale") {
-      return {
-        reply: "About how big should this feel?",
-        nextStep: null,
-      };
-    }
-    return {
-      reply: "What should the vibe feel like?",
-      nextStep: null,
-    };
-  }
-
-  if (persona === "creative") {
-    const prefill = extractCreativePrefill(history, latestMessage);
-    const nextStep = buildCreativeNextStep(prefill);
-    if (nextStep) {
-      return {
-        reply: "Perfect. I have enough to start shaping your feed and opportunities.",
-        nextStep,
-      };
-    }
-
-    const missing = creativeNeeds(prefill);
-    if (missing[0] === "roles") {
-      return {
-        reply: "What kind of work do you want most?",
-        nextStep: null,
-      };
-    }
-    if (missing[0] === "city") {
-      return {
-        reply: "What city should I anchor you in?",
-        nextStep: null,
-      };
-    }
-    return {
-      reply: "Where can Sagasan see your work?",
-      nextStep: null,
-    };
-  }
-
-  if (persona === "venue") {
-    const prefill = extractVenuePrefill(history, latestMessage);
-    const nextStep = buildVenueNextStep(prefill);
-    if (nextStep) {
-      return {
-        reply: "Perfect. I can start routing requests around that space now.",
-        nextStep,
-      };
-    }
-
-    const missing = venueNeeds(prefill);
-    if (missing[0] === "capacity") {
-      return {
-        reply: "About how many people can the space hold?",
-        nextStep: null,
-      };
-    }
-    if (missing[0] === "neighborhood") {
-      return {
-        reply: "What neighborhood should I pin this to?",
-        nextStep: null,
-      };
-    }
-    return {
-      reply: "What dates or windows are usually open?",
-      nextStep: null,
-    };
-  }
-
-  const prefill = extractFanPrefill(history, latestMessage);
-  const nextStep = buildFanNextStep(prefill);
-  if (nextStep) {
-    return {
-      reply: "Perfect. I can tune the public feed around that taste now.",
-      nextStep,
-    };
-  }
-
-  const missing = fanNeeds(prefill);
-  if (missing[0] === "city") {
-    return {
-      reply: "What city should Saga tune for you?",
-      nextStep: null,
-    };
-  }
+function buildCapabilityReply(persona: Persona | null, fields: StoredExtractedFields): AgentReply {
   return {
-    reply: "What scenes do you want more of?",
+    reply:
+      persona === "creative"
+        ? "I can shape your creative profile and route you to the right opportunities. What kind of work are you chasing?"
+        : "I can shape the brief and route you to the right next page. Which lane fits best: host, creative, venue, or fan?",
     nextStep: null,
+    persona,
+    extractedFields: fields,
+    diagnostics: {
+      operation: persona ? `sagasan_${persona}_intake` : "sagasan_router",
+      selectedReplySource: "deterministic_fallback",
+      fallbackReason: "capability_question",
+      providerState: "openai_not_called_mode_mock",
+      model: getConfiguredModel(),
+      configuredMode: "active_mock",
+      effectiveMode: "autonomous_mock",
+      openAiConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()),
+      openAiCalled: false,
+      activeLiveAllowed: false,
+      shadowMode: true,
+      blockingGate: "mode_mock",
+      publicLaunchGate: process.env.PUBLIC_LAUNCH_ENABLED === "true",
+    },
   };
 }
 
-export function deriveNextStep(persona: Persona | null, history: ChatMessage[], latestMessage: string) {
-  if (!persona) {
-    return null;
-  }
+function buildBoundaryReply(
+  kind: "ticketing" | "paid_work" | "guarantee" | "off_topic",
+  persona: Persona | null,
+  fields: StoredExtractedFields,
+): AgentReply {
+  const replyMap = {
+    ticketing: TICKET_REPLY,
+    paid_work:
+      "I can't promise paid work. What role and city should I anchor for you?",
+    guarantee:
+      "I can't guarantee bookings or a confirmed team. What should I help shape next?",
+    off_topic:
+      "I stay focused on creative plans, opportunities, spaces, and scenes. What are you trying to make or find?",
+  } as const;
 
-  if (persona === "host") {
-    return buildHostNextStep(extractHostPrefill(history, latestMessage));
-  }
-  if (persona === "creative") {
-    return buildCreativeNextStep(extractCreativePrefill(history, latestMessage));
-  }
-  if (persona === "venue") {
-    return buildVenueNextStep(extractVenuePrefill(history, latestMessage));
-  }
-  return buildFanNextStep(extractFanPrefill(history, latestMessage));
+  return {
+    reply: replyMap[kind],
+    nextStep: null,
+    persona,
+    extractedFields: fields,
+    diagnostics: {
+      operation: persona ? `sagasan_${persona}_intake` : "sagasan_router",
+      selectedReplySource: "deterministic_fallback",
+      fallbackReason: kind,
+      providerState: "openai_not_called_mode_mock",
+      model: getConfiguredModel(),
+      configuredMode: "active_mock",
+      effectiveMode: "autonomous_mock",
+      openAiConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()),
+      openAiCalled: false,
+      activeLiveAllowed: false,
+      shadowMode: true,
+      blockingGate: "mode_mock",
+      publicLaunchGate: process.env.PUBLIC_LAUNCH_ENABLED === "true",
+    },
+  };
 }
 
-export function sanitizeNextStep(
-  value: unknown,
-  fallback: WebChatNextStep | null,
-): WebChatNextStep | null {
-  const parsed = webChatNextStepSchema.safeParse(value);
-  if (!parsed.success) {
-    return fallback;
+function buildDeterministicReply({
+  persona,
+  history,
+  latestMessage,
+  providerState,
+  fallbackReason,
+  configuredMode,
+}: {
+  persona: Persona | null;
+  history: ChatMessage[];
+  latestMessage: string;
+  providerState: ProviderState;
+  fallbackReason: string | null;
+  configuredMode: RouteLlmMode;
+}): AgentReply {
+  const extractedFields = extractStructuredFields({
+    persona,
+    history,
+    latestMessage,
+  });
+
+  if (shouldAnswerTickets(latestMessage)) {
+    return buildBoundaryReply("ticketing", persona, extractedFields);
+  }
+  if (isPaidWorkBoundary(latestMessage)) {
+    return buildBoundaryReply("paid_work", persona, extractedFields);
+  }
+  if (isGuaranteeBoundary(latestMessage)) {
+    return buildBoundaryReply("guarantee", persona, extractedFields);
+  }
+  if (isCapabilityQuestion(latestMessage)) {
+    return buildCapabilityReply(persona, extractedFields);
+  }
+  if (isOffTopic(latestMessage)) {
+    return buildBoundaryReply("off_topic", persona, extractedFields);
+  }
+
+  if (!persona) {
+    return {
+      reply:
+        "I can route hosts, creatives, venues, and fans. Which lane fits you best?",
+      nextStep: null,
+      persona,
+      extractedFields,
+      diagnostics: {
+        operation: "sagasan_router",
+        selectedReplySource: "deterministic_fallback",
+        fallbackReason: fallbackReason || "router_needed",
+        providerState,
+        model: getConfiguredModel(),
+        configuredMode,
+        effectiveMode:
+          providerState === "openai_not_called_gate_closed" ? "holding" : "autonomous_mock",
+        openAiConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()),
+        openAiCalled: false,
+        activeLiveAllowed: configuredMode === "active_live",
+        shadowMode: configuredMode !== "active_live",
+        blockingGate:
+          providerState === "openai_not_called_gate_closed"
+            ? "runtime_gate_closed"
+            : configuredMode === "active_live"
+              ? fallbackReason
+              : "mode_mock",
+        publicLaunchGate: process.env.PUBLIC_LAUNCH_ENABLED === "true",
+      },
+    };
+  }
+
+  const nextStep = deriveNextStep(persona, history, latestMessage);
+  if (nextStep) {
+    const successReplies: Record<Persona, string> = {
+      host: "Got it. I shaped that into a draft event brief.",
+      creative: "Got it — I shaped that into your creative profile draft.",
+      venue: "Got it — I shaped that into your space profile draft.",
+      fan: "Got it. I tuned that into your event feed setup.",
+    };
+
+    return {
+      reply: successReplies[persona],
+      nextStep,
+      persona,
+      extractedFields: {
+        ...extractedFields,
+        nextRoute: nextStep.route,
+      },
+      diagnostics: {
+        operation: `sagasan_${persona}_intake`,
+        selectedReplySource: "deterministic_fallback",
+        fallbackReason,
+        providerState,
+        model: getConfiguredModel(),
+        configuredMode,
+        effectiveMode:
+          providerState === "openai_not_called_gate_closed"
+            ? "holding"
+            : "autonomous_mock",
+        openAiConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()),
+        openAiCalled: false,
+        activeLiveAllowed: configuredMode === "active_live",
+        shadowMode: configuredMode !== "active_live",
+        blockingGate:
+          providerState === "openai_not_called_gate_closed"
+            ? "runtime_gate_closed"
+            : configuredMode === "active_live"
+              ? fallbackReason
+              : "mode_mock",
+        publicLaunchGate: process.env.PUBLIC_LAUNCH_ENABLED === "true",
+      },
+    };
+  }
+
+  let reply = "Got it. What should I help shape next?";
+  if (persona === "host") {
+    if (!extractedFields.projectIdea) {
+      reply = "Got it. What are you planning to host?";
+    } else if (!extractedFields.city) {
+      reply = "Got it. What city should I anchor this in?";
+    } else if (!extractedFields.scale) {
+      reply = "Got it. About how big should this feel?";
+    } else {
+      reply = "Got it. What should the vibe feel like?";
+    }
+  } else if (persona === "creative") {
+    if (extractedFields.roles.length === 0) {
+      reply = "Got it — what kind of creative work do you want most?";
+    } else if (!extractedFields.city) {
+      reply = "Got it — what city are you based in?";
+    } else {
+      reply = "Got it — where can I see your work?";
+    }
+  } else if (persona === "venue") {
+    if (!extractedFields.venueType) {
+      reply = "Got it — what kind of space is it?";
+    } else if (!extractedFields.city && !extractedFields.neighborhood) {
+      reply = "Got it — what city is the space in?";
+    } else if (!extractedFields.scale) {
+      reply = "Got it — about how many people can it hold?";
+    } else {
+      reply = "Got it — what dates or weekends are usually open?";
+    }
+  } else if (persona === "fan") {
+    if (!extractedFields.city) {
+      reply = "Got it. What city or scene should I look around?";
+    } else {
+      reply = "Got it. What kind of nights or fandoms should I tune for?";
+    }
   }
 
   return {
-    ...parsed.data,
-    label: clampNextStepLabel(parsed.data.label),
+    reply,
+    nextStep: null,
+    persona,
+    extractedFields,
+    diagnostics: {
+      operation: `sagasan_${persona}_intake`,
+      selectedReplySource: "deterministic_fallback",
+      fallbackReason,
+      providerState,
+      model: getConfiguredModel(),
+      configuredMode,
+      effectiveMode:
+        providerState === "openai_not_called_gate_closed" ? "holding" : "autonomous_mock",
+      openAiConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()),
+      openAiCalled: false,
+      activeLiveAllowed: configuredMode === "active_live",
+      shadowMode: configuredMode !== "active_live",
+      blockingGate:
+        providerState === "openai_not_called_gate_closed"
+          ? "runtime_gate_closed"
+          : configuredMode === "active_live"
+            ? fallbackReason
+            : "mode_mock",
+      publicLaunchGate: process.env.PUBLIC_LAUNCH_ENABLED === "true",
+    },
   };
+}
+
+export function buildUiFallbackReply(persona: Persona | null) {
+  if (persona === "host") {
+    return "Got it. I lost that turn for a second — what city should I anchor this in?";
+  }
+  if (persona === "creative") {
+    return "Got it — I lost that turn for a second. What city are you based in?";
+  }
+  if (persona === "venue") {
+    return "Got it — I lost that turn for a second. What city is the space in?";
+  }
+  if (persona === "fan") {
+    return "Got it. I lost that turn for a second — what city should I look around?";
+  }
+  return "Got it. I lost that turn for a second — are you here as a host, creative, venue, or fan?";
 }
 
 export function buildMockAgentReply({
@@ -833,28 +1179,64 @@ export function buildMockAgentReply({
   history: ChatMessage[];
   latestMessage: string;
 }): AgentReply {
-  if (shouldAnswerTickets(latestMessage)) {
-    return {
-      reply: TICKET_REPLY,
-      nextStep: null,
-      persona,
-    };
-  }
-
-  if (!persona) {
-    return {
-      reply: "Which path fits you best: host, creative, venue, or fan?",
-      nextStep: null,
-      persona,
-    };
-  }
-
-  const next = buildMockFollowUp(persona, history, latestMessage);
-  return {
-    reply: next.reply,
-    nextStep: next.nextStep,
+  return buildDeterministicReply({
     persona,
-  };
+    history,
+    latestMessage,
+    providerState: "openai_not_called_mode_mock",
+    fallbackReason: "active_live_disabled",
+    configuredMode: "active_mock",
+  });
+}
+
+export async function preflightOpenAiModelAccess({
+  apiKey,
+  model = getConfiguredModel(),
+  baseUrl = process.env.OPENAI_BASE_URL || null,
+}: {
+  apiKey?: string | null;
+  model?: string;
+  baseUrl?: string | null;
+}) {
+  if (!apiKey?.trim()) {
+    return {
+      status: "skipped" as const,
+      message: "OPENAI_API_KEY is missing. Skipping model preflight.",
+      model,
+    };
+  }
+
+  try {
+    const client = getOpenAiClient({
+      apiKey: apiKey.trim(),
+      baseUrl,
+    });
+    await client.responses.create(
+      {
+        model,
+        input: "ping",
+        max_output_tokens: 5,
+        temperature: 0,
+      },
+      {
+        timeout: 8000,
+        maxRetries: 1,
+      },
+    );
+
+    return {
+      status: "ok" as const,
+      message: `Model ${model} is callable.`,
+      model,
+    };
+  } catch (error) {
+    const classified = classifyOpenAiError(error);
+    return {
+      status: classified.category,
+      message: classified.message,
+      model,
+    };
+  }
 }
 
 export async function generateAgentReply({
@@ -877,7 +1259,7 @@ export async function generateAgentReply({
       ok: false;
       errorCategory: string;
       errorMessage: string;
-      fallback: AgentReply;
+      data: AgentReply;
     }
 > {
   const fallback = buildMockAgentReply({
@@ -898,9 +1280,16 @@ export async function generateAgentReply({
       ok: false,
       errorCategory: "missing_api_key",
       errorMessage: "OPENAI_API_KEY is missing.",
-      fallback: {
+      data: {
         ...fallback,
-        nextStep: null,
+        diagnostics: {
+          ...fallback.diagnostics,
+          providerState: "openai_not_called_missing_key",
+          configuredMode: "active_live",
+          activeLiveAllowed: false,
+          blockingGate: "missing_api_key",
+          fallbackReason: "missing_api_key",
+        },
       },
     };
   }
@@ -908,7 +1297,7 @@ export async function generateAgentReply({
   const response = await liveStructuredCall({
     apiKey: apiKey.trim(),
     baseUrl: process.env.OPENAI_BASE_URL || null,
-    model: process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini",
+    model: getConfiguredModel(),
     timeoutMs: Number.parseInt(process.env.LLM_TIMEOUT_MS || "", 10) || 8000,
     instructions: buildSystemPrompt(persona),
     prompt: [
@@ -922,26 +1311,68 @@ export async function generateAgentReply({
   });
 
   if (!response.ok) {
+    const providerState =
+      response.errorCategory === "validation_failed"
+        ? "openai_called_validation_failed"
+        : "openai_called_failed";
     return {
       ok: false,
       errorCategory: response.errorCategory,
       errorMessage: response.errorMessage,
-      fallback: {
+      data: {
         ...fallback,
-        nextStep: null,
+        diagnostics: {
+          ...fallback.diagnostics,
+          providerState,
+          configuredMode: "active_live",
+          effectiveMode: "autonomous_mock",
+          openAiCalled: true,
+          openAiConfigured: true,
+          activeLiveAllowed: true,
+          shadowMode: false,
+          model: getConfiguredModel(),
+          fallbackReason: response.errorCategory,
+          blockingGate: response.errorCategory,
+        },
       },
     };
   }
 
+  const extractedFields = extractStructuredFields({
+    persona,
+    history,
+    latestMessage,
+  });
+  const sanitizedNextStep =
+    sanitizeNextStepPayload(response.data.nextStep) ||
+    deriveNextStep(persona, history, latestMessage);
+
+  const reply = trimSentence(response.data.message, 260);
   return {
     ok: true,
     data: {
-      reply: response.data.message,
-      nextStep: sanitizeNextStep(
-        response.data.nextStep,
-        deriveNextStep(persona, history, latestMessage),
-      ),
+      reply,
+      nextStep: sanitizedNextStep,
       persona,
+      extractedFields: {
+        ...extractedFields,
+        nextRoute: sanitizedNextStep?.route || extractedFields.nextRoute,
+      },
+      diagnostics: {
+        operation: persona ? `sagasan_${persona}_intake` : "sagasan_router",
+        selectedReplySource: "openai_selected",
+        fallbackReason: null,
+        providerState: "openai_called_succeeded",
+        model: getConfiguredModel(),
+        configuredMode: "active_live",
+        effectiveMode: "autonomous_live",
+        openAiConfigured: true,
+        openAiCalled: true,
+        activeLiveAllowed: true,
+        shadowMode: false,
+        blockingGate: null,
+        publicLaunchGate: process.env.PUBLIC_LAUNCH_ENABLED === "true",
+      },
     },
   };
 }

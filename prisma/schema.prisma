@@ -1812,9 +1812,11 @@ model WebSession {
   lastSeenAt DateTime         @updatedAt
   userAgent  String?
   ipHash     String?
+  persona    String?
   messages   WebChatMessage[]
 
   @@index([createdAt])
+  @@index([persona])
 }
 
 model AdminSession {
@@ -1835,10 +1837,25 @@ model WebChatMessage {
   role           String
   content        String
   mode           String?
+  persona        String?
+  route          String?
+  nextStep       Json?
+  extractedFields Json?
+  selectedReplySource String?
+  fallbackReason String?
+  providerState  String?
+  model          String?
+  configuredMode String?
+  effectiveMode  String?
+  operation      String?
   turn           Int
   createdAt      DateTime   @default(now())
 
   @@index([sessionId, conversationId, createdAt])
+  @@index([persona])
+  @@index([route])
+  @@index([providerState])
+  @@index([createdAt])
 }
 
 model WebChatRuntimeSetting {

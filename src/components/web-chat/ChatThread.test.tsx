@@ -29,6 +29,34 @@ test("chat thread renders an inline next-step button", () => {
     />,
   );
 
+  assert.match(markup, /I have enough to build your draft\./);
   assert.match(markup, /Build my event/);
   assert.match(markup, /data-next-step-href="\/projects\/new\?prefill=/);
+  assert.doesNotMatch(markup, /we['’]ve logged your message/i);
+});
+
+test("chat thread keeps backend reply labels short", () => {
+  const markup = renderToStaticMarkup(
+    <ChatThread
+      isSending={false}
+      messages={[
+        {
+          id: "assistant-2",
+          role: "assistant",
+          content: "Here is your next move.",
+          nextStep: {
+            label: "Open my feed",
+            route: "/me",
+            prefill: {
+              city: "Los Angeles",
+              roles: ["Photographer"],
+            },
+          },
+        },
+      ]}
+    />,
+  );
+
+  assert.match(markup, /Open my feed/);
+  assert.equal("Open my feed".split(/\s+/).length <= 5, true);
 });
