@@ -359,15 +359,45 @@ function isCapabilityQuestion(message: string) {
 }
 
 function isPaidWorkBoundary(message: string) {
-  return /\bpaid work\b|\bget paid\b|\bbook me\b|\bguarantee\b/i.test(message);
+  return /\bpaid work\b|\bget paid\b|\bbook me\b/i.test(message);
 }
 
 function isGuaranteeBoundary(message: string) {
-  return /\bguarantee\b|\bpromise\b|\bconfirm(ed)? team\b|\bbookings?\b/i.test(message);
+  return (
+    /\bguarantee\b|\bpromise\b|\bconfirm(ed)? team\b|\bbookings?\b/i.test(
+      message,
+    ) ||
+    /\bbook my whole team\b|\bbook the whole team\b|\bbook gigs?\b|\b100%\s+sure\b/i.test(
+      message,
+    )
+  );
+}
+
+function isOutboundActionBoundary(message: string) {
+  return (
+    /\b(?:dm|message|text|email|call|contact|invite|reach out to|send this to)\b/i.test(
+      message,
+    ) ||
+    /\b(?:tell|ask)\s+(?:them|my friends|that (?:person|photographer|dj|artist|cosplayer|venue)|the (?:photographer|dj|artist|cosplayer|venue))\b/i.test(
+      message,
+    ) ||
+    /\bbook them now\b/i.test(message)
+  );
 }
 
 function isOffTopic(message: string) {
   return /\bcapital of france\b|\bweather\b|\bstock price\b|\brecipe\b/i.test(message);
+}
+
+function isBoundaryPriorityMessage(message: string) {
+  return (
+    shouldAnswerTickets(message) ||
+    isOutboundActionBoundary(message) ||
+    isPaidWorkBoundary(message) ||
+    isGuaranteeBoundary(message) ||
+    isCapabilityQuestion(message) ||
+    isOffTopic(message)
+  );
 }
 
 function summarizeTranscript(history: ChatMessage[], latestMessage: string) {
@@ -625,14 +655,12 @@ const CREATIVE_SIGNAL_PATTERNS = [
 ];
 
 const VENUE_SIGNAL_PATTERNS = [
-  /\bi run (?:a|an)?(?:\s+\w+){0,2}\s+venue\b/i,
-  /\bi run (?:a|an)?(?:\s+\w+){0,2}\s+space\b/i,
-  /\bmy venue\b/i,
-  /\bmy space\b/i,
-  /\bstudio\b/i,
-  /\bcafe\b/i,
-  /\bgallery\b/i,
-  /\bevent space\b/i,
+  /\bi run (?:a|an)?(?:\s+\w+){0,2}\s+(?:venue|space|studio|cafe|gallery|event space|bar|club)\b/i,
+  /\bi have (?:a|an)?(?:\s+\w+){0,2}\s+(?:venue|space|studio|cafe|gallery|event space|bar|club)\b/i,
+  /\bi manage (?:a|an)?(?:\s+\w+){0,2}\s+(?:venue|space|studio|cafe|gallery|event space|bar|club)\b/i,
+  /\bi own (?:a|an)?(?:\s+\w+){0,2}\s+(?:venue|space|studio|cafe|gallery|event space|bar|club)\b/i,
+  /\bmy (?:venue|space|studio|cafe|gallery|event space|bar|club)\b/i,
+  /\bour (?:venue|space|studio|cafe|gallery|event space|bar|club)\b/i,
   /\bwe host events\b/i,
   /\brent out my space\b/i,
 ];
@@ -648,6 +676,13 @@ const FAN_SIGNAL_PATTERNS = [
   /\bshows near me\b/i,
   /\bcool stuff\b/i,
   /\bevents near me\b/i,
+  /\bwhere should i go\b/i,
+  /\bwhat'?s going on\b/i,
+  /\bwhat'?s happening on\b/i,
+  /\bthings to do\b/i,
+  /\bevents this weekend\b/i,
+  /\bthis weekend\b/i,
+  /\bon friday\b/i,
 ];
 
 const HOST_SIGNAL_PATTERNS = [
@@ -659,6 +694,33 @@ const HOST_SIGNAL_PATTERNS = [
   /\bplanning an event\b/i,
   /\bcreating a project\b/i,
   /\bi want to put on\b/i,
+  /\bthinking about\b/i,
+  /\bi(?:'m| am) thinking about\b/i,
+  /\bi want to plan\b/i,
+  /\bplanning\b/i,
+  /\bi want to do\b/i,
+  /\borganizing\b/i,
+];
+
+const HOST_EVENT_CONCEPT_PATTERNS = [
+  /\bpicnic\b/i,
+  /\bnight\b/i,
+  /\bparty\b/i,
+  /\blaunch\b/i,
+  /\bmeetup\b/i,
+  /\bshow\b/i,
+  /\bevent\b/i,
+  /\bpop-?up\b/i,
+  /\bactivation\b/i,
+  /\bcafe night\b/i,
+];
+
+const HOST_INTENT_PATTERNS = [
+  /\bi want to (?:host|throw|organize|produce|put on|plan|do|build)\b/i,
+  /\bi(?:'m| am) thinking about\b/i,
+  /\bthinking about\b/i,
+  /\bplanning\b/i,
+  /\borganizing\b/i,
 ];
 
 function matchesAnyPattern(message: string, patterns: RegExp[]) {
@@ -679,10 +741,10 @@ function strongCreativeSignal(message: string) {
 
 function strongVenueSignal(message: string) {
   return (
-    /\bactually\b.*\b(?:run(?:ning)? (?:a|an)?(?:\s+\w+){0,2}\s+(?:space|venue))\b/i.test(
+    /\bactually\b.*\b(?:run(?:ning)?|have|manage|own)(?: (?:a|an))?(?:\s+\w+){0,2}\s+(?:space|venue|studio|cafe|gallery|event space|bar|club)\b/i.test(
       message,
     ) ||
-    /\bi run (?:a|an)?(?:\s+\w+){0,2}\s+(?:space|venue)\b|\bour (?:space|venue)\b/i.test(
+    /\bi (?:run|have|manage|own) (?:a|an)?(?:\s+\w+){0,2}\s+(?:space|venue|studio|cafe|gallery|event space|bar|club)\b|\bour (?:space|venue|studio|cafe|gallery|event space|bar|club)\b/i.test(
       message,
     ) ||
     matchesAnyPattern(message, VENUE_SIGNAL_PATTERNS)
@@ -701,15 +763,20 @@ function strongHostSignal(message: string) {
   return (
     /\bactually\b.*\b(host|throw|organize|produce|put on)\b/i.test(message) ||
     /\bi want to (?:host|throw|organize|produce|put on)\b/i.test(message) ||
-    matchesAnyPattern(message, HOST_SIGNAL_PATTERNS)
+    matchesAnyPattern(message, HOST_SIGNAL_PATTERNS) ||
+    (matchesAnyPattern(message, HOST_INTENT_PATTERNS) &&
+      matchesAnyPattern(message, HOST_EVENT_CONCEPT_PATTERNS))
   );
 }
 
 function scorePersona(message: string): PersonaScores {
   const lower = message.toLowerCase();
+  const hostIntent = matchesAnyPattern(message, HOST_INTENT_PATTERNS);
+  const hostEventConcept = matchesAnyPattern(message, HOST_EVENT_CONCEPT_PATTERNS);
   return {
     host:
       (matchesAnyPattern(message, HOST_SIGNAL_PATTERNS) ? 6 : 0) +
+      (hostIntent && hostEventConcept ? 5 : hostIntent ? 3 : 0) +
       (/\bproject\b|\bbrief\b|\bhiring\b|\bneed a\b|\bneed help\b/.test(lower)
         ? 2
         : 0),
@@ -722,11 +789,18 @@ function scorePersona(message: string): PersonaScores {
       (/\bavailability\b|\bopen dates\b|\bcapacity\b/.test(lower) ? 1 : 0),
     fan:
       (matchesAnyPattern(message, FAN_SIGNAL_PATTERNS) ? 7 : 0) +
-      (/\bscene\b|\bscenes\b|\bnights\b|\bfandom\b/.test(lower) ? 2 : 0),
+      (/\bscene\b|\bscenes\b|\bnights\b|\bfandom\b|\bweekend\b|\bfriday\b|\btonight\b/.test(
+        lower,
+      )
+        ? 2
+        : 0),
   };
 }
 
 export function inferPersonaFromMessage(message: string): PersonaSignal {
+  if (isOutboundActionBoundary(message)) {
+    return null;
+  }
   const scores = scorePersona(message);
   const ranked = (Object.entries(scores) as Array<[Persona, number]>)
     .sort((a, b) => b[1] - a[1]);
@@ -780,6 +854,10 @@ export function resolvePersona({
   const pivotPersona = detectPersonaPivot(latestMessage, currentPersona);
   if (pivotPersona) {
     return pivotPersona;
+  }
+
+  if (isBoundaryPriorityMessage(latestMessage)) {
+    return anchoredPersona || rememberedPersona;
   }
 
   const inferred = inferPersonaFromMessage(latestMessage);
@@ -941,22 +1019,36 @@ function buildCapabilityReply(persona: Persona | null, fields: StoredExtractedFi
 }
 
 function buildBoundaryReply(
-  kind: "ticketing" | "paid_work" | "guarantee" | "off_topic",
+  kind: "ticketing" | "paid_work" | "guarantee" | "off_topic" | "external_action",
   persona: Persona | null,
   fields: StoredExtractedFields,
+  latestMessage: string,
 ): AgentReply {
-  const replyMap = {
-    ticketing: TICKET_REPLY,
-    paid_work:
-      "I can't promise paid work. What role and city should I anchor for you?",
-    guarantee:
-      "I can't guarantee bookings or a confirmed team. What should I help shape next?",
-    off_topic:
-      "I stay focused on creative plans, opportunities, spaces, and scenes. What are you trying to make or find?",
-  } as const;
+  let reply = TICKET_REPLY;
+
+  if (kind === "paid_work") {
+    reply = "I can't promise paid work. What role and city should I anchor for you?";
+  } else if (kind === "guarantee") {
+    if (/\bbook my whole team\b|\bbook the whole team\b|\bconfirm(ed)? team\b/i.test(latestMessage)) {
+      reply =
+        "I can help map the team you may need, but I can't confirm or book anyone automatically. What kind of project are you building?";
+    } else if (/\bbook gigs?\b|\b100%\s+sure\b|\bpaid work\b|\bget paid\b/i.test(latestMessage)) {
+      reply =
+        "I can't guarantee bookings, but I can help shape your profile so opportunities are easier to match. What role and city should I anchor?";
+    } else {
+      reply =
+        "I can't guarantee bookings or a confirmed team. What should I help shape next?";
+    }
+  } else if (kind === "off_topic") {
+    reply =
+      "I stay focused on creative plans, opportunities, spaces, and scenes. What are you trying to make or find?";
+  } else if (kind === "external_action") {
+    reply =
+      "Saga can help prepare outreach, but it won't contact anyone until a human reviews and approves it. Who are you trying to reach, and for what project?";
+  }
 
   return {
-    reply: replyMap[kind],
+    reply,
     nextStep: null,
     persona,
     extractedFields: fields,
@@ -1000,19 +1092,22 @@ function buildDeterministicReply({
   });
 
   if (shouldAnswerTickets(latestMessage)) {
-    return buildBoundaryReply("ticketing", persona, extractedFields);
+    return buildBoundaryReply("ticketing", persona, extractedFields, latestMessage);
+  }
+  if (isOutboundActionBoundary(latestMessage)) {
+    return buildBoundaryReply("external_action", persona, extractedFields, latestMessage);
   }
   if (isPaidWorkBoundary(latestMessage)) {
-    return buildBoundaryReply("paid_work", persona, extractedFields);
+    return buildBoundaryReply("paid_work", persona, extractedFields, latestMessage);
   }
   if (isGuaranteeBoundary(latestMessage)) {
-    return buildBoundaryReply("guarantee", persona, extractedFields);
+    return buildBoundaryReply("guarantee", persona, extractedFields, latestMessage);
   }
   if (isCapabilityQuestion(latestMessage)) {
     return buildCapabilityReply(persona, extractedFields);
   }
   if (isOffTopic(latestMessage)) {
-    return buildBoundaryReply("off_topic", persona, extractedFields);
+    return buildBoundaryReply("off_topic", persona, extractedFields, latestMessage);
   }
 
   if (!persona) {

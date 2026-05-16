@@ -143,6 +143,50 @@ test("free-form copy overrides stale remembered persona when the signal is stron
   }
 });
 
+test("host planning intent beats venue nouns for event concepts", () => {
+  const hostCases = [
+    "Thinking about a cosplay cafe night in Brooklyn.",
+    "I want to plan a cosplay cafe night in Brooklyn.",
+    "I want to throw an anime picnic in Silver Lake next month.",
+  ];
+
+  for (const latestMessage of hostCases) {
+    assert.equal(
+      resolvePersona({
+        personaHint: null,
+        explicitPersona: null,
+        sessionPersona: null,
+        cookiePersona: null,
+        latestMessage,
+      }),
+      "host",
+      latestMessage,
+    );
+  }
+
+  assert.equal(
+    resolvePersona({
+      personaHint: null,
+      explicitPersona: null,
+      sessionPersona: null,
+      cookiePersona: null,
+      latestMessage: "I run a cafe in Brooklyn.",
+    }),
+    "venue",
+  );
+
+  assert.equal(
+    resolvePersona({
+      personaHint: null,
+      explicitPersona: null,
+      sessionPersona: null,
+      cookiePersona: null,
+      latestMessage: "I have a cafe and want to host more community events.",
+    }),
+    "venue",
+  );
+});
+
 test("persona pivots override the prior session persona", () => {
   assert.equal(
     resolvePersona({
@@ -200,6 +244,117 @@ test("creative, venue, and fan routes emit next steps once routeable", () => {
   assert.equal(creative.nextStep?.route, "/me");
   assert.equal(venue.nextStep?.route, "/spaces");
   assert.equal(fan.nextStep?.route, "/feed");
+});
+
+test("outbound action prompts stay in the boundary lane", () => {
+  const cases = [
+    "DM that photographer right now and tell them to come.",
+    "Text the DJ and ask if they're free.",
+    "Email the venue and book it.",
+    "Can you contact the cosplayer?",
+  ];
+
+  for (const latestMessage of cases) {
+    const persona = resolvePersona({
+      personaHint: null,
+      explicitPersona: null,
+      sessionPersona: null,
+      cookiePersona: null,
+      latestMessage,
+    });
+    const reply = buildMockAgentReply({
+      persona,
+      history: [],
+      latestMessage,
+    });
+
+    assert.notEqual(persona, "creative", latestMessage);
+    assert.match(reply.reply, /won't contact anyone until a human reviews and approves it/i);
+    assert.equal(reply.nextStep, null);
+  }
+
+  const creativeHappyPath = buildMockAgentReply({
+    persona: resolvePersona({
+      personaHint: null,
+      explicitPersona: null,
+      sessionPersona: null,
+      cookiePersona: null,
+      latestMessage: "I'm a photographer in LA looking for anime event gigs.",
+    }),
+    history: [],
+    latestMessage: "I'm a photographer in LA looking for anime event gigs.",
+  });
+
+  assert.equal(creativeHappyPath.persona, "creative");
+  assert.equal(creativeHappyPath.nextStep?.route, "/me");
+});
+
+test("time-bound discovery prompts default to fan", () => {
+  const cases = [
+    "Where should I go this weekend?",
+    "What's happening on Friday?",
+    "Any anime events this weekend?",
+  ];
+
+  for (const latestMessage of cases) {
+    const persona = resolvePersona({
+      personaHint: null,
+      explicitPersona: null,
+      sessionPersona: null,
+      cookiePersona: null,
+      latestMessage,
+    });
+    const reply = buildMockAgentReply({
+      persona,
+      history: [],
+      latestMessage,
+    });
+
+    assert.equal(persona, "fan", latestMessage);
+    assert.ok(
+      /city|scene|fandom|look around/i.test(reply.reply) ||
+        reply.nextStep?.route === "/feed",
+      latestMessage,
+    );
+  }
+});
+
+test("booking and gig-certainty prompts use scoped boundary replies", () => {
+  const teamBooking = buildMockAgentReply({
+    persona: resolvePersona({
+      personaHint: null,
+      explicitPersona: null,
+      sessionPersona: null,
+      cookiePersona: null,
+      latestMessage: "Can you book my whole team for an event?",
+    }),
+    history: [],
+    latestMessage: "Can you book my whole team for an event?",
+  });
+
+  const gigGuarantee = buildMockAgentReply({
+    persona: resolvePersona({
+      personaHint: null,
+      explicitPersona: null,
+      sessionPersona: null,
+      cookiePersona: null,
+      latestMessage: "Am I 100% sure I'll book gigs?",
+    }),
+    history: [],
+    latestMessage: "Am I 100% sure I'll book gigs?",
+  });
+
+  const paidWork = buildMockAgentReply({
+    persona: "creative",
+    history: [],
+    latestMessage: "Can you guarantee I'll get paid work?",
+  });
+
+  assert.match(teamBooking.reply, /can't confirm or book anyone automatically/i);
+  assert.match(gigGuarantee.reply, /can't guarantee bookings/i);
+  assert.match(paidWork.reply, /can't promise paid work/i);
+  assert.equal(teamBooking.nextStep, null);
+  assert.equal(gigGuarantee.nextStep, null);
 });
 
 test("boundary and capability fallbacks stay in producer voice", () => {
