@@ -12,6 +12,13 @@ import {
   SAGASAN_DISPLAY_NAME,
   useWebChat,
 } from "@/components/web-chat/useWebChat";
+import {
+  buildOrganizerProgressLabel,
+  evaluateOrganizerBriefReadiness,
+  extractOrganizerIntakeFieldsFromMessages,
+  formatOrganizerKnownSummary,
+  formatOrganizerMissingSummary,
+} from "@/lib/sagasanOrganizerIntake";
 import { PERSONA_OPTIONS, type Persona } from "@/lib/sagasanPersonas";
 import { buildNextStepHref, type WebChatNextStep } from "@/lib/webChatNextStep";
 
@@ -143,6 +150,29 @@ export function HeroChatMorph({
 
   const composerStatus = error || (isRestoring ? "Restoring your conversation..." : " ");
   const chipPersona = useMemo(() => fallbackPersona ?? persona, [fallbackPersona, persona]);
+  const organizerGuidance = useMemo(() => {
+    const effectivePersona = fallbackPersona ?? persona;
+    if (effectivePersona !== "host") {
+      return null;
+    }
+
+    const userMessages = messages
+      .filter((message) => message.role === "user")
+      .map((message) => message.content);
+    if (userMessages.length === 0) {
+      return null;
+    }
+
+    const fields = extractOrganizerIntakeFieldsFromMessages(userMessages);
+    const readiness = evaluateOrganizerBriefReadiness(fields);
+    return {
+      progress: buildOrganizerProgressLabel(readiness),
+      known: formatOrganizerKnownSummary(readiness),
+      missing:
+        formatOrganizerMissingSummary(readiness) ||
+        "enough signal is in place for the next stage",
+    };
+  }, [fallbackPersona, messages, persona]);
 
   return (
     <motion.div
@@ -198,6 +228,20 @@ export function HeroChatMorph({
                       </p>
                     ))}
                   </div>
+                </div>
+              ) : null}
+
+              {organizerGuidance ? (
+                <div className="border-b border-[color:var(--surface-border)] px-4 py-3 text-left">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-ink-light">
+                    {organizerGuidance.progress}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-ink-light">
+                    Known: {organizerGuidance.known}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-ink-light">
+                    Missing: {organizerGuidance.missing}
+                  </p>
                 </div>
               ) : null}
 

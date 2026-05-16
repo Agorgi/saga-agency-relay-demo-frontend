@@ -70,11 +70,15 @@ test("next-step labels are clamped to five words", () => {
 
 test("prefill payload keeps only allowed keys and routes correctly", () => {
   const nextStep = sanitizeNextStepPayload({
-    label: "Build my event",
+    label: "Review brief",
     route: "/projects/new",
     prefill: {
       city: "Los Angeles",
       eventType: "Pop-up / activation",
+      scopeFormat: "Anime picnic",
+      budget: "$15k",
+      readinessStage: "draft_brief_ready",
+      missingRequiredFields: ["budget"],
       secret: "should-not-pass",
       email: "private@example.com",
       suggestedRoles: ["Producer", "Photographer"],
@@ -90,6 +94,10 @@ test("prefill payload keeps only allowed keys and routes correctly", () => {
   assert.deepEqual(prefill, {
     city: "Los Angeles",
     eventType: "Pop-up / activation",
+    scopeFormat: "Anime picnic",
+    budget: "$15k",
+    readinessStage: "draft_brief_ready",
+    missingRequiredFields: ["budget"],
     suggestedRoles: ["Producer", "Photographer"],
   });
 });

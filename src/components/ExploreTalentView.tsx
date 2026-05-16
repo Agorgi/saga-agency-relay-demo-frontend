@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { requestWebChatReset } from "@/components/web-chat/useWebChat";
 import { scoreTalentForProject } from "@/data/sagaAgencyData";
 import {
@@ -17,11 +17,17 @@ import {
   persistHostBriefHandoff,
   resolveHostBriefPrefill,
 } from "@/lib/hostBriefHandoff";
+import {
+  evaluateOrganizerBriefReadiness,
+  extractOrganizerIntakeFieldsFromPrefill,
+  organizerFieldLabel,
+} from "@/lib/sagasanOrganizerIntake";
 import { useSagaNavigation } from "@/lib/useSagaNavigation";
 import { useThemeMode } from "@/lib/useThemeMode";
 import { useAgencyStore } from "@/store/useAgencyStore";
 
 export function ExploreTalentView() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const projects = useAgencyStore((state) => state.projects);
   const talent = useAgencyStore((state) => state.talent);
@@ -71,6 +77,10 @@ export function ExploreTalentView() {
     () => (handoffPrefill ? buildHostBriefDraft(handoffPrefill) : null),
     [handoffPrefill],
   );
+  const organizerReadiness = useMemo(
+    () => evaluateOrganizerBriefReadiness(extractOrganizerIntakeFieldsFromPrefill(handoffPrefill)),
+    [handoffPrefill],
+  );
 
   useEffect(() => {
     if (
@@ -104,6 +114,8 @@ export function ExploreTalentView() {
     projects.find((project) => project.slug === projectSlug) ||
     projects.find((project) => project.id === selectedProjectId) ||
     null;
+  const hasHandoffProject = Boolean(handoffPrefill && handoffProject);
+  const talentSearchBlocked = hasHandoffProject && !organizerReadiness.enoughInfoForTalentSearch;
 
   const derivedCards = useMemo(() => {
     const search = talentSearchQuery.toLowerCase().trim();
@@ -227,6 +239,12 @@ export function ExploreTalentView() {
     return lines;
   }, [activeProject, handoffPrefill]);
 
+  const missingRequiredLabels = useMemo(
+    () =>
+      organizerReadiness.missingRequiredFields.map((field) => organizerFieldLabel(field)),
+    [organizerReadiness],
+  );
+
   return (
     <div className={`brand-page absolute inset-0 overflow-y-auto px-4 pb-32 pt-24 md:px-6 md:pb-16 md:pt-28 lg:px-8 ${
       isDark ? "text-white" : "text-ink"
@@ -293,6 +311,40 @@ export function ExploreTalentView() {
             </div>
           ) : null}
 
+          {talentSearchBlocked ? (
+            <div className={`mt-6 rounded-[24px] border px-4 py-4 ${
+              isDark ? "border-white/10 bg-white/8" : "border-black/8 bg-white"
+            }`}>
+              <p className={`text-sm leading-7 ${isDark ? "text-white/72" : "text-ink-light"}`}>
+                Saga needs a little more project detail before searching for talent.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {missingRequiredLabels.map((field) => (
+                  <span
+                    key={field}
+                    className={`rounded-pill px-3 py-1.5 text-xs font-medium ${
+                      isDark ? "bg-white/8 text-white/72" : "bg-canvas text-ink"
+                    }`}
+                  >
+                    {field}
+                  </span>
+                ))}
+              </div>
+              <button
+                onClick={() => {
+                  const params = new URLSearchParams();
+                  if (encodedPrefill) {
+                    params.set("prefill", encodedPrefill);
+                  }
+                  router.push(params.size ? `/projects/new?${params.toString()}` : "/projects/new");
+                }}
+                className="brand-button-primary mt-4 rounded-pill px-4 py-2.5 text-sm font-medium"
+              >
+                Return to brief
+              </button>
+            </div>
+          ) : null}
+
           {briefSummaryLines.length ? (
             <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {briefSummaryLines.map((line) => (
@@ -308,6 +360,7 @@ export function ExploreTalentView() {
             </div>
           ) : null}
 
+          {!talentSearchBlocked ? (
           <div className="mt-6 flex flex-col gap-3">
             <label className={`flex items-center gap-3 rounded-[24px] border px-4 py-3 ${
               isDark ? "border-white/10 bg-white/8" : "border-black/8 bg-white"
@@ -374,8 +427,10 @@ export function ExploreTalentView() {
               </div>
             </details>
           </div>
+          ) : null}
         </motion.section>
 
+        {!talentSearchBlocked ? (
         <section className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -479,6 +534,7 @@ export function ExploreTalentView() {
           ))}
           </div>
         </section>
+        ) : null}
       </div>
     </div>
   );

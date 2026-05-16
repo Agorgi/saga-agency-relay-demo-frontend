@@ -2,6 +2,11 @@ import type { NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
 import { getDb } from "@/sms-engine/db";
 import type { Persona } from "@/lib/sagasanPersonas";
+import type {
+  OrganizerBudgetStatus,
+  OrganizerReadinessStage,
+  OrganizerReferenceStatus,
+} from "@/lib/sagasanOrganizerIntake";
 import type { WebChatNextStep } from "@/lib/webChatNextStep";
 
 export const WEB_SESSION_COOKIE_NAME = "web_session_id";
@@ -84,6 +89,26 @@ export type StoredExtractedFields = {
   availability: string | null;
   rates: string | null;
   scale: string | null;
+  scopeFormat: string | null;
+  themeVibe: string | null;
+  lineupStatus: string | null;
+  helpNeeded: string | null;
+  budget: string | null;
+  budgetStatus: OrganizerBudgetStatus | null;
+  inspirationStatus: OrganizerReferenceStatus | null;
+  inspirationReferences: string[];
+  userRole: string | null;
+  userIdentity: string | null;
+  organization: string | null;
+  socials: string[];
+  audience: string | null;
+  ticketingModel: string | null;
+  safetyFlags: string[];
+  urgency: string | null;
+  desiredTalentRoles: string[];
+  readinessStage: OrganizerReadinessStage | null;
+  missingRequiredFields: string[];
+  missingImportantFields: string[];
   nextRoute: string | null;
 };
 

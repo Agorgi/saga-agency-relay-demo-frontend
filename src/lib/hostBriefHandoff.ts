@@ -31,6 +31,8 @@ export function buildHostBriefDraft(prefill: WebChatPrefill | null | undefined) 
     city: typeof sanitized.city === "string" ? sanitized.city : null,
     scale: typeof sanitized.scale === "string" ? sanitized.scale : null,
     vibe: typeof sanitized.vibe === "string" ? sanitized.vibe : null,
+    themeVibe:
+      typeof sanitized.themeVibe === "string" ? sanitized.themeVibe : null,
     date: typeof sanitized.date === "string" ? sanitized.date : null,
     helpNeeded:
       typeof sanitized.helpNeeded === "string" ? sanitized.helpNeeded : null,
@@ -43,6 +45,20 @@ export function buildHostBriefDraft(prefill: WebChatPrefill | null | undefined) 
         : null,
     projectIdea:
       typeof sanitized.projectIdea === "string" ? sanitized.projectIdea : null,
+    scopeFormat:
+      typeof sanitized.scopeFormat === "string" ? sanitized.scopeFormat : null,
+    lineupStatus:
+      typeof sanitized.lineupStatus === "string" ? sanitized.lineupStatus : null,
+    budget: typeof sanitized.budget === "string" ? sanitized.budget : null,
+    inspirationStatus:
+      typeof sanitized.inspirationStatus === "string"
+        ? sanitized.inspirationStatus
+        : null,
+    inspirationRefs:
+      Array.isArray(sanitized.inspirationRefs) &&
+      sanitized.inspirationRefs.every((item: unknown) => typeof item === "string")
+        ? sanitized.inspirationRefs
+        : null,
   });
 }
 

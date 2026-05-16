@@ -3,6 +3,15 @@ import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import { getSuggestedRoles } from "@/data/sagaAgencyData";
 import {
+  buildOrganizerCorrectionReply,
+  evaluateOrganizerBriefReadiness,
+  extractOrganizerIntakeFieldsFromMessages,
+  formatOrganizerKnownSummary,
+  formatOrganizerMissingSummary,
+  isOrganizerCorrectionPrompt,
+  type OrganizerIntakeFields,
+} from "@/lib/sagasanOrganizerIntake";
+import {
   PERSONA_OPTIONS,
   normalizePersona,
   type Persona,
@@ -622,6 +631,42 @@ function getUserTranscript(
   return userMessages.slice(anchorIndex).join("\n");
 }
 
+function getUserMessages(history: ChatMessage[], latestMessage: string) {
+  return [...history, { role: "user" as const, content: latestMessage }]
+    .filter((message) => message.role === "user")
+    .map((message) => message.content.trim())
+    .filter(Boolean)
+    .filter((content) => !GENERIC_PERSONA_STARTERS.has(content.toLowerCase()));
+}
+
+function organizerFieldsFromStored(
+  fields: StoredExtractedFields,
+): OrganizerIntakeFields {
+  return {
+    projectIdea: fields.projectIdea,
+    locationMarket: fields.city,
+    timing: fields.dateWindow,
+    scopeFormat: fields.scopeFormat,
+    themeVibe: fields.themeVibe,
+    expectedAttendance: fields.scale,
+    lineupStatus: fields.lineupStatus,
+    helpNeeded: fields.helpNeeded,
+    budget: fields.budget,
+    budgetStatus: fields.budgetStatus,
+    inspirationStatus: fields.inspirationStatus,
+    inspirationReferences: fields.inspirationReferences,
+    userRole: fields.userRole,
+    userIdentity: fields.userIdentity,
+    organization: fields.organization,
+    socials: fields.socials,
+    audience: fields.audience,
+    ticketingModel: fields.ticketingModel,
+    safetyFlags: fields.safetyFlags,
+    urgency: fields.urgency,
+    desiredTalentRoles: fields.desiredTalentRoles,
+  };
+}
+
 export function extractStructuredFields({
   persona,
   history,
@@ -632,6 +677,14 @@ export function extractStructuredFields({
   latestMessage: string;
 }): StoredExtractedFields {
   const scopedTranscript = getUserTranscript(history, latestMessage, persona);
+  const userMessages = getUserMessages(history, latestMessage);
+  const organizerFields =
+    persona === "host"
+      ? extractOrganizerIntakeFieldsFromMessages(userMessages)
+      : null;
+  const organizerReadiness = organizerFields
+    ? evaluateOrganizerBriefReadiness(organizerFields)
+    : null;
   const city = inferCity(scopedTranscript);
   const neighborhood = inferNeighborhood(scopedTranscript);
   const dateWindow = inferDateWindow(scopedTranscript);
@@ -654,18 +707,38 @@ export function extractStructuredFields({
 
   return {
     persona,
-    city,
+    city: organizerFields?.locationMarket || city,
     neighborhood,
-    dateWindow,
+    dateWindow: organizerFields?.timing || dateWindow,
     roles,
     vibeTags,
     venueType,
-    projectIdea,
+    projectIdea: organizerFields?.projectIdea || projectIdea,
     interests,
     portfolio,
     availability,
     rates,
-    scale,
+    scale: organizerFields?.expectedAttendance || scale,
+    scopeFormat: organizerFields?.scopeFormat || null,
+    themeVibe: organizerFields?.themeVibe || null,
+    lineupStatus: organizerFields?.lineupStatus || null,
+    helpNeeded: organizerFields?.helpNeeded || null,
+    budget: organizerFields?.budget || null,
+    budgetStatus: organizerFields?.budgetStatus || null,
+    inspirationStatus: organizerFields?.inspirationStatus || null,
+    inspirationReferences: organizerFields?.inspirationReferences || [],
+    userRole: organizerFields?.userRole || null,
+    userIdentity: organizerFields?.userIdentity || null,
+    organization: organizerFields?.organization || null,
+    socials: organizerFields?.socials || [],
+    audience: organizerFields?.audience || null,
+    ticketingModel: organizerFields?.ticketingModel || null,
+    safetyFlags: organizerFields?.safetyFlags || [],
+    urgency: organizerFields?.urgency || null,
+    desiredTalentRoles: organizerFields?.desiredTalentRoles || [],
+    readinessStage: organizerReadiness?.stage || null,
+    missingRequiredFields: organizerReadiness?.missingRequiredFields || [],
+    missingImportantFields: organizerReadiness?.missingImportantFields || [],
     nextRoute: route,
   };
 }
@@ -775,6 +848,17 @@ function strongCreativeSignal(message: string) {
   );
 }
 
+function anchoredCreativePivotSignal(message: string) {
+  return (
+    /\bactually\b.*\b(dj|photographer|videographer|illustrator|designer|cosplayer|performer|artist)\b/i.test(
+      message,
+    ) ||
+    /^\s*i(?:'m| am)\s+(?:the\s+)?(dj|photographer|videographer|illustrator|designer|cosplayer|performer|artist)\b/i.test(
+      message,
+    )
+  );
+}
+
 function strongVenueSignal(message: string) {
   return (
     /\bactually\b.*\b(?:run(?:ning)?|have|manage|own)(?: (?:a|an))?(?:\s+\w+){0,2}\s+(?:space|venue|studio|cafe|gallery|event space|bar|club)\b/i.test(
@@ -787,11 +871,32 @@ function strongVenueSignal(message: string) {
   );
 }
 
+function anchoredVenuePivotSignal(message: string) {
+  return (
+    /\bactually\b.*\b(?:run(?:ning)?|have|manage|own)(?: (?:a|an))?(?:\s+\w+){0,2}\s+(?:space|venue|studio|cafe|gallery|event space|bar|club)\b/i.test(
+      message,
+    ) ||
+    /^\s*i (?:run|have|manage|own) (?:a|an)?(?:\s+\w+){0,2}\s+(?:space|venue|studio|cafe|gallery|event space|bar|club)\b/i.test(
+      message,
+    ) ||
+    /^\s*our (?:space|venue|studio|cafe|gallery|event space|bar|club)\b/i.test(message)
+  );
+}
+
 function strongFanSignal(message: string) {
   return (
     /\bactually\b.*\b(find|discover|attend)\b/i.test(message) ||
     /\bi want to attend\b|\bwhat'?s happening\b/i.test(message) ||
     matchesAnyPattern(message, FAN_SIGNAL_PATTERNS)
+  );
+}
+
+function anchoredFanPivotSignal(message: string) {
+  return (
+    /\bactually\b.*\b(find|discover|attend)\b/i.test(message) ||
+    /^\s*i want to attend\b/i.test(message) ||
+    /^\s*(?:find|discover) (?:events|shows|things to do)\b/i.test(message) ||
+    /^\s*what'?s happening\b/i.test(message)
   );
 }
 
@@ -802,6 +907,16 @@ function strongHostSignal(message: string) {
     matchesAnyPattern(message, HOST_SIGNAL_PATTERNS) ||
     (matchesAnyPattern(message, HOST_INTENT_PATTERNS) &&
       matchesAnyPattern(message, HOST_EVENT_CONCEPT_PATTERNS))
+  );
+}
+
+function anchoredHostPivotSignal(message: string) {
+  return (
+    /\bactually\b.*\b(host|throw|organize|produce|put on)\b/i.test(message) ||
+    /^\s*i want to (?:host|throw|organize|produce|put on)\b/i.test(message) ||
+    /^\s*i(?:'m| am) thinking about\b/i.test(message) ||
+    /^\s*thinking about\b/i.test(message) ||
+    /^\s*planning\b/i.test(message)
   );
 }
 
@@ -846,21 +961,37 @@ export function inferPersonaFromMessage(message: string): PersonaSignal {
   return ranked[0][0];
 }
 
-function detectPersonaPivot(message: string, currentPersona: Persona | null) {
+function detectPersonaPivot(
+  message: string,
+  currentPersona: Persona | null,
+  anchoredPersona: Persona | null,
+) {
   if (!currentPersona) {
     return null;
   }
 
-  if (currentPersona !== "creative" && strongCreativeSignal(message)) {
+  const creativeSignal = anchoredPersona
+    ? anchoredCreativePivotSignal(message)
+    : strongCreativeSignal(message);
+  if (currentPersona !== "creative" && creativeSignal) {
     return "creative";
   }
-  if (currentPersona !== "venue" && strongVenueSignal(message)) {
+  const venueSignal = anchoredPersona
+    ? anchoredVenuePivotSignal(message)
+    : strongVenueSignal(message);
+  if (currentPersona !== "venue" && venueSignal) {
     return "venue";
   }
-  if (currentPersona !== "fan" && strongFanSignal(message)) {
+  const fanSignal = anchoredPersona
+    ? anchoredFanPivotSignal(message)
+    : strongFanSignal(message);
+  if (currentPersona !== "fan" && fanSignal) {
     return "fan";
   }
-  if (currentPersona !== "host" && strongHostSignal(message)) {
+  const hostSignal = anchoredPersona
+    ? anchoredHostPivotSignal(message)
+    : strongHostSignal(message);
+  if (currentPersona !== "host" && hostSignal) {
     return "host";
   }
   return null;
@@ -887,7 +1018,7 @@ export function resolvePersona({
   const rememberedPersona =
     normalizePersona(sessionPersona) || normalizePersona(cookiePersona);
   const currentPersona = anchoredPersona || rememberedPersona;
-  const pivotPersona = detectPersonaPivot(latestMessage, currentPersona);
+  const pivotPersona = detectPersonaPivot(latestMessage, currentPersona, anchoredPersona);
   if (pivotPersona) {
     return pivotPersona;
   }
@@ -909,34 +1040,61 @@ export function resolvePersona({
 }
 
 function buildHostNextStep(fields: StoredExtractedFields): WebChatNextStep | null {
-  const projectType = inferHostProjectType(fields.projectIdea || "");
-  const eventType = inferHostEventType(projectType, fields.projectIdea || "");
-  const hasMinimum =
-    Boolean(fields.projectIdea) &&
-    Boolean(fields.city) &&
-    Boolean(fields.scale || fields.dateWindow || fields.vibeTags.length > 0);
+  const organizerFields = organizerFieldsFromStored(fields);
+  const readiness = evaluateOrganizerBriefReadiness(organizerFields);
+  const projectType = inferHostProjectType(
+    organizerFields.projectIdea || organizerFields.scopeFormat || fields.projectIdea || "",
+  );
+  const eventType =
+    organizerFields.scopeFormat ||
+    inferHostEventType(projectType, organizerFields.projectIdea || fields.projectIdea || "");
+  const city = organizerFields.locationMarket || fields.city;
 
-  if (!hasMinimum || !fields.city) {
+  if (!readiness.enoughInfoForDraftBrief || !city) {
     return null;
   }
 
+  const suggestedRoles = uniqueStrings([
+    ...organizerFields.desiredTalentRoles,
+    ...getSuggestedRoles(projectType),
+  ]).slice(0, 8);
+
   const payload: WebChatPrefill = {
     eventType,
-    city: fields.city,
-    scale: fields.scale || "mid",
+    city,
+    scale: organizerFields.expectedAttendance || fields.scale || "Unknown",
+    expectedAttendance: organizerFields.expectedAttendance || fields.scale || "",
     vibe:
-      fields.vibeTags.join(", ") || fields.projectIdea || "Creative event",
+      organizerFields.themeVibe ||
+      fields.themeVibe ||
+      fields.vibeTags.join(", ") ||
+      fields.projectIdea ||
+      "Creative event",
+    themeVibe:
+      organizerFields.themeVibe ||
+      fields.themeVibe ||
+      fields.vibeTags.join(", "),
     projectType,
-    suggestedRoles: getSuggestedRoles(projectType),
-    projectIdea: fields.projectIdea || eventType,
+    suggestedRoles,
+    projectIdea: organizerFields.projectIdea || fields.projectIdea || eventType,
+    helpNeeded: organizerFields.helpNeeded || "",
+    scopeFormat: organizerFields.scopeFormat || "",
+    lineupStatus: organizerFields.lineupStatus || "",
+    budget: organizerFields.budget || "",
+    budgetStatus: organizerFields.budgetStatus || "",
+    inspirationStatus: organizerFields.inspirationStatus || "",
+    inspirationRefs: organizerFields.inspirationReferences.slice(0, 2),
+    readinessStage: readiness.stage,
+    missingRequiredFields: readiness.missingRequiredFields,
+    desiredTalentRoles: organizerFields.desiredTalentRoles,
   };
 
-  if (fields.dateWindow) {
-    payload.date = fields.dateWindow;
+  if (organizerFields.timing || fields.dateWindow) {
+    payload.date = organizerFields.timing || fields.dateWindow || "";
   }
 
   return {
-    label: "Build my event",
+    label: "Review brief",
     route: "/projects/new",
     prefill: payload,
   };
@@ -1184,13 +1342,23 @@ function buildDeterministicReply({
   }
 
   const nextStep = deriveNextStep(persona, history, latestMessage);
+  const organizerReadiness =
+    persona === "host"
+      ? evaluateOrganizerBriefReadiness(organizerFieldsFromStored(extractedFields))
+      : null;
   if (nextStep) {
-    const successReplies: Record<Persona, string> = {
-      host: "Got it. I shaped that into a draft event brief.",
+    const successReplies = {
+      host: organizerReadiness
+        ? organizerReadiness.stage === "talent_search_ready"
+          ? "Got it — this is enough signal for a clean brief, plan, and crew search."
+          : organizerReadiness.stage === "production_plan_ready"
+            ? "Got it — this is enough signal for a clean brief and production plan."
+            : `Got it — I can shape this into a partial brief now. I still need ${formatOrganizerMissingSummary(organizerReadiness)} before I build the production plan.`
+        : "Got it — I can shape this into a partial brief now. Keep filling in the project details.",
       creative: "Got it — I shaped that into your creative profile draft.",
       venue: "Got it — I shaped that into your space profile draft.",
       fan: "Got it. I tuned that into your event feed setup.",
-    };
+    } satisfies Record<Exclude<Persona, null>, string>;
 
     return {
       reply: successReplies[persona],
@@ -1228,14 +1396,19 @@ function buildDeterministicReply({
 
   let reply = "Got it. What should I help shape next?";
   if (persona === "host") {
-    if (!extractedFields.projectIdea) {
-      reply = "Got it. What are you planning to host?";
-    } else if (!extractedFields.city) {
-      reply = "Got it. What city should I anchor this in?";
-    } else if (!extractedFields.scale) {
-      reply = "Got it. About how big should this feel?";
+    if (!organizerReadiness) {
+      reply = "Got it. Tell me what you're planning, and add whatever context you already know in one message.";
+    } else if (isOrganizerCorrectionPrompt(latestMessage)) {
+      reply = buildOrganizerCorrectionReply(
+        organizerFieldsFromStored(extractedFields),
+        organizerReadiness,
+      );
+    } else if (!extractedFields.projectIdea) {
+      reply =
+        "Got it. Tell me the project idea, and if you know them, add the city, timing, rough attendance, venue status, budget range, and any references in the same note.";
     } else {
-      reply = "Got it. What should the vibe feel like?";
+      const knownSummary = formatOrganizerKnownSummary(organizerReadiness);
+      reply = `Got it — I have ${knownSummary}. ${organizerReadiness.nextBestQuestion}`;
     }
   } else if (persona === "creative") {
     if (extractedFields.roles.length === 0) {
@@ -1294,7 +1467,7 @@ function buildDeterministicReply({
 
 export function buildUiFallbackReply(persona: Persona | null) {
   if (persona === "host") {
-    return "Got it. I lost that turn for a second — what city should I anchor this in?";
+    return "Got it. I lost that turn for a second — send the city, timing, rough attendance, venue status, budget range, and any references when you can.";
   }
   if (persona === "creative") {
     return "Got it — I lost that turn for a second. What city are you based in?";
@@ -1442,7 +1615,7 @@ export async function generateAgentReply({
       `Persona: ${persona ?? "router"}`,
       "Conversation so far:",
       summarizeTranscript(history, latestMessage),
-      "Reply with Sagasan's next message and include nextStep once the intake is ready.",
+      "Reply with Sagasan's next message and include nextStep only once the brief is ready to review.",
     ].join("\n\n"),
     temperature: 0.6,
     maxOutputTokens: 400,

@@ -835,11 +835,17 @@ export function buildBriefDraftFromHostPrefill(input: {
   city?: string | null;
   scale?: string | null;
   vibe?: string | null;
+  themeVibe?: string | null;
   date?: string | null;
   helpNeeded?: string | null;
   projectType?: string | null;
   suggestedRoles?: string[] | null;
   projectIdea?: string | null;
+  scopeFormat?: string | null;
+  lineupStatus?: string | null;
+  budget?: string | null;
+  inspirationStatus?: string | null;
+  inspirationRefs?: string[] | null;
 }): BriefDraft {
   const normalizedProjectType = PROJECT_TYPES.includes(
     input.projectType as ProjectType,
@@ -848,10 +854,21 @@ export function buildBriefDraftFromHostPrefill(input: {
     : inferHostProjectTypeFromLabel(input.eventType || "");
   const titleBase =
     input.projectIdea?.trim() ||
+    input.scopeFormat?.trim() ||
     input.eventType?.trim() ||
     "New project";
-  const vibeSentence = input.vibe?.trim() || "A new creative project staffed by Saga.";
+  const vibeSentence =
+    input.themeVibe?.trim() ||
+    input.vibe?.trim() ||
+    "A new creative project staffed by Saga.";
   const helpNeeded = input.helpNeeded?.trim();
+  const lineupStatus = input.lineupStatus?.trim();
+  const inspirationNotes = input.inspirationRefs?.length
+    ? input.inspirationRefs.join(", ")
+    : input.inspirationStatus?.trim() || "";
+  const budgetRange =
+    input.budget?.trim() ||
+    (input.scale?.trim() ? `Scale: ${input.scale.trim()}` : DEFAULT_BRIEF_DRAFT.budgetRange);
 
   return {
     ...DEFAULT_BRIEF_DRAFT,
@@ -864,12 +881,13 @@ export function buildBriefDraftFromHostPrefill(input: {
       input.suggestedRoles?.length
         ? input.suggestedRoles
         : getSuggestedRoles(normalizedProjectType),
-    cultureNotes: vibeSentence,
+    cultureNotes: [vibeSentence, lineupStatus, inspirationNotes]
+      .filter(Boolean)
+      .join(" · "),
     dateLabel: input.date?.trim() || "Date TBD",
-    budgetRange: input.scale?.trim()
-      ? `Scale: ${input.scale.trim()}`
-      : DEFAULT_BRIEF_DRAFT.budgetRange,
+    budgetRange,
     deliverables: helpNeeded || DEFAULT_BRIEF_DRAFT.deliverables,
+    referenceLinks: inspirationNotes || DEFAULT_BRIEF_DRAFT.referenceLinks,
   };
 }
 

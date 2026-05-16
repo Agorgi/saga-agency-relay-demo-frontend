@@ -30,6 +30,7 @@ test("host prompt includes nextStep handoff rule", () => {
   );
   assert.match(
     prompt,
-    /Once you have the minimum info to move them forward, emit a nextStep block with a label of five words or fewer\./,
+    /The goal is high-signal context, not minimum intake\./,
   );
+  assert.match(prompt, /Do not move a host forward after only an idea, city, and timing\./);
 });

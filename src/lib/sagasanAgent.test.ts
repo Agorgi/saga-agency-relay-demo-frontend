@@ -7,7 +7,7 @@ import {
   resolvePersona,
 } from "@/lib/sagasanAgent";
 
-test("mock host reply yields a next step once minimum info is present", () => {
+test("mock host reply keeps intake open until the brief has enough signal", () => {
   const result = buildMockAgentReply({
     persona: "host",
     history: [],
@@ -16,10 +16,15 @@ test("mock host reply yields a next step once minimum info is present", () => {
   });
 
   assert.equal(result.persona, "host");
-  assert.ok(result.nextStep);
   assert.equal(result.nextStep?.route, "/projects/new");
-  assert.ok((result.nextStep?.label.split(/\s+/).length ?? 0) <= 5);
-  assert.match(result.reply, /draft event brief/i);
+  assert.equal(result.nextStep?.label, "Review brief");
+  assert.equal(result.nextStep?.prefill.readinessStage, "draft_brief_ready");
+  assert.deepEqual(result.nextStep?.prefill.missingRequiredFields, [
+    "lineupStatus",
+    "helpNeeded",
+    "budget",
+  ]);
+  assert.match(result.reply, /partial brief|production plan/i);
   assert.equal((result.reply.match(/\?/g) || []).length, 0);
 });
 
@@ -33,7 +38,9 @@ test("chip starter phrases do not leak into extracted event names", () => {
 
   assert.equal(result.extractedFields.projectIdea?.includes("host something"), false);
   assert.equal(result.extractedFields.city, "Silver Lake");
+  assert.equal(result.extractedFields.projectIdea, "Anime Picnic");
   assert.equal(result.nextStep?.route, "/projects/new");
+  assert.equal(result.nextStep?.label, "Review brief");
 });
 
 test("persona hint and free-form copy resolve to the right personas", () => {
@@ -416,7 +423,7 @@ test("extraction handles the known city and availability edge cases", () => {
   assert.notEqual(losAngeles.city, "Angeles");
 
   assert.equal(largeLaunch.city, null);
-  assert.equal(largeLaunch.scale, "big");
+  assert.equal(largeLaunch.scale, "Large");
 
   assert.equal(availability.city, null);
   assert.equal(availability.dateWindow, null);
@@ -434,23 +441,33 @@ test("long detailed opening messages skip redundant follow-ups", () => {
       "I want to throw a 100-person anime pop-up in Silver Lake next month with a playful neon vibe, and I need a photographer, DJ, and host to make it feel intimate but still polished.",
   });
 
-  assert.ok(result.nextStep);
+  assert.equal(result.nextStep?.route, "/projects/new");
+  assert.match(result.reply, /partial brief/i);
   assert.equal((result.reply.match(/\?/g) || []).length, 0);
 });
 
-test("host next-step prefill keeps the routeable project details", () => {
+test("host next-step prefill waits for a draft-ready brief and keeps clean project details", () => {
   const result = buildMockAgentReply({
     persona: "host",
     history: [],
     latestMessage:
-      "I want to throw a 100-person anime picnic in Silver Lake next month with a playful neon vibe.",
+      "I want to throw a formal ball inspired by Love and Deepspace in Los Angeles in July. Probably 150 people. I don't have a venue yet. I have one photographer friend but no production crew. Budget is maybe $15k. Here's a Pinterest board. I want Saga to help find a producer, stylist, venue lead, and maybe performers.",
   });
 
   assert.equal(result.nextStep?.route, "/projects/new");
-  assert.equal(result.nextStep?.prefill.city, "Silver Lake");
-  assert.equal(result.nextStep?.prefill.date, "next month");
-  assert.equal(result.nextStep?.prefill.eventType, "Pop-up / activation");
-  assert.equal(result.nextStep?.prefill.projectIdea, "throw a 100-person anime picnic in Silver Lake next month with a playful neon vibe");
+  assert.equal(result.nextStep?.label, "Review brief");
+  assert.equal(result.nextStep?.prefill.city, "Los Angeles");
+  assert.equal(result.nextStep?.prefill.date, "July");
+  assert.equal(result.nextStep?.prefill.projectIdea, "Formal ball inspired by Love and Deepspace");
+  assert.equal(result.nextStep?.prefill.readinessStage, "talent_search_ready");
+  assert.equal(result.nextStep?.prefill.budget, "$15k");
+  assert.equal(result.nextStep?.prefill.inspirationStatus, "provided");
+  assert.deepEqual(result.nextStep?.prefill.desiredTalentRoles?.slice(0, 4), [
+    "Producer",
+    "Stylist",
+    "Venue Lead",
+    "Performer",
+  ]);
 });
 
 test("creative extraction does not inherit stale host event timing or vibe", () => {
@@ -538,7 +555,7 @@ test("live reply uses the provided OpenAI call and preserves nextStep", async ()
   assert.match(capturedInstructions, /Ask at most one question per turn\./);
   assert.match(
     capturedInstructions,
-    /Once you have the minimum info to move them forward, emit a nextStep block with a label of five words or fewer\./,
+    /The goal is high-signal context, not minimum intake\./,
   );
   assert.match(capturedPrompt, /Reply with Sagasan's next message/);
   assert.equal(result.data.nextStep?.route, "/me");

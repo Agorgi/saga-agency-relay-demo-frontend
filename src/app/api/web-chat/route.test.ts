@@ -92,7 +92,7 @@ test("web chat POST returns an autonomous mock reply in mock mode", async () => 
   const response = await POST(
     createRequest({
       message:
-        "I want to throw a 100-person anime pop-up in Los Angeles with a playful neon vibe.",
+        "I want to throw a formal ball inspired by Love and Deepspace in Los Angeles in July. Probably 150 people. I don't have a venue yet. I have one photographer friend but no production crew. Budget is maybe $15k. Here's a Pinterest board. I want Saga to help find a producer, stylist, venue lead, and maybe performers.",
       persona: "host",
     }),
   );
@@ -330,7 +330,7 @@ test("live mode without a key falls back to deterministic Sagasan copy", async (
 
   assert.equal(response.status, 200);
   assert.equal(data.mode, "autonomous");
-  assert.match(data.reply, /what city|what are you planning|draft event brief/i);
+  assert.match(data.reply, /budget|venue status|help/i);
   assert.doesNotMatch(data.reply, /we['’]ve logged your message/i);
 });
 
@@ -355,7 +355,7 @@ test("web chat POST stays up without database env vars", async () => {
 
   assert.equal(response.status, 200);
   assert.equal(data.mode, "holding");
-  assert.match(data.reply, /what are you hosting|what city should i anchor|what are you planning to host/i);
+  assert.match(data.reply, /project idea|city|timing|budget/i);
 });
 
 test("holding mode keeps the next-step handoff when the brief is routeable", async () => {
@@ -368,7 +368,7 @@ test("holding mode keeps the next-step handoff when the brief is routeable", asy
   const response = await POST(
     createRequest({
       message:
-        "I want to throw a 100-person anime picnic in Silver Lake next month with a playful neon vibe.",
+        "I want to throw a formal ball inspired by Love and Deepspace in Los Angeles in July. Probably 150 people. I don't have a venue yet. I have one photographer friend but no production crew. Budget is maybe $15k. Here's a Pinterest board. I want Saga to help find a producer, stylist, venue lead, and maybe performers.",
     }),
   );
 
@@ -380,8 +380,8 @@ test("holding mode keeps the next-step handoff when the brief is routeable", asy
   assert.equal(response.status, 200);
   assert.equal(data.mode, "holding");
   assert.equal(data.nextStep?.route, "/projects/new");
-  assert.equal(data.nextStep?.prefill?.city, "Silver Lake");
-  assert.match(data.nextStep?.prefill?.projectIdea || "", /anime picnic/i);
+  assert.equal(data.nextStep?.prefill?.city, "Los Angeles");
+  assert.match(data.nextStep?.prefill?.projectIdea || "", /formal ball/i);
 });
 
 test("production-like legacy DB mode still returns reply and nextStep", async () => {
@@ -395,7 +395,7 @@ test("production-like legacy DB mode still returns reply and nextStep", async ()
   const response = await POST(
     createRequest({
       message:
-        "I want to throw a 100-person anime picnic in Silver Lake next month with a playful neon vibe.",
+        "I want to throw a formal ball inspired by Love and Deepspace in Los Angeles in July. Probably 150 people. I don't have a venue yet. I have one photographer friend but no production crew. Budget is maybe $15k. Here's a Pinterest board. I want Saga to help find a producer, stylist, venue lead, and maybe performers.",
     }),
   );
 
@@ -407,9 +407,9 @@ test("production-like legacy DB mode still returns reply and nextStep", async ()
 
   assert.equal(response.status, 200);
   assert.equal(data.mode, "autonomous");
-  assert.match(data.reply, /draft event brief|build your event draft|what city/i);
+  assert.match(data.reply, /partial brief|production plan|crew search/i);
   assert.equal(data.nextStep?.route, "/projects/new");
-  assert.equal(data.nextStep?.prefill?.city, "Silver Lake");
+  assert.equal(data.nextStep?.prefill?.city, "Los Angeles");
 
   const assistantMessage = await readLatestAssistantMessage();
   assert.ok(assistantMessage);
@@ -428,7 +428,7 @@ test("legacy GET session payload keeps assistant content even when metadata colu
   const postResponse = await POST(
     createRequest({
       message:
-        "I want to throw a 100-person anime picnic in Silver Lake next month with a playful neon vibe.",
+        "I want to throw a formal ball inspired by Love and Deepspace in Los Angeles in July. Probably 150 people. I don't have a venue yet. I have one photographer friend but no production crew. Budget is maybe $15k. Here's a Pinterest board. I want Saga to help find a producer, stylist, venue lead, and maybe performers.",
     }),
   );
   const postData = (await postResponse.json()) as {
@@ -459,6 +459,6 @@ test("legacy GET session payload keeps assistant content even when metadata colu
   assert.equal(getData.persona, "host");
   const assistantMessage = getData.messages.find((message) => message.role === "assistant");
   assert.ok(assistantMessage);
-  assert.match(assistantMessage?.content || "", /draft event brief|what city/i);
+  assert.match(assistantMessage?.content || "", /partial brief|production plan|crew search/i);
   assert.equal(assistantMessage?.nextStep ?? null, null);
 });

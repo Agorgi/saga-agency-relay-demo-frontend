@@ -33,16 +33,61 @@ const ALLOWED_PREFILL_KEYS: Record<string, string[]> = {
     "city",
     "scale",
     "vibe",
+    "themeVibe",
     "projectType",
     "suggestedRoles",
     "date",
     "helpNeeded",
     "projectIdea",
+    "scopeFormat",
+    "expectedAttendance",
+    "lineupStatus",
+    "budget",
+    "budgetStatus",
+    "inspirationStatus",
+    "inspirationRefs",
+    "readinessStage",
+    "missingRequiredFields",
+    "missingImportantFields",
+    "userRole",
+    "userIdentity",
+    "organization",
+    "socials",
+    "audience",
+    "ticketingModel",
+    "safetyFlags",
+    "urgency",
+    "desiredTalentRoles",
   ],
   "/me": ["city", "roles", "portfolio", "availability", "rates"],
   "/spaces": ["city", "capacity", "neighborhood", "availabilityHint", "venueType"],
   "/feed": ["city", "interests"],
   "/explore": ["projectId", "role", "city"],
+};
+
+const PREFILL_PRIORITY_KEYS: Record<string, string[]> = {
+  "/projects/new": [
+    "projectIdea",
+    "city",
+    "date",
+    "scopeFormat",
+    "eventType",
+    "projectType",
+    "scale",
+    "expectedAttendance",
+    "themeVibe",
+    "vibe",
+    "lineupStatus",
+    "helpNeeded",
+    "budget",
+    "budgetStatus",
+    "inspirationStatus",
+    "suggestedRoles",
+    "desiredTalentRoles",
+    "readinessStage",
+    "missingRequiredFields",
+    "inspirationRefs",
+  ],
 };
 
 function toBase64Url(bytes: Uint8Array) {
@@ -206,7 +251,29 @@ export function sanitizePrefillForRoute(
   const sanitized = Object.fromEntries(sanitizedEntries);
   const encoded = encodePrefillPayload(sanitized);
   if (encoded.length > MAX_PREFILL_BYTES) {
-    return {};
+    const priorityKeys = PREFILL_PRIORITY_KEYS[route];
+    if (!priorityKeys) {
+      return {};
+    }
+
+    const trimmed: WebChatPrefill = {};
+    for (const key of priorityKeys) {
+      if (!(key in sanitized)) {
+        continue;
+      }
+      const candidate = {
+        ...trimmed,
+        [key]: sanitized[key],
+      } satisfies WebChatPrefill;
+      if (
+        Object.keys(trimmed).length === 0 ||
+        encodePrefillPayload(candidate).length <= MAX_PREFILL_BYTES
+      ) {
+        Object.assign(trimmed, { [key]: sanitized[key] });
+      }
+    }
+
+    return trimmed;
   }
 
   return sanitized;
