@@ -73,3 +73,14 @@ Useful docs:
 - `docs/sagasan-runtime-modes.md`
 - `docs/sagasan-handoff-schema.md`
 - `docs/sagasan-responses-api-migration-plan.md`
+
+## Sagasan Internal Dogfood
+
+Internal testing docs:
+
+- `docs/sagasan-internal-dogfood-v3.md`
+- `docs/sagasan-dogfood-test-script.md`
+- `docs/sagasan-dogfood-feedback-form.md`
+- `docs/sagasan-dogfood-scoring-rubric.md`
+- `docs/sagasan-dogfood-issue-log-template.md`
+- `docs/sagasan-internal-tester-instructions.md`
