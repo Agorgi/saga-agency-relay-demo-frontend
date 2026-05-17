@@ -16,7 +16,7 @@ import {
   normalizePersona,
   type Persona,
 } from "@/lib/sagasanPersonas";
-import { buildSystemPrompt } from "@/lib/sagasanSystemPrompt";
+import { buildHostLayerBContext, buildSystemPrompt } from "@/lib/sagasanSystemPrompt";
 import {
   sanitizeNextStepPayload,
   type WebChatNextStep,
@@ -1640,18 +1640,33 @@ export async function generateAgentReply({
     };
   }
 
+  // Layer B context block: when host persona is in play and we have any
+  // captured brief fields, surface them to the LLM so it can reflect the
+  // user's actual phrasing (per the Layer B host rules in the system
+  // prompt). Empty for non-host or fresh-intake turns — keeps the prompt
+  // short on the first turn where nothing's been said yet.
+  const layerBContext =
+    persona === "host"
+      ? buildHostLayerBContext(
+          organizerFieldsFromStored(fallback.extractedFields),
+        )
+      : "";
+
+  const promptSections = [
+    `Persona: ${persona ?? "router"}`,
+    layerBContext,
+    "Conversation so far:",
+    summarizeTranscript(history, latestMessage),
+    "Reply with Sagasan's next message and include nextStep only once the brief is ready to review.",
+  ].filter((s) => s.length > 0);
+
   const response = await liveStructuredCall({
     apiKey: apiKey.trim(),
     baseUrl: process.env.OPENAI_BASE_URL || null,
     model: getConfiguredModel(),
     timeoutMs: Number.parseInt(process.env.LLM_TIMEOUT_MS || "", 10) || 8000,
     instructions: buildSystemPrompt(persona),
-    prompt: [
-      `Persona: ${persona ?? "router"}`,
-      "Conversation so far:",
-      summarizeTranscript(history, latestMessage),
-      "Reply with Sagasan's next message and include nextStep only once the brief is ready to review.",
-    ].join("\n\n"),
+    prompt: promptSections.join("\n\n"),
     temperature: 0.6,
     maxOutputTokens: 400,
   });
