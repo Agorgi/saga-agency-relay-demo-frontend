@@ -284,7 +284,7 @@ Honest inventory. Update when feature state changes.
 | Brief → /projects/new handoff | Real | Today via base64 prefill; will move to DB-backed |
 | Build My Crew page | Real | `buildMyCrewContracts.ts` enforces brief_handoff vs demo_seed |
 | Candidate review per role | Not built | Tracer scope |
-| ProjectJourney state machine | Not built | Tracer scope |
+| ProjectJourney state machine | Foundation built (PR #3) | Prisma model + service + API routes. Not yet wired to Sagasan (PR #4) or to any UI surface (PR #5+). |
 | Talent grid (/explore) | Demo | Picsum-seeded creator cards. Not in tracer. |
 | Producer agent | Real, admin-only | `src/sms-engine/producer/*` (role inference, candidate scoring) |
 | Candidate research (public web) | Real, admin-only | `src/sms-engine/sourcing/openaiWebResearchProvider.ts` |
