@@ -492,6 +492,92 @@ test("creative extraction does not inherit stale host event timing or vibe", () 
   assert.equal("rates" in (result.nextStep?.prefill ?? {}), false);
 });
 
+test("a remembered organizer brief does not flip persona on bare role nouns", () => {
+  // Regression for the Step 6 P0: a rich follow-up that mentioned
+  // "photographer friend", "Instagram reference", and "$15k budget"
+  // used to silently flip persona host → creative, drop the brief,
+  // and route to /me?prefill with a creative-profile payload.
+  const message =
+    "Probably 150 people. I don't have a venue yet. I have one photographer friend but no production crew. Budget is maybe $15k. I want it to feel romantic, elegant, and space-inspired. I can send an Instagram reference. I want Saga to help find a producer, stylist, venue lead, and performers.";
+
+  const persona = resolvePersona({
+    personaHint: null,
+    explicitPersona: null,
+    sessionPersona: "host",
+    cookiePersona: "host",
+    latestMessage: message,
+  });
+  assert.equal(persona, "host");
+
+  // Passive mentions inside a host brief must not populate creative-profile
+  // fields. $15k is an event budget, not a $15 day rate; "Instagram
+  // reference" is not a portfolio offer.
+  const fields = extractStructuredFields({
+    persona: "host",
+    history: [],
+    latestMessage: message,
+  });
+  assert.equal(fields.rates, null);
+  assert.equal(fields.portfolio, null);
+});
+
+test("rate parser captures bare dollar amounts but rejects $Nk event budgets", () => {
+  const dayRate = extractStructuredFields({
+    persona: "creative",
+    history: [],
+    latestMessage: "My day rate is $500 and I'm available weekends.",
+  });
+  assert.equal(dayRate.rates, "$500");
+
+  const dayRateRange = extractStructuredFields({
+    persona: "creative",
+    history: [],
+    latestMessage: "I usually charge $500-$800 depending on scope.",
+  });
+  assert.match(dayRateRange.rates || "", /\$500/);
+
+  // $15k is an event scale budget, NOT a $15 day rate.
+  const eventBudget = extractStructuredFields({
+    persona: "creative",
+    history: [],
+    latestMessage: "Budget is around $15k for the whole event.",
+  });
+  assert.equal(eventBudget.rates, null);
+
+  const eventBudgetMixedCase = extractStructuredFields({
+    persona: "creative",
+    history: [],
+    latestMessage: "We have about $25K to spend.",
+  });
+  assert.equal(eventBudgetMixedCase.rates, null);
+});
+
+test("portfolio inference requires possessive framing, not passive mention", () => {
+  // Passive: "I can send an Instagram reference" no longer mints a portfolio.
+  const passive = extractStructuredFields({
+    persona: "creative",
+    history: [],
+    latestMessage: "I can send an Instagram reference if that helps.",
+  });
+  assert.equal(passive.portfolio, null);
+
+  // Explicit URL always wins.
+  const explicit = extractStructuredFields({
+    persona: "creative",
+    history: [],
+    latestMessage: "Here's a link: https://example.com/portfolio",
+  });
+  assert.equal(explicit.portfolio, "https://example.com/portfolio");
+
+  // Possessive ("my IG") is a clear offer.
+  const possessive = extractStructuredFields({
+    persona: "creative",
+    history: [],
+    latestMessage: "My Instagram is @creator and I have a reel ready.",
+  });
+  assert.equal(possessive.portfolio, "Sample shared in chat");
+});
+
 test("trust-boundary questions override persona keyword routing", () => {
   const latestMessage = "Are these people confirmed for my event?";
   const persona = resolvePersona({

@@ -480,18 +480,30 @@ function inferPortfolioLink(value: string) {
   if (match) {
     return match[0];
   }
-  if (/portfolio|samples?|reel|instagram|ig|behance|dribbble/i.test(value)) {
+  // Require possessive / first-person framing for the "shared in chat"
+  // placeholder. Passive mentions like "I can send an Instagram reference"
+  // used to set portfolio="Sample shared in chat" inside a host brief,
+  // which silently re-shaped organizer intake into a creative profile.
+  if (
+    /\bmy (?:portfolio|reel|samples?|instagram|ig|behance|dribbble)\b/i.test(value) ||
+    /\bhere'?s my (?:portfolio|reel|samples?|instagram|ig|behance|dribbble)\b/i.test(
+      value,
+    )
+  ) {
     return "Sample shared in chat";
   }
   return null;
 }
 
 function inferRateHint(value: string) {
-  const match = value.match(/\$[\d,]+(?:\s*-\s*\$?[\d,]+)?/);
+  // Day rates are pure dollar amounts (no `k` / `m` suffix). A value like
+  // "$15k" is an event-scale budget, not a creative day rate, and must not
+  // be captured here. Require the dollar match to NOT be followed by k/m/K/M.
+  const match = value.match(/\$[\d,]+(?![\d.,kKmM])(?:\s*-\s*\$?[\d,]+(?![\d.,kKmM]))?/);
   if (match) {
     return match[0];
   }
-  if (/day rate|hourly|negotiable/i.test(value)) {
+  if (/\bday rate\b|\bhourly\b|\bnegotiable\b/i.test(value)) {
     return "Negotiable";
   }
   return null;
@@ -760,21 +772,19 @@ export function extractStructuredFields({
 
 type PersonaScores = Record<Persona, number>;
 
+// Creative signals are action-phrased only (offering services / for hire).
+// Bare nouns like \bphotographer\b were previously here but caused false
+// positives — e.g. "I have one photographer friend" inside a host brief
+// would flip persona to creative. Self-identification of a creative role
+// is still caught upstream by strongCreativeSignal's `i'm a {role}` and
+// `actually ... {role}` regexes; we don't need bare nouns here too.
 const CREATIVE_SIGNAL_PATTERNS = [
-  /\bphotographer\b/i,
-  /\bvideographer\b/i,
-  /\bdj\b/i,
-  /\billustrator\b/i,
-  /\bdesigner\b/i,
-  /\bcosplayer\b/i,
-  /\bperformer\b/i,
-  /\bartist\b/i,
   /\blooking for gigs\b/i,
   /\blooking for work\b/i,
   /\bavailable for events\b/i,
   /\bbook me\b/i,
   /\bhire me\b/i,
-  /\bportfolio\b/i,
+  /\bmy portfolio\b/i,
   /\bmy work\b/i,
 ];
 
@@ -851,26 +861,29 @@ function matchesAnyPattern(message: string, patterns: RegExp[]) {
   return patterns.some((pattern) => pattern.test(message));
 }
 
+// Self-identity match accepts "i'm <role>", "i'm a <role>", "i'm an <role>",
+// "i'm the <role>", and the "i am ..." variants. The (a|an|the) article is
+// required to be a real word, not a substring — "i'm and the dj" wouldn't
+// accidentally match because of \s+ between the article and the role.
+const CREATIVE_SELF_IDENTITY = /\bi(?:'m| am)\s+(?:(?:the|a|an)\s+)?(dj|photographer|videographer|illustrator|designer|cosplayer|performer|artist|creative|stylist|producer)\b/i;
+
+const CREATIVE_PIVOT_ANCHORED = /^\s*i(?:'m| am)\s+(?:(?:the|a|an)\s+)?(dj|photographer|videographer|illustrator|designer|cosplayer|performer|artist|creative|stylist|producer)\b/i;
+
 function strongCreativeSignal(message: string) {
   return (
-    /\bactually\b.*\b(dj|photographer|videographer|illustrator|designer|cosplayer|performer|artist)\b/i.test(
+    /\bactually\b.*\b(dj|photographer|videographer|illustrator|designer|cosplayer|performer|artist|creative)\b/i.test(
       message,
     ) ||
-    /\bi(?:'m| am)\s+(?:the\s+)?(dj|photographer|videographer|illustrator|designer|cosplayer|performer|artist)\b/i.test(
-      message,
-    ) ||
+    CREATIVE_SELF_IDENTITY.test(message) ||
     matchesAnyPattern(message, CREATIVE_SIGNAL_PATTERNS)
   );
 }
 
 function anchoredCreativePivotSignal(message: string) {
   return (
-    /\bactually\b.*\b(dj|photographer|videographer|illustrator|designer|cosplayer|performer|artist)\b/i.test(
+    /\bactually\b.*\b(dj|photographer|videographer|illustrator|designer|cosplayer|performer|artist|creative)\b/i.test(
       message,
-    ) ||
-    /^\s*i(?:'m| am)\s+(?:the\s+)?(dj|photographer|videographer|illustrator|designer|cosplayer|performer|artist)\b/i.test(
-      message,
-    )
+    ) || CREATIVE_PIVOT_ANCHORED.test(message)
   );
 }
 
@@ -947,6 +960,7 @@ function scorePersona(message: string): PersonaScores {
         ? 2
         : 0),
     creative:
+      (CREATIVE_SELF_IDENTITY.test(message) ? 6 : 0) +
       (matchesAnyPattern(message, CREATIVE_SIGNAL_PATTERNS) ? 6 : 0) +
       (/\bportfolio\b|\breel\b|\bsamples?\b/.test(lower) ? 2 : 0) +
       (/\bfor hire\b|\bavailable\b/.test(lower) ? 1 : 0),
