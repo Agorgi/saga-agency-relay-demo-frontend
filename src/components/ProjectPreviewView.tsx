@@ -5,6 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { requestWebChatReset } from "@/components/web-chat/useWebChat";
 import {
+  buildProjectBriefForUI,
+  PROJECT_BRIEF_EMPTY_STATE,
+} from "@/lib/buildMyCrewContracts";
+import {
   buildHostBriefDraft,
   buildHostBriefProject,
   encodeHostBriefPrefill,
@@ -57,6 +61,10 @@ export function ProjectPreviewView({
   const previewProject = useMemo(
     () => (prefill ? buildHostBriefProject(prefill) : null),
     [prefill],
+  );
+  const uiBrief = useMemo(
+    () => buildProjectBriefForUI(previewProject, prefill),
+    [prefill, previewProject],
   );
   const recentProjects = useMemo(
     () => projects.slice(0, 3),
@@ -122,13 +130,13 @@ export function ProjectPreviewView({
               data-copy-lint="header"
               className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl"
             >
-              Start with Sagasan.
+              {PROJECT_BRIEF_EMPTY_STATE.title}
             </h1>
             <p
               data-copy-lint="subhead"
               className={`mt-3 text-sm leading-7 ${isDark ? "text-white/62" : "text-ink-light"}`}
             >
-              Start in chat first.
+              {PROJECT_BRIEF_EMPTY_STATE.subhead}
             </p>
           </section>
 
@@ -146,13 +154,13 @@ export function ProjectPreviewView({
               }}
               className="brand-button-primary rounded-pill px-4 py-2.5 text-sm font-medium"
             >
-                Talk to Sagasan
-              </button>
+              {PROJECT_BRIEF_EMPTY_STATE.ctaLabel}
+            </button>
 
-              <p className={`mt-3 text-sm leading-7 ${isDark ? "text-white/60" : "text-ink-light"}`}>
-              Sagasan builds the brief with you first, then this page turns that context into a reviewable draft.
-              </p>
-            </section>
+            <p className={`mt-3 text-sm leading-7 ${isDark ? "text-white/60" : "text-ink-light"}`}>
+              {PROJECT_BRIEF_EMPTY_STATE.helper}
+            </p>
+          </section>
 
           {recentProjects.length ? (
             <section
@@ -258,12 +266,12 @@ export function ProjectPreviewView({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <PreviewLine label="Project idea" value={String(prefill.projectIdea || previewProject.title || "Not answered yet.")} />
+            <PreviewLine label="Project idea" value={String(uiBrief?.projectIdea || previewProject.title || "Not answered yet.")} />
             <PreviewLine label="Format" value={String(prefill.scopeFormat || prefill.eventType || draft.projectType || "Not answered yet.")} />
-            <PreviewLine label="City" value={String(prefill.city || draft.city || "Not answered yet.")} />
-            <PreviewLine label="Attendance" value={String(prefill.expectedAttendance || prefill.scale || "Not answered yet.")} />
-            <PreviewLine label="Timing" value={String(prefill.date || draft.dateLabel || "Not answered yet.")} />
-            <PreviewLine label="Vibe" value={String(prefill.themeVibe || prefill.vibe || "Not answered yet.")} />
+            <PreviewLine label="City" value={String(uiBrief?.city || draft.city || "Not answered yet.")} />
+            <PreviewLine label="Attendance" value={String(uiBrief?.scale || "Not answered yet.")} />
+            <PreviewLine label="Timing" value={String(uiBrief?.dateWindow || draft.dateLabel || "Not answered yet.")} />
+            <PreviewLine label="Vibe" value={String(uiBrief?.vibeTags.join(", ") || "Not answered yet.")} />
             <PreviewLine label="Budget" value={String(prefill.budget || "Not answered yet.")} />
             <PreviewLine label="Help needed" value={String(prefill.helpNeeded || "Not answered yet.")} />
           </div>
@@ -273,7 +281,7 @@ export function ProjectPreviewView({
               Auto-derived roles
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {draft.roles.map((role) => (
+              {(uiBrief?.suggestedRoles.map((role) => role.role) || draft.roles).map((role) => (
                 <span
                   key={role}
                   className={`rounded-pill px-3 py-1.5 text-xs font-medium ${

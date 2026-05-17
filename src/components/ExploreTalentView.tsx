@@ -5,12 +5,7 @@ import { motion } from "framer-motion";
 import { useEffect, useMemo, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { requestWebChatReset } from "@/components/web-chat/useWebChat";
-import { scoreTalentForProject } from "@/data/sagaAgencyData";
-import {
-  getExplorerCandidateStatus,
-  getExplorerCandidateSummary,
-  getExplorerCardImage,
-} from "@/lib/explorerPresentation";
+import { buildCrewRecommendationState } from "@/lib/buildMyCrewContracts";
 import {
   buildHostBriefDraft,
   buildHostBriefProject,
@@ -30,8 +25,6 @@ export function ExploreTalentView() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const projects = useAgencyStore((state) => state.projects);
-  const talent = useAgencyStore((state) => state.talent);
-  const selectedProjectId = useAgencyStore((state) => state.selectedProjectId);
   const talentSearchQuery = useAgencyStore((state) => state.talentSearchQuery);
   const talentFilters = useAgencyStore((state) => state.talentFilters);
   const selectProjectBySlug = useAgencyStore((state) => state.selectProjectBySlug);
@@ -112,132 +105,39 @@ export function ExploreTalentView() {
     projects.find((project) => project.id === projectIdParam) ||
     (projectIdParam ? handoffProject : null) ||
     projects.find((project) => project.slug === projectSlug) ||
-    projects.find((project) => project.id === selectedProjectId) ||
     null;
   const hasHandoffProject = Boolean(handoffPrefill && handoffProject);
   const talentSearchBlocked = hasHandoffProject && !organizerReadiness.enoughInfoForTalentSearch;
 
-  const derivedCards = useMemo(() => {
-    const search = talentSearchQuery.toLowerCase().trim();
-
-    return talent
-      .filter((profile) => {
-        const searchMatch =
-          !search ||
-          `${profile.name} ${profile.roles.join(" ")} ${profile.city} ${profile.tags.join(" ")} ${profile.credits.join(" ")}`.toLowerCase().includes(search);
-        const roleMatch =
-          talentFilters.role === "All roles" ||
-          profile.roles.some((role) => role.toLowerCase() === talentFilters.role.toLowerCase());
-        const cityMatch =
-          talentFilters.city === "All cities" ||
-          profile.city.toLowerCase().includes(talentFilters.city.toLowerCase());
-        const projectTypeMatch =
-          talentFilters.projectType === "All" ||
-          profile.projectTypes.includes(talentFilters.projectType);
-        const tagMatch =
-          talentFilters.tag === "All tags" ||
-          profile.tags.some((tag) => tag.toLowerCase().includes(talentFilters.tag.toLowerCase()));
-        const availabilityMatch =
-          talentFilters.availability === "all" ||
-          profile.availabilitySignal === talentFilters.availability;
-        const budgetMatch =
-          talentFilters.budget === "All budgets" ||
-          profile.rateRange.toLowerCase().includes(talentFilters.budget.toLowerCase());
-
-        return searchMatch && roleMatch && cityMatch && projectTypeMatch && tagMatch && availabilityMatch && budgetMatch;
-      })
-      .map((profile) => {
-        if (!activeProject) {
-          return {
-            ...profile,
-            primaryRole: profile.roles[0],
-            portfolioFitScore: profile.portfolioFitScore || 72,
-            styleFitScore: profile.styleFitScore || 70,
-            categoryExperienceScore: 68,
-            locationFitScore: 72,
-            budgetFitScore: profile.budgetFitScore || 70,
-            distributionScore: profile.distributionScore || 68,
-            availabilityLikelihood:
-              profile.availabilitySignal === "available"
-                ? 92
-                : profile.availabilitySignal === "maybe"
-                  ? 72
-                : profile.availabilitySignal === "busy"
-                  ? 34
-                  : 58,
-            priorProjectRelevance: 66,
-            whySagaMatched: [
-              `Strong fit for ${profile.roles[0].toLowerCase()} work.`,
-              profile.tags[0] ? `Portfolio leans ${profile.tags[0].toLowerCase()}.` : "Culturally fluent portfolio.",
-            ],
-            candidateStatus: "suggested" as const,
-          };
-        }
-
-        const fallbackRole =
-          talentFilters.role !== "All roles"
-            ? talentFilters.role
-            : activeProject.requiredRoles.find((role) =>
-                profile.roles.some((talentRole) => talentRole.toLowerCase() === role.name.toLowerCase())
-              )?.name || profile.roles[0];
-
-        return scoreTalentForProject(activeProject, profile, fallbackRole);
-      })
-      .sort((a, b) => {
-        const aScore =
-          a.portfolioFitScore * 0.34 +
-          a.budgetFitScore * 0.16 +
-          a.distributionScore * 0.16 +
-          a.availabilityLikelihood * 0.14;
-        const bScore =
-          b.portfolioFitScore * 0.34 +
-          b.budgetFitScore * 0.16 +
-          b.distributionScore * 0.16 +
-          b.availabilityLikelihood * 0.14;
-        return bScore - aScore;
-      });
-  }, [activeProject, talent, talentFilters, talentSearchQuery]);
-
+  const talent = useAgencyStore((state) => state.talent);
   const roleOptions = useMemo(
-    () =>
-      ["All roles", ...new Set(talent.flatMap((profile) => profile.roles))]
-        .slice(0, 16),
-    [talent]
+    () => ["All roles", ...new Set(talent.flatMap((profile) => profile.roles))].slice(0, 16),
+    [talent],
   );
   const cityOptions = useMemo(
     () => ["All cities", ...new Set(talent.map((profile) => profile.city))].slice(0, 12),
-    [talent]
+    [talent],
   );
   const tagOptions = useMemo(
     () => ["All tags", ...new Set(talent.flatMap((profile) => profile.tags))].slice(0, 14),
-    [talent]
+    [talent],
   );
 
-  const shortlistTarget = activeProject || projects.find((project) => project.id === selectedProjectId) || null;
-  const gridCards = derivedCards.slice(0, 18);
-  const topPicks = gridCards.slice(0, 4);
-  const briefSummaryLines = useMemo(() => {
-    if (!activeProject) {
-      return [];
-    }
-
-    const lines = [
-      handoffPrefill?.projectIdea
-        ? `Brief: ${handoffPrefill.projectIdea}`
-        : `Brief: ${activeProject.title}`,
-      `City: ${handoffPrefill?.city || activeProject.city}`,
-      `Timing: ${handoffPrefill?.date || activeProject.dateLabel}`,
-      `Scale: ${handoffPrefill?.scale || activeProject.budgetRange}`,
-      `Vibe: ${handoffPrefill?.vibe || activeProject.description}`,
-      `Roles: ${
-        Array.isArray(handoffPrefill?.suggestedRoles) && handoffPrefill?.suggestedRoles.length
-          ? handoffPrefill.suggestedRoles.join(", ")
-          : activeProject.requiredRoles.map((role) => role.name).join(", ")
-      }`,
-    ];
-
-    return lines;
-  }, [activeProject, handoffPrefill]);
+  const shortlistTarget = activeProject || null;
+  const recommendationState = useMemo(
+    () =>
+      buildCrewRecommendationState({
+        project: activeProject,
+        prefill: handoffPrefill,
+        searchQuery: talentSearchQuery,
+        filters: talentFilters,
+      }),
+    [activeProject, handoffPrefill, talentFilters, talentSearchQuery],
+  );
+  const surfacedCount = recommendationState.candidateGroups.reduce(
+    (count, group) => count + group.candidates.length,
+    0,
+  );
 
   const missingRequiredLabels = useMemo(
     () =>
@@ -345,18 +245,90 @@ export function ExploreTalentView() {
             </div>
           ) : null}
 
-          {briefSummaryLines.length ? (
-            <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {briefSummaryLines.map((line) => (
-                <div
-                  key={line}
-                  className={`rounded-[22px] border px-4 py-3 text-sm ${
-                    isDark ? "border-white/10 bg-white/8 text-white/72" : "border-black/8 bg-white text-ink"
-                  }`}
-                >
-                  {line}
+          {recommendationState.brief ? (
+            <div className="mt-6 space-y-4">
+              <div
+                className={`rounded-[24px] border px-4 py-4 ${
+                  isDark ? "border-white/10 bg-white/8" : "border-black/8 bg-white"
+                }`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p
+                      className={`text-[10px] uppercase tracking-[0.22em] ${
+                        isDark ? "text-white/42" : "text-ink-light"
+                      }`}
+                    >
+                      Current brief
+                    </p>
+                    <h2 className={`mt-2 text-2xl font-semibold tracking-tight ${isDark ? "text-white" : "text-ink"}`}>
+                      {recommendationState.brief.projectIdea}
+                    </h2>
+                  </div>
+                  <span
+                    className={`rounded-pill px-3 py-1.5 text-xs font-medium ${
+                      isDark ? "bg-white/10 text-white/72" : "bg-canvas text-ink-light"
+                    }`}
+                  >
+                    {recommendationState.brief.sourceMode === "brief_handoff"
+                      ? "Brief from Sagasan"
+                      : "Saved project view"}
+                  </span>
                 </div>
-              ))}
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <SnapshotLine
+                    label="City"
+                    value={recommendationState.brief.city}
+                    dark={isDark}
+                  />
+                  <SnapshotLine
+                    label="Timing"
+                    value={recommendationState.brief.dateWindow}
+                    dark={isDark}
+                  />
+                  <SnapshotLine
+                    label="Scale"
+                    value={recommendationState.brief.scale}
+                    dark={isDark}
+                  />
+                  <SnapshotLine
+                    label="Vibe"
+                    value={
+                      recommendationState.brief.vibeTags.length
+                        ? recommendationState.brief.vibeTags.join(", ")
+                        : "Not specified yet"
+                    }
+                    dark={isDark}
+                  />
+                </div>
+              </div>
+
+              <div
+                className={`rounded-[24px] border px-4 py-4 text-sm leading-7 ${
+                  isDark ? "border-white/10 bg-white/8 text-white/72" : "border-black/8 bg-white text-ink-light"
+                }`}
+              >
+                {recommendationState.noOneContactedDisclaimer}
+              </div>
+
+              <div className="grid gap-3 lg:grid-cols-2">
+                {recommendationState.suggestedRoles.map((role) => (
+                  <div
+                    key={role.id}
+                    className={`rounded-[22px] border px-4 py-3 ${
+                      isDark ? "border-white/10 bg-white/8" : "border-black/8 bg-white"
+                    }`}
+                  >
+                    <p className={`text-sm font-semibold ${isDark ? "text-white" : "text-ink"}`}>
+                      {role.role}
+                    </p>
+                    <p className={`mt-2 text-sm leading-6 ${isDark ? "text-white/68" : "text-ink-light"}`}>
+                      {role.rationale}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : null}
 
@@ -431,111 +403,169 @@ export function ExploreTalentView() {
         </motion.section>
 
         {!talentSearchBlocked ? (
-        <section className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.26em] text-ink-light">Picks for you</p>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">
-                Picks for you.
-              </h2>
-            </div>
-            <div className="rounded-pill border border-black/8 bg-white/70 px-4 py-2 text-xs font-medium text-ink-light shadow-sm">
-              {gridCards.length} surfaced
-            </div>
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-            {topPicks.map((card) => (
-              <button
-                key={`pick-${card.id}`}
-                onClick={() => openTalentProfile(card.id, shortlistTarget?.id)}
-                className="overflow-hidden rounded-[24px] border border-black/8 bg-white/88 text-left shadow-[0_16px_40px_rgba(17,17,17,0.06)]"
-              >
-                <div className="relative h-[180px]">
-                  <Image src={getExplorerCardImage(card)} alt={card.name} fill sizes="(max-width: 1280px) 50vw, 25vw" className="object-cover" />
-                </div>
-                <div className="space-y-2 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-lg font-semibold tracking-tight text-ink">{card.name}</p>
-                    <span className="rounded-pill bg-canvas px-3 py-1 text-[11px] font-medium text-ink-light">
-                      {getExplorerCandidateStatus(card)}
-                    </span>
-                  </div>
-                  <p className="text-sm text-ink-light">{getExplorerCandidateSummary(card, activeProject)}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {gridCards.map((card, index) => (
-            <motion.article
-              key={card.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08 + index * 0.02 }}
-              className="overflow-hidden rounded-[28px] border border-white/8 bg-white/78 shadow-[0_16px_40px_rgba(17,17,17,0.06)] backdrop-blur-xl"
-            >
-              <div className="relative h-[250px]">
-                <Image src={getExplorerCardImage(card)} alt={card.name} fill sizes="(max-width: 1200px) 50vw, 33vw" className="object-cover" />
-                <div className="absolute left-4 top-4 rounded-pill bg-white/92 px-3 py-1.5 text-xs font-medium text-ink shadow-sm">
-                  {card.primaryRole}
-                </div>
+          <section className="space-y-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.26em] text-ink-light">Build my crew</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">
+                  Role-by-role review.
+                </h2>
               </div>
-              <div className="space-y-4 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-xl font-semibold tracking-tight text-ink">{card.name}</h3>
-                    <p className="mt-1 text-sm text-ink-light">{card.city}</p>
-                    <p className="mt-3 text-sm leading-6 text-ink-light">
-                      {getExplorerCandidateSummary(card, activeProject)}
-                    </p>
-                  </div>
-                  <div className="rounded-pill bg-canvas px-3 py-1.5 text-xs font-medium text-ink">
-                    {card.availabilitySignal}
+              <div className="rounded-pill border border-black/8 bg-white/70 px-4 py-2 text-xs font-medium text-ink-light shadow-sm">
+                {surfacedCount} surfaced
+              </div>
+            </div>
+
+            {recommendationState.candidateGroups.length === 0 ? (
+              <div className="rounded-[24px] border border-black/8 bg-white/88 px-5 py-5 text-sm leading-7 text-ink-light shadow-[0_16px_40px_rgba(17,17,17,0.06)]">
+                No demo candidates surfaced for this filter set yet. Reset the filters or keep refining the brief.
+              </div>
+            ) : null}
+
+            {recommendationState.candidateGroups.map((group) => (
+              <section key={group.role.id} className="space-y-3">
+                <div
+                  className={`rounded-[24px] border px-5 py-4 ${
+                    isDark ? "border-white/10 bg-white/8" : "border-black/8 bg-white/88 shadow-[0_16px_40px_rgba(17,17,17,0.06)]"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className={`text-lg font-semibold tracking-tight ${isDark ? "text-white" : "text-ink"}`}>
+                        {group.role.role}
+                      </p>
+                      <p className={`mt-2 text-sm leading-6 ${isDark ? "text-white/68" : "text-ink-light"}`}>
+                        {group.role.rationale}
+                      </p>
+                    </div>
+                    <span
+                      className={`rounded-pill px-3 py-1.5 text-xs font-medium ${
+                        isDark ? "bg-white/10 text-white/72" : "bg-canvas text-ink-light"
+                      }`}
+                    >
+                      {group.candidates.length} to review
+                    </span>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  <span className="rounded-pill bg-canvas px-3 py-1.5 text-[11px] font-medium text-ink-light">
-                    {getExplorerCandidateStatus(card)}
-                  </span>
-                  {card.credits.slice(0, 1).map((credit) => (
-                    <span key={credit} className="rounded-pill bg-canvas px-3 py-1.5 text-[11px] font-medium text-ink-light">
-                      {credit}
-                    </span>
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {group.candidates.map((candidate, index) => (
+                    <motion.article
+                      key={`${group.role.role}-${candidate.id}`}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.04 + index * 0.02 }}
+                      className="overflow-hidden rounded-[28px] border border-white/8 bg-white/78 shadow-[0_16px_40px_rgba(17,17,17,0.06)] backdrop-blur-xl"
+                    >
+                      <div className="relative h-[240px]">
+                        <Image
+                          src={candidate.imageSrc}
+                          alt={candidate.name}
+                          fill
+                          sizes="(max-width: 1200px) 50vw, 33vw"
+                          className="object-cover"
+                        />
+                        <div className="absolute left-4 top-4 rounded-pill bg-white/92 px-3 py-1.5 text-xs font-medium text-ink shadow-sm">
+                          {candidate.role}
+                        </div>
+                      </div>
+
+                      <div className="space-y-4 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <h3 className="text-xl font-semibold tracking-tight text-ink">
+                              {candidate.name}
+                            </h3>
+                            <p className="mt-1 text-sm text-ink-light">{candidate.location}</p>
+                          </div>
+                          <div className="rounded-pill bg-canvas px-3 py-1.5 text-xs font-medium text-ink">
+                            {candidate.availabilityLabel}
+                          </div>
+                        </div>
+
+                        <p className="text-sm leading-6 text-ink-light">
+                          {candidate.whyThisPersonMayFit}
+                        </p>
+
+                        <div className="space-y-2 rounded-[20px] bg-canvas px-4 py-3">
+                          <InfoRow label="Review" value={candidate.reviewStatus} />
+                          <InfoRow label="Contact" value={candidate.contactabilityStatus} />
+                          <InfoRow label="Source" value={candidate.sourceMode === "demo_seed" ? "Demo seed profile" : candidate.sourceMode} />
+                          <InfoRow label="Evidence" value={candidate.evidence} />
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <span className="rounded-pill bg-canvas px-3 py-1.5 text-[11px] font-medium text-ink-light">
+                            Not contacted
+                          </span>
+                          <span className="rounded-pill bg-canvas px-3 py-1.5 text-[11px] font-medium text-ink-light">
+                            Not confirmed
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={() => openTalentProfile(candidate.id, shortlistTarget?.id)}
+                            className="rounded-pill border border-black/8 bg-white px-4 py-2.5 text-sm font-medium text-ink shadow-sm"
+                          >
+                            View profile
+                          </button>
+                          {shortlistTarget ? (
+                            <button
+                              onClick={() =>
+                                addTalentToShortlist(
+                                  shortlistTarget.id,
+                                  candidate.id,
+                                  candidate.role,
+                                )
+                              }
+                              className="rounded-pill bg-accent px-4 py-2.5 text-sm font-medium text-ink"
+                            >
+                              Add to shortlist
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    </motion.article>
                   ))}
                 </div>
-
-                <div className="grid grid-cols-3 gap-2">
-                  <ScorePill label="Portfolio" value={card.portfolioFitScore} compact title="How closely the work matches the visual brief." />
-                  <ScorePill label="Budget" value={card.budgetFitScore} compact title="How well the rate range fits the ask." />
-                  <ScorePill label="Audience" value={card.distributionScore} compact title="How much cultural pull this person can add." />
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => openTalentProfile(card.id, shortlistTarget?.id)}
-                    className="rounded-pill border border-black/8 bg-white px-4 py-2.5 text-sm font-medium text-ink shadow-sm"
-                  >
-                    View Profile
-                  </button>
-                  {shortlistTarget ? (
-                    <button
-                      onClick={() => addTalentToShortlist(shortlistTarget.id, card.id, card.primaryRole)}
-                      className="rounded-pill bg-accent px-4 py-2.5 text-sm font-medium text-ink"
-                    >
-                      Add to Shortlist
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            </motion.article>
-          ))}
-          </div>
-        </section>
+              </section>
+            ))}
+          </section>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function SnapshotLine({
+  dark,
+  label,
+  value,
+}: {
+  dark: boolean;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div
+      className={`rounded-[22px] border px-4 py-3 ${
+        dark ? "border-white/10 bg-white/8" : "border-black/8 bg-white"
+      }`}
+    >
+      <p className={`text-[10px] uppercase tracking-[0.18em] ${dark ? "text-white/42" : "text-ink-light"}`}>
+        {label}
+      </p>
+      <p className={`mt-2 text-sm font-medium ${dark ? "text-white/76" : "text-ink"}`}>{value}</p>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-3 text-xs">
+      <span className="uppercase tracking-[0.16em] text-ink-light">{label}</span>
+      <span className="text-right font-medium text-ink">{value}</span>
     </div>
   );
 }
@@ -580,29 +610,5 @@ function FilterSelect({
         </option>
       ))}
     </select>
-  );
-}
-
-function ScorePill({
-  label,
-  value,
-  compact = false,
-  title,
-}: {
-  label: string;
-  value: number;
-  compact?: boolean;
-  title?: string;
-}) {
-  return (
-    <div
-      title={title}
-      className={`rounded-[18px] ${compact ? "bg-canvas" : "bg-white/[0.06]"} px-3 py-2`}
-    >
-      <p className={`text-[10px] uppercase tracking-[0.18em] ${compact ? "text-ink-light" : "text-white/34"}`}>
-        {label}
-      </p>
-      <p className={`mt-1 text-sm font-semibold ${compact ? "text-ink" : "text-white"}`}>{Math.round(value)}</p>
-    </div>
   );
 }
