@@ -302,7 +302,7 @@ export function getLlmConfigPresence() {
     modeEffective,
     provider: providerEffective,
     mode: modeEffective,
-    model: cleanEnvText(modelEnv.value) || "gpt-5.4-mini",
+    model: cleanEnvText(modelEnv.value) || "gpt-4o-mini",
     customBaseUrlConfigured: Boolean(cleanEnvText(baseUrlEnv.value)),
     shadowMode: modeEffective === "shadow",
     activeLiveAllowed: false,
