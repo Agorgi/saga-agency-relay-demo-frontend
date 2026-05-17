@@ -30,7 +30,7 @@ import {
 } from "@/lib/webChatRuntimeSettings";
 import { upsertProjectFromBrief } from "@/lib/projectBriefUpsert";
 import type { ProjectJourney } from "@/lib/journey/types";
-import { logServerError } from "@/sms-engine/safeLogging";
+import { captureServerError } from "@/lib/observability";
 
 type ReplyMode = "autonomous" | "holding";
 
@@ -171,7 +171,13 @@ async function persistBriefAndAdvanceJourney({
     });
     return { projectId: result.projectId, journey: result.journey };
   } catch (error) {
-    logServerError("persistBriefAndAdvanceJourney", error);
+    captureServerError("persistBriefAndAdvanceJourney", error, {
+      tags: {
+        persona: persona ?? "unknown",
+        route: "/api/web-chat",
+        operation: "upsertProjectFromBrief",
+      },
+    });
     return { projectId: null, journey: null };
   }
 }
@@ -321,10 +327,20 @@ export async function POST(req: NextRequest) {
     });
 
     if (!result.ok) {
-      console.error("Sagasan live reply failed", {
-        errorCategory: result.errorCategory,
-        errorMessage: result.errorMessage,
-      });
+      captureServerError(
+        "sagasan_live_reply_failed",
+        result.errorMessage || new Error(result.errorCategory || "unknown"),
+        {
+          metadata: {
+            errorCategory: result.errorCategory,
+          },
+          tags: {
+            persona: persona ?? "unknown",
+            route: "/api/web-chat",
+            operation: "generateAgentReply",
+          },
+        },
+      );
       await recordSystemHoldingFallback();
     }
 
@@ -373,7 +389,12 @@ export async function POST(req: NextRequest) {
       journey,
     });
   } catch (error) {
-    console.error("Web chat request failed", error);
+    captureServerError("web_chat_request_failed", error, {
+      tags: {
+        persona: persona ?? "unknown",
+        route: "/api/web-chat",
+      },
+    });
     const reply = buildUiFallbackReply(persona);
     let turn = history.filter((message) => message.role === "assistant").length;
 
@@ -435,7 +456,13 @@ export async function POST(req: NextRequest) {
         },
       });
     } catch (persistError) {
-      console.error("Web chat fallback persistence failed", persistError);
+      captureServerError("web_chat_fallback_persistence_failed", persistError, {
+        tags: {
+          persona: persona ?? "unknown",
+          route: "/api/web-chat",
+          operation: "appendTurn",
+        },
+      });
     }
 
     return successResponse({

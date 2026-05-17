@@ -69,8 +69,34 @@ Set in Vercel project settings → Environment Variables. Restart deployment aft
 | `TWILIO_API_CALLS_FORBIDDEN` | `true` (SMS kill switch) | Leave on until A2P approval + design-partner consent is in place |
 | `PUBLIC_BETA_ENABLED`, `PUBLIC_LAUNCH_ENABLED` | `false` | Leave off; design-partner phase only |
 | `DATABASE_URL`, `POSTGRES_URL_NON_POOLING` | Set | Required for runtime + migrations |
+| `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` | unset | Optional. Set both to flip Sentry live (server + browser). When unset, SDK is a no-op and errors still flow through structured logs |
+| `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` | unset | Optional. Set together at build time to upload source maps. Skip if you don't need readable stack traces in Sentry |
+| `SENTRY_ENVIRONMENT`, `SENTRY_TRACES_SAMPLE_RATE` | unset | Optional. Environment defaults to `VERCEL_ENV`; traces sample rate defaults to `0.1` |
 
 See `.env.example` for the full list.
+
+### Sentry observability runbook
+
+**Wiring (already shipped in PR #33):**
+- `@sentry/nextjs` installed and wired via `instrumentation.ts` + `sentry.{client,server,edge}.config.ts`.
+- All Sentry init paths are gated on `SENTRY_DSN` — when unset, init returns immediately.
+- `beforeSend` and `beforeBreadcrumb` run every event through `redactForLog()` (the same redactor `logServerError` uses), so emails / phones / OpenAI keys / Twilio SIDs / DB URLs are stripped before send.
+- `src/lib/observability.ts` exports `captureServerError(action, error, ctx)` — the canonical server-error helper. It always writes a structured log line; it forwards to Sentry only when DSN is configured.
+- `/api/health` reports `sentry.dsn_configured` (boolean), `sentry.environment`, `sentry.traces_sample_rate`. The DSN value itself is never returned.
+
+**To flip Sentry live:**
+1. Create a Sentry project (https://sentry.io). Get the server DSN and the client/browser DSN — usually the same value.
+2. Set in Vercel:
+   - `SENTRY_DSN` (server) — Production, Preview, Development as appropriate
+   - `NEXT_PUBLIC_SENTRY_DSN` (browser) — same value as `SENTRY_DSN`
+   - `SENTRY_ENVIRONMENT` — `production` / `preview` / `development`
+   - Optional: `SENTRY_TRACES_SAMPLE_RATE` (default `0.1`)
+3. Optional, for source maps: also set `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN`. The auth token is build-time only; treat it as a secret.
+4. Redeploy. Check `/api/health` — `sentry.dsn_configured` should be `true`.
+5. Smoke test: hit a route that throws (e.g. force-error a dev endpoint), confirm the event lands in Sentry with PII scrubbed (no email/phone/key strings in the payload).
+
+**To roll back Sentry:**
+- Unset `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` in Vercel and redeploy. SDK becomes a no-op; structured logs continue working unchanged.
 
 ## Rollback playbook
 

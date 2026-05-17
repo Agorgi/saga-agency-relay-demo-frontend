@@ -179,6 +179,7 @@ These have been closed by prior pushes. Listed so future work doesn't accidental
 - **Build my Crew page (`/projects/[id]/crew`)** — shipped in PR #20.
 - **Candidate review per role (`/projects/[id]/crew/[roleId]`) + review API** — shipped in PR #21. Honesty contract pinned at the type level (`outreachStatus: "not_prepared"`).
 - **Legacy `sms-engine/` partial cleanup** — PR #23 deleted `.original` package files + dead nested CI workflow. Remaining: railway.json, docker-compose.yml, prisma.config.ts, leftover Next.js shell (`next.config.ts`, `postcss.config.mjs`, `eslint.config.mjs`, `next-env.d.ts`, `public/`) — verify Railway state before deleting.
+- **Sentry observability wired** — closed in PR #33. `@sentry/nextjs` installed; `instrumentation.ts` + `sentry.{client,server,edge}.config.ts` initialize the SDK when `SENTRY_DSN` is set. `beforeSend` and `beforeBreadcrumb` route every event through `redactForLog()` so PII never leaves the runtime. `captureServerError()` in `src/lib/observability.ts` is the canonical server-error helper (writes structured log line + forwards to Sentry when DSN is configured). Three raw `console.error` sites + one `logServerError` site in `src/app/api/web-chat/route.ts` migrated. `/api/health` reports `sentry.dsn_configured` (DSN value never exposed). Error boundaries added at `src/app/error.tsx` + `src/app/global-error.tsx`. SDK is gated off by default — set `SENTRY_DSN` + `NEXT_PUBLIC_SENTRY_DSN` in Vercel to flip live. See `docs/DEPLOY.md` "Sentry observability runbook."
 
 ---
 

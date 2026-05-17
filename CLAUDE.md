@@ -298,6 +298,7 @@ Honest inventory. Update when feature state changes.
 | Admin command center | Real | 40+ `/admin/*` pages |
 | Public beta admission | Built, gated off | `BetaInviteCode`; `pilotStage: internal_test` |
 | Public launch | Disabled | `publicLaunchEnabled: false` |
+| Sentry observability | Wired, gated off by default | PR #33: `@sentry/nextjs` installed; `instrumentation.ts` + `sentry.{client,server,edge}.config.ts` initialize the SDK when `SENTRY_DSN` is set. `beforeSend` reuses `redactForLog()` so PII is scrubbed. `captureServerError()` in `src/lib/observability.ts` is the canonical helper. `/api/health` reports `sentry.dsn_configured` without exposing the DSN. To flip live, set `SENTRY_DSN` + `NEXT_PUBLIC_SENTRY_DSN` in Vercel — see docs/DEPLOY.md "Sentry observability runbook." |
 | Convergence with `apps/app-server` (main repo) | Not started | Phase 2 work; backend migrates after tracer ships |
 | iOS client parity | Not started | Phase 3 work; iOS UI rebuilds against shared backend |
 

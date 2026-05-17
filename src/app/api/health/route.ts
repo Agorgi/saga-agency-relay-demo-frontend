@@ -31,6 +31,7 @@ import { getTalentDiscoveryHealthSnapshot } from "@/sms-engine/sourcing/talentDi
 import { getTalentResearchQualityHealthSnapshot } from "@/sms-engine/sourcing/talentResearchQuality";
 import { getCandidateGraphHealthSnapshot } from "@/sms-engine/graph/candidateGraphHealth";
 import { getMatchingEvaluationHealthSnapshot } from "@/sms-engine/matchingEval/matchingEvaluationHealth";
+import { sentryHealthSummary } from "@/lib/observability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -171,6 +172,7 @@ export async function GET() {
       },
       messagingPipeline,
       observability,
+      sentry: sentryHealthSummary(),
       publicBetaAccess,
       pilotDataOps: {
         pilotDataOpsAvailable: pilotDataOps.pilotDataOpsAvailable,
