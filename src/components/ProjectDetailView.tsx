@@ -235,7 +235,13 @@ export function ProjectDetailView({ eventSlug }: { eventSlug?: string }) {
                 <StatRow label="Applications" value={`${event.applications.length}`} />
               </div>
               <p className="mt-4 text-sm leading-6 text-white/58">
-                Crew is distribution. Ticket demand, mutuals, and public applications all feed the staffing view.
+                {/* Closes P2-OI-22: add a one-sentence gloss so the
+                 * "Crew is distribution" line doesn't read as opaque
+                 * jargon to a first-time viewer. */}
+                Crew is distribution &mdash; the people you book are the
+                people your audience already follows. Ticket demand,
+                mutuals, and public applications all feed the staffing
+                view.
               </p>
               <div className="mt-5">
                 <PrimaryButton onClick={() => openWorkspace(event.id)} label="Open Production Workspace" />

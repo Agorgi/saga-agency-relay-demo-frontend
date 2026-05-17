@@ -598,7 +598,11 @@ function inferHostProjectType(value: string): ProjectType {
   const lower = value.toLowerCase();
   if (/picnic/.test(lower)) return "Pop-up / activation";
   if (/pop-?up|activation|launch/.test(lower)) return "Pop-up / activation";
-  if (/fan|gala|watch party|meetup/.test(lower)) return "Fan event";
+  // Closes P2-OI-14: bare `fan` used to match any string containing "fan"
+  // as a substring (e.g. "fandom event"), miscategorizing host briefs as
+  // "Fan event" on /projects/new. Restrict to explicit phrases and a
+  // word-bounded `fan event` form.
+  if (/\bfan event\b|\bgala\b|\bwatch party\b|\bmeetup\b/.test(lower)) return "Fan event";
   if (/editorial|lookbook|photoshoot|photo shoot/.test(lower)) return "Photoshoot";
   if (/music video/.test(lower)) return "Music video";
   if (/video|trailer|film/.test(lower)) return "Video shoot";
@@ -817,6 +821,13 @@ const FAN_SIGNAL_PATTERNS = [
   /\bevents this weekend\b/i,
   /\bthis weekend\b/i,
   /\bon friday\b/i,
+  // Closes P2-OI-9: time-bound discovery questions that lacked an
+  // adjacent "events" / "go" anchor used to fall through to the
+  // generic lane router. The strict-pattern fan classifier now
+  // catches them.
+  /\bwhat'?s happening (?:on |tonight|this )?\w*\b/i,
+  /\bwhere should i go\b/i,
+  /\b(?:any|good) (?:anime |cosplay )?events (?:this|tonight|tomorrow)\b/i,
 ];
 
 const HOST_SIGNAL_PATTERNS = [
@@ -1139,7 +1150,10 @@ function buildCreativeNextStep(
   }
 
   return {
-    label: "Open my feed",
+    // Closes P2-OI-11: this CTA routes to /me (the creative's home
+    // dashboard, not a feed surface). "Open my profile" is the honest
+    // label.
+    label: "Open my profile",
     route: "/me",
     prefill: {
       city: fields.city || "Flexible",
@@ -1386,7 +1400,23 @@ function buildDeterministicReply({
         : "Got it — I can shape this into a partial brief now. Keep filling in the project details.",
       creative: "Got it — I shaped that into your creative profile draft.",
       venue: "Got it — I shaped that into your space profile draft.",
-      fan: "Got it. I tuned that into your event feed setup.",
+      // Closes P2-OI-24: vary the fan acknowledgment by what was
+      // actually captured. Same boilerplate string used to fire for
+      // every fan-classified prompt regardless of intent.
+      fan: (() => {
+        const interests = extractedFields.interests.slice(0, 2).join(" and ");
+        const city = extractedFields.city;
+        if (interests && city) {
+          return `Got it — I'll surface ${interests} events around ${city}.`;
+        }
+        if (interests) {
+          return `Got it — I'll watch for ${interests} events you can attend.`;
+        }
+        if (city) {
+          return `Got it — I'll surface what's happening around ${city}.`;
+        }
+        return "Got it — I'll tune your feed for what's worth showing up to.";
+      })(),
     } satisfies Record<Exclude<Persona, null>, string>;
 
     return {

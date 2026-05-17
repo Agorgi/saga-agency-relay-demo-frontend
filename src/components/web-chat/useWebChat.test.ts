@@ -168,7 +168,7 @@ test("mergeRestoredMessages prefers backend content over weaker UI fallback", ()
         persona: "creative",
         mode: "holding",
         nextStep: {
-          label: "Open my feed",
+          label: "Open my profile",
           route: "/me",
           prefill: {
             city: "Los Angeles",
@@ -207,7 +207,7 @@ test("resolveRestoredPersona clears stale host state when server restores a crea
         persona: "creative",
         mode: "holding",
         nextStep: {
-          label: "Open my feed",
+          label: "Open my profile",
           route: "/me",
           prefill: {
             city: "Los Angeles",

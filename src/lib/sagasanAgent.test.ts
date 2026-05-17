@@ -327,6 +327,28 @@ test("time-bound discovery prompts default to fan", () => {
   }
 });
 
+test("fan acknowledgment varies by extracted intent rather than being a fixed string", () => {
+  // Closes P2-OI-24: the canned fan ack ("Got it. I tuned that into
+  // your event feed setup.") used to fire for every fan-classified
+  // prompt regardless of what was captured. Now it interpolates
+  // interests + city when present.
+  const interestsOnly = buildMockAgentReply({
+    persona: "fan",
+    history: [],
+    latestMessage: "I want to find cool anime and cosplay events.",
+  });
+  assert.match(interestsOnly.reply, /anime|cosplay/i);
+  assert.equal(/your event feed setup/i.test(interestsOnly.reply), false);
+
+  const interestsAndCity = buildMockAgentReply({
+    persona: "fan",
+    history: [],
+    latestMessage: "I want to find cool anime events in Brooklyn.",
+  });
+  assert.match(interestsAndCity.reply, /brooklyn/i);
+  assert.match(interestsAndCity.reply, /anime/i);
+});
+
 test("booking and gig-certainty prompts use scoped boundary replies", () => {
   const teamBooking = buildMockAgentReply({
     persona: resolvePersona({
@@ -621,7 +643,7 @@ test("live reply uses the provided OpenAI call and preserves nextStep", async ()
         data: {
           message: "Perfect. I can line up your feed now.",
           nextStep: {
-            label: "Open my feed",
+            label: "Open my profile",
             route: "/me",
             prefill: {
               city: "Los Angeles",
@@ -646,7 +668,7 @@ test("live reply uses the provided OpenAI call and preserves nextStep", async ()
   );
   assert.match(capturedPrompt, /Reply with Sagasan's next message/);
   assert.equal(result.data.nextStep?.route, "/me");
-  assert.equal(result.data.nextStep?.label, "Open my feed");
+  assert.equal(result.data.nextStep?.label, "Open my profile");
 });
 
 test("getConfiguredModel falls back to a real model when env var is a known-invalid string", () => {

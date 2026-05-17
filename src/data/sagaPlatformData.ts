@@ -265,8 +265,12 @@ const EVENT_FIXTURES = [
     mutualCount: 34,
     description:
       "A punk-future rave where anime fandom meets warehouse dancefloor energy, graffiti visuals, and creator-led distribution.",
+    // Closes P2-OI-12: the prior long description read as internal
+    // product framing aimed at a Saga reader rather than a fan landing
+    // on the page from a share link. Replaced with a normal fan-facing
+    // event tagline.
     longDescription:
-      "The rave public page sells scarce tickets while backstage Saga tracks DJ, social, volunteer, and photo roles against demand signals and audience reach.",
+      "Two rooms, six DJs, one all-night warehouse takeover. Expect anime fits, dance-floor everything, and visuals from the LA cosplay scene.",
     hostName: "Saga Nights",
     ticketTiers: [
       { id: "ga", name: "General Admission", description: "All-night dance floor entry.", price: 22, remaining: 96, maxPerPerson: 4 },
