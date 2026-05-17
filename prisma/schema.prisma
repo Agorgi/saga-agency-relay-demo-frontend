@@ -1105,6 +1105,7 @@ model Project {
   talentSearchRuns        TalentSearchRun[]
   talentResearchReviews   TalentResearchReview[]
   publicWebResearchRuns   PublicWebResearchRun[]
+  projectJourney          ProjectJourney?
 
   @@index([source])
   @@index([status])
@@ -1112,6 +1113,33 @@ model Project {
   @@index([existingSagaCommunityId])
   @@index([organizerPersonId])
   @@index([updatedAt])
+}
+
+enum ProjectJourneyStep {
+  intake
+  brief_ready
+  crew_reviewing
+  outreach_prep
+  outreach_awaiting_send
+  outreach_sent
+  archived
+}
+
+// One-to-one with Project. Owns the producer-journey state machine that
+// drives what UI surfaces show next. See CLAUDE.md "Core types" and
+// src/lib/journey/types.ts for the state-transition contract.
+model ProjectJourney {
+  id             String             @id @default(cuid())
+  projectId      String             @unique
+  step           ProjectJourneyStep @default(intake)
+  primaryAction  Json
+  blockers       Json               @default("[]")
+  lastTransition DateTime           @default(now())
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  project        Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([step])
 }
 
 model RoleOpening {
