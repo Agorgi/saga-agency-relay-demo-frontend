@@ -4,6 +4,7 @@ import {
   buildOrganizerCorrectionReply,
   evaluateOrganizerBriefReadiness,
   extractOrganizerIntakeFieldsFromMessages,
+  formatOrganizerReflectiveSummary,
 } from "@/lib/sagasanOrganizerIntake";
 
 test("organizer intake keeps asking for high-signal context after idea plus city", () => {
@@ -33,8 +34,17 @@ test("organizer intake keeps asking for high-signal context after idea plus city
   assert.ok(readiness.missingRequiredFields.includes("helpNeeded"));
   assert.ok(readiness.missingRequiredFields.includes("budget"));
   assert.match(correctionReply, /You're right/i);
-  assert.match(correctionReply, /concept|project idea/i);
+  // Layer B: the reply reflects the user's actual project idea phrase
+  // rather than the category label "project idea" / "concept".
+  assert.match(correctionReply, /formal ball/i);
+  assert.match(correctionReply, /Love and Deepspace/i);
   assert.match(correctionReply, /attendance|venue status|budget/i);
+  // And it doesn't fall back to listing category names.
+  assert.equal(
+    /\bI only have project idea\b/i.test(correctionReply),
+    false,
+    "Layer B reply must not name the category 'project idea' instead of the actual phrase",
+  );
   assert.equal(
     fields.projectIdea?.includes("don't you need more info"),
     false,
@@ -84,4 +94,61 @@ test("idea, city, and timing alone do not unlock a production plan", () => {
   assert.ok(readiness.missingRequiredFields.includes("lineupStatus"));
   assert.ok(readiness.missingRequiredFields.includes("helpNeeded"));
   assert.ok(readiness.missingRequiredFields.includes("budget"));
+});
+
+test("Layer B reflective summary surfaces the user's actual phrasing, not category names", () => {
+  // The Step 6 P0 scenario: rich brief, multiple captured fields. The
+  // reflective summary should read "formal ball, LA, July, 150 people,
+  // romantic/elegant…" rather than the legacy "project idea, location,
+  // timing, attendance, vibe".
+  const fields = extractOrganizerIntakeFieldsFromMessages([
+    "I want to throw a formal ball inspired by Love and Deepspace in LA in July. Probably 150 people. Budget is $15k. Vibe is romantic, elegant, space-inspired.",
+  ]);
+  const readiness = evaluateOrganizerBriefReadiness(fields);
+  const summary = formatOrganizerReflectiveSummary(fields, readiness);
+
+  // Reflects the user's own words.
+  assert.match(summary, /formal ball/i);
+  assert.match(summary, /Love and Deepspace/i);
+  assert.match(summary, /150 people/i);
+  assert.match(summary, /\$15k/i);
+  assert.match(summary, /romantic/i);
+
+  // Doesn't fall back to category labels.
+  assert.equal(/\bproject idea\b/i.test(summary), false);
+  assert.equal(/\blocation\b/i.test(summary), false);
+  assert.equal(/\bvibe\b/i.test(summary), false);
+  assert.equal(/\battendance\b/i.test(summary), false);
+});
+
+test("Layer B reflective summary dedupes references already inside the project idea", () => {
+  // When the project idea text already contains an inspiration reference
+  // ("Formal ball inspired by Love and Deepspace"), the reflective summary
+  // shouldn't append "inspired by Love and Deepspace" again as a separate
+  // facet — that's awkward duplication.
+  const fields = extractOrganizerIntakeFieldsFromMessages([
+    "I want to throw a formal ball inspired by Love and Deepspace in July.",
+  ]);
+  const readiness = evaluateOrganizerBriefReadiness(fields);
+  const summary = formatOrganizerReflectiveSummary(fields, readiness);
+
+  // The phrase "Love and Deepspace" appears exactly once.
+  const matches = summary.match(/Love and Deepspace/gi) || [];
+  assert.equal(matches.length, 1);
+});
+
+test("Layer B reflective summary falls back to category labels when no string values exist", () => {
+  // Defensive: if a brief is "known" only via boolean signals (e.g.
+  // inspirationStatus="provided" but inspirationReferences is empty),
+  // there's nothing to reflect. Fall back to the legacy summary so the
+  // reply still reads coherently.
+  const fields = extractOrganizerIntakeFieldsFromMessages([
+    "Yeah, I have references I can share.",
+  ]);
+  const readiness = evaluateOrganizerBriefReadiness(fields);
+  const summary = formatOrganizerReflectiveSummary(fields, readiness);
+
+  // Either way the summary is non-empty (never produces a dangling
+  // "Got it — . " reply).
+  assert.ok(summary.length > 0);
 });

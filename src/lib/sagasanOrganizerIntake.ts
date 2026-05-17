@@ -706,6 +706,94 @@ export function formatOrganizerKnownSummary(readiness: OrganizerBriefReadiness) 
   return formatList(labels);
 }
 
+/**
+ * Layer B reply composition (fallback mode).
+ *
+ * Reflects what Sagasan has captured using the user's own language instead
+ * of category labels.
+ *
+ * Bad (the legacy summary): "I have project idea, location, timing, vibe."
+ * Good (this function):    "formal ball inspired by Love and Deepspace,
+ *                           LA, July, 150 people, romantic and elegant"
+ *
+ * Used by buildOrganizerProgressReply (host intake replies) and
+ * buildOrganizerCorrectionReply (the "you're right" acknowledgment). When
+ * LLM mode is on, the agent's prompt does this composition; this function
+ * is the deterministic backstop.
+ *
+ * Design notes:
+ * - Project idea leads — it's the strongest anchor and usually reads
+ *   naturally as a noun phrase.
+ * - Location, timing, attendance, vibe are interpolated as-is (the user's
+ *   actual phrasing).
+ * - Inspiration references are appended only when they aren't already
+ *   inside the project-idea text (e.g. "ball inspired by Love and
+ *   Deepspace" already names the reference — don't duplicate).
+ * - Budget appears as a quick tail facet.
+ * - Falls back to category labels for completeness if no field values
+ *   are present (seed-idea stage where evaluation considers a field
+ *   "known" via inference like inspirationStatus="provided" but no
+ *   string value is set).
+ */
+export function formatOrganizerReflectiveSummary(
+  fields: OrganizerIntakeFields,
+  readiness: OrganizerBriefReadiness,
+): string {
+  const parts: string[] = [];
+
+  const idea = fields.projectIdea?.trim();
+  if (idea) {
+    parts.push(idea);
+  }
+
+  const location = fields.locationMarket?.trim();
+  if (location && (!idea || !idea.toLowerCase().includes(location.toLowerCase()))) {
+    parts.push(location);
+  }
+
+  const timing = fields.timing?.trim();
+  if (timing && (!idea || !idea.toLowerCase().includes(timing.toLowerCase()))) {
+    parts.push(timing);
+  }
+
+  const attendance = fields.expectedAttendance?.trim();
+  if (attendance) {
+    parts.push(attendance);
+  }
+
+  const vibe = fields.themeVibe?.trim();
+  if (vibe && (!idea || !idea.toLowerCase().includes(vibe.toLowerCase()))) {
+    parts.push(vibe);
+  }
+
+  const refs = fields.inspirationReferences
+    ?.map((r) => r.trim())
+    .filter(
+      (r) =>
+        r &&
+        (!idea ||
+          !idea.toLowerCase().includes(r.toLowerCase())),
+    )
+    .slice(0, 2);
+  if (refs && refs.length > 0) {
+    parts.push(`inspired by ${refs.join(" and ")}`);
+  }
+
+  const budget = fields.budget?.trim();
+  if (budget) {
+    parts.push(`${budget} budget`);
+  }
+
+  if (parts.length === 0) {
+    // No string values to reflect — fall back to category labels so the
+    // reply still reads coherently. This is rare in practice (means the
+    // brief is only "known" via boolean signals like inspirationStatus).
+    return formatOrganizerKnownSummary(readiness);
+  }
+
+  return parts.slice(0, 6).join(", ");
+}
+
 export function formatOrganizerMissingSummary(readiness: OrganizerBriefReadiness) {
   return formatList(
     readiness.missingRequiredFields.map((field) => formatMissingGroup(field)).slice(0, 6),
@@ -811,7 +899,11 @@ export function evaluateOrganizerBriefReadiness(fields: OrganizerIntakeFields): 
 }
 
 export function buildOrganizerCorrectionReply(fields: OrganizerIntakeFields, readiness: OrganizerBriefReadiness) {
-  return `You're right — I only have ${formatOrganizerKnownSummary(readiness)}. To make this useful, I still need ${formatOrganizerMissingSummary(readiness)}. You can send all of that casually in one message.`;
+  // Layer B: reflective summary first, falls back to category labels.
+  // Keeps the "you're right" acknowledgment from sounding like a status
+  // report ("I only have project idea, location, timing").
+  const reflective = formatOrganizerReflectiveSummary(fields, readiness);
+  return `You're right — I only have ${reflective}. To make this useful, I still need ${formatOrganizerMissingSummary(readiness)}. You can send all of that casually in one message.`;
 }
 
 export function buildOrganizerProgressLabel(readiness: OrganizerBriefReadiness) {
