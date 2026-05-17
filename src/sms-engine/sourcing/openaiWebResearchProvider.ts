@@ -83,7 +83,7 @@ function getClient(apiKey: string, baseUrl?: string | null) {
 }
 
 function configuredModel() {
-  return process.env.OPENAI_MODEL || "gpt-5.4-mini";
+  return process.env.OPENAI_MODEL || "gpt-4o-mini";
 }
 
 function configuredTimeout() {

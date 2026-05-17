@@ -190,7 +190,7 @@ export function getLlmRuntimeConfig(): LlmRuntimeConfig {
     modeConfigured: health.modeConfigured as LlmMode,
     modeEffective: health.modeEffective as LlmMode,
     configured: health.configured,
-    model: health.model || "gpt-5.4-mini",
+    model: health.model || "gpt-4o-mini",
     baseUrlConfigured: health.customBaseUrlConfigured,
     warnings: health.warnings,
     timeoutMs: numberEnv(process.env.LLM_TIMEOUT_MS, 8000) || 8000,
