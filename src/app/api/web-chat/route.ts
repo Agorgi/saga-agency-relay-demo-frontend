@@ -5,6 +5,7 @@ import {
   buildUiFallbackReply,
   generateAgentReply,
   normalizeRouteLlmMode,
+  organizerFieldsFromStored,
   resolvePersona,
   type ChatMessage,
 } from "@/lib/sagasanAgent";
@@ -19,6 +20,7 @@ import {
   getOrCreateSession,
   loadConversationMessages,
   loadLatestConversationForSession,
+  type StoredExtractedFields,
   WEB_SESSION_COOKIE_MAX_AGE,
   WEB_SESSION_COOKIE_NAME,
 } from "@/lib/webChatSessionStore";
@@ -26,6 +28,9 @@ import {
   getEffectiveAutonomous,
   recordSystemHoldingFallback,
 } from "@/lib/webChatRuntimeSettings";
+import { upsertProjectFromBrief } from "@/lib/projectBriefUpsert";
+import type { ProjectJourney } from "@/lib/journey/types";
+import { logServerError } from "@/sms-engine/safeLogging";
 
 type ReplyMode = "autonomous" | "holding";
 
@@ -107,6 +112,8 @@ function successResponse({
   mode,
   sessionCookieValue,
   nextStep = null,
+  projectId = null,
+  journey = null,
 }: {
   conversationId: string;
   persona: Persona | null;
@@ -115,6 +122,8 @@ function successResponse({
   mode: ReplyMode;
   sessionCookieValue?: string;
   nextStep?: unknown;
+  projectId?: string | null;
+  journey?: ProjectJourney | null;
 }) {
   return json(
     {
@@ -124,6 +133,8 @@ function successResponse({
       turn,
       mode,
       nextStep,
+      projectId,
+      journey,
     },
     undefined,
     {
@@ -131,6 +142,38 @@ function successResponse({
       persona,
     },
   );
+}
+
+/**
+ * Persist the host brief to a Project row and advance the journey when
+ * readiness crosses the brief_ready threshold. No-ops cleanly for non-host
+ * personas and when the DB isn't available (legacy/preview paths).
+ *
+ * Errors are caught and logged but do not fail the chat reply — the user's
+ * conversation continues working even if the persistence side fails.
+ */
+async function persistBriefAndAdvanceJourney({
+  sessionId,
+  persona,
+  extractedFields,
+}: {
+  sessionId: string;
+  persona: Persona | null;
+  extractedFields: StoredExtractedFields;
+}): Promise<{ projectId: string | null; journey: ProjectJourney | null }> {
+  try {
+    const organizerFields =
+      persona === "host" ? organizerFieldsFromStored(extractedFields) : null;
+    const result = await upsertProjectFromBrief({
+      sessionId,
+      persona,
+      organizerFields,
+    });
+    return { projectId: result.projectId, journey: result.journey };
+  } catch (error) {
+    logServerError("persistBriefAndAdvanceJourney", error);
+    return { projectId: null, journey: null };
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -249,6 +292,12 @@ export async function POST(req: NextRequest) {
         },
       });
 
+      const { projectId, journey } = await persistBriefAndAdvanceJourney({
+        sessionId: session.session.id,
+        persona,
+        extractedFields: holdingReply.extractedFields,
+      });
+
       return successResponse({
         conversationId,
         persona,
@@ -257,6 +306,8 @@ export async function POST(req: NextRequest) {
         mode: "holding",
         sessionCookieValue,
         nextStep: holdingReply.nextStep,
+        projectId,
+        journey,
       });
     }
 
@@ -304,6 +355,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const { projectId, journey } = await persistBriefAndAdvanceJourney({
+      sessionId: session.session.id,
+      persona: result.data.persona,
+      extractedFields: result.data.extractedFields,
+    });
+
     return successResponse({
       conversationId,
       persona: result.data.persona,
@@ -312,6 +369,8 @@ export async function POST(req: NextRequest) {
       mode: replyMode,
       sessionCookieValue,
       nextStep: result.data.nextStep,
+      projectId,
+      journey,
     });
   } catch (error) {
     console.error("Web chat request failed", error);
