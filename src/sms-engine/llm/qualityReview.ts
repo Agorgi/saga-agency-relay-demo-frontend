@@ -56,6 +56,7 @@ function textFromValue(value: unknown): string | null {
   const record = value as Record<string, unknown>;
   for (const key of [
     "replyText",
+    "reply",
     "message",
     "body",
     "selectedText",

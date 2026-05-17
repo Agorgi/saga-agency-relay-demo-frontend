@@ -279,7 +279,7 @@ Honest inventory. Update when feature state changes.
 |------|-------|-------|
 | Sagasan persona classifier | Real, deterministic only | LLM gated off; bare-noun bug in Step 6 P0 below |
 | Sagasan organizer intake | Real, deterministic only | Readiness gate works; reply composition is template-based |
-| Sagasan LLM mode | Gated off | `LLM_ACTIVE_LIVE_DISABLED=true`; model string `gpt-5.4-mini` is invalid (P1-OI-7); latent param bug in `safeLlmReviewText` (P1-OI-8) |
+| Sagasan LLM mode | Gated off | `LLM_ACTIVE_LIVE_DISABLED=true`. Invalid model string and `safeLlmReviewText` placeholder bug closed in PR #1. Vercel env var `OPENAI_MODEL` should be updated separately. |
 | Conversation engine | Shadow mode | `/api/health` reports `conversationEngineMode: "shadow"`, `conversationEngineEffectiveActive: false`. Observable but not active. Gated behind A2P approval. |
 | Brief → /projects/new handoff | Real | Today via base64 prefill; will move to DB-backed |
 | Build My Crew page | Real | `buildMyCrewContracts.ts` enforces brief_handoff vs demo_seed |
@@ -308,15 +308,15 @@ Honest inventory. Update when feature state changes.
 - **P0-OI-1** — Persona re-classification on rich organizer brief silently flips host → creative (the Step 6 regression; details below).
 - **P0-OI-2** — Organizer brief data discarded on persona flip (silent data loss; sibling of P0-OI-1).
 
-**P1 (6 open):**
+**P1 (4 open):**
 - **P1-OI-3** — `/explore` "0 surfaced" empty state on real briefs (search field auto-fills the full brief string).
 - **P1-OI-4** — `/explore` cold-load still labels "Shortlisting into Beauty Brand Creator Content Day" when no `projectId`.
 - **P1-OI-5** — "Cosplay cafe night Brooklyn" misclassifies as venue, not host (same root cause class as P0-OI-1).
 - **P1-OI-6** — "DM that photographer right now" enrolls user as creative instead of outbound-action boundary.
-- **P1-OI-7** — Configured LLM model `gpt-5.4-mini` is invalid. Inert today (gate closed); will 404 on first live call after the toggle flips.
-- **P1-OI-8** — `safeLlmReviewText()` receives raw `data` instead of `data.reply` at `src/lib/sagasanAgent.ts` ~L981–983. Latent.
 
 P2/P3: 32 items in `docs/open-issues.md`. Don't expand inline here.
+
+Recently closed (see resolved appendix in `docs/open-issues.md`): P1-OI-7 (invalid `gpt-5.4-mini` rejected at config-read time; env var still needs production update), P1-OI-8 (`safeLlmReviewText` placeholder leak fixed via `reply` key in `textFromValue`).
 
 ### Step 6 P0 — persona-flip on rich brief
 **Symptom:** sending a rich host brief that contains the word "photographer" (e.g., "I have one photographer friend") silently flips persona host → creative, drops the brief, and routes to `/me?prefill=...` as if the user offered creative services.
@@ -349,12 +349,11 @@ P2/P3: 32 items in `docs/open-issues.md`. Don't expand inline here.
 
 **Implication for QA:** every Sagasan reply tested in recent audits came from the deterministic handler in `src/lib/sagasanAgent.ts`, NOT the LLM. The "doesn't feel personal" complaint is partially a fallback-template problem (Layer B composition is templated) and partially a not-yet-enabled-LLM problem (Layer B prompt-driven composition gets warmer in LLM mode).
 
-**Three issues are latent until live mode flips on:**
-- `gpt-5.4-mini` is not a real model (P1-OI-7). Replace with `gpt-4o-mini` for intake; reserve `gpt-5-mini` / `gpt-4.1-mini` for higher-stakes turns if available in your org account.
-- `safeLlmReviewText()` parameter bug (P1-OI-8). Pass `data.reply`, not raw `data`.
+**Remaining concerns when live mode flips on:**
+- `OPENAI_MODEL` env var on Vercel may still be set to `gpt-5.4-mini`. PR #1 hardened `getConfiguredModel()` to reject this string and fall back to `gpt-4o-mini`, but fixing the env var at the source is cleaner. Update it in the Vercel dashboard when convenient.
 - Earlier audit observation: OpenAI structured-output paths can succeed for one operation and fail for another. Stabilize structured-output reliability before pushing LLM mode to design partners.
 
-**Direction:** Fix both latents before flipping live mode in any environment. Then validate structured-output reliability in a non-prod environment before enabling on staging.
+**Direction:** With PR #1 landed, the two known LLM latents are no longer blocking. Before flipping live mode in any environment: (a) update the Vercel env var to remove the bad model string; (b) validate structured-output reliability with a non-prod test of each operation.
 
 ## Commands
 

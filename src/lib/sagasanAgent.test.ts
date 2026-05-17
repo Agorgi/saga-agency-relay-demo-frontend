@@ -4,6 +4,7 @@ import {
   buildMockAgentReply,
   extractStructuredFields,
   generateAgentReply,
+  getConfiguredModel,
   resolvePersona,
 } from "@/lib/sagasanAgent";
 
@@ -560,4 +561,32 @@ test("live reply uses the provided OpenAI call and preserves nextStep", async ()
   assert.match(capturedPrompt, /Reply with Sagasan's next message/);
   assert.equal(result.data.nextStep?.route, "/me");
   assert.equal(result.data.nextStep?.label, "Open my feed");
+});
+
+test("getConfiguredModel falls back to a real model when env var is a known-invalid string", () => {
+  const original = process.env.OPENAI_MODEL;
+  const originalWarn = console.warn;
+  try {
+    console.warn = () => {}; // suppress expected warning in test output
+
+    // Unset → BASE_MODEL.
+    delete process.env.OPENAI_MODEL;
+    assert.equal(getConfiguredModel(), "gpt-4o-mini");
+
+    // Real model → returned as-is.
+    process.env.OPENAI_MODEL = "gpt-4.1-mini";
+    assert.equal(getConfiguredModel(), "gpt-4.1-mini");
+
+    // Known-invalid → fall back to BASE_MODEL.
+    // Regression for the production typo seen in prior deployments.
+    process.env.OPENAI_MODEL = "gpt-5.4-mini";
+    assert.equal(getConfiguredModel(), "gpt-4o-mini");
+  } finally {
+    if (original === undefined) {
+      delete process.env.OPENAI_MODEL;
+    } else {
+      process.env.OPENAI_MODEL = original;
+    }
+    console.warn = originalWarn;
+  }
 });

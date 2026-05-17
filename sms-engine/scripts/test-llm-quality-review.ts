@@ -4,6 +4,7 @@ import {
   buildLlmReviewUpdateData,
   recordLlmReviewItem,
   safeLlmReviewItemForDisplay,
+  safeLlmReviewText,
   suggestLlmToneReviewStatus,
 } from "@/sms-engine/llm/qualityReview";
 import {
@@ -240,11 +241,44 @@ async function testNoDbAndActiveLiveDisabled() {
   assertNoSensitiveValues(health);
 }
 
+function testSafeLlmReviewTextExtraction() {
+  // Plain string passes through.
+  assert.equal(safeLlmReviewText("Hello there"), "Hello there");
+
+  // Sagasan-shaped output: `message` is the text field.
+  assert.equal(
+    safeLlmReviewText({ message: "Hi", nextStep: null }),
+    "Hi",
+  );
+
+  // Reply-shaped output: `reply` is the text field.
+  // Regression for the bug where /admin/llm-review surfaced
+  // "Structured output fields: reply, nextStep, persona"
+  // because `reply` was not in the textFromValue key list.
+  assert.equal(
+    safeLlmReviewText({ reply: "Got it.", nextStep: null, persona: "host" }),
+    "Got it.",
+  );
+
+  // Unknown shape still produces a debuggable placeholder.
+  const placeholder = safeLlmReviewText({ unknownField: "x", another: 1 });
+  assert.match(
+    placeholder || "",
+    /Structured output fields: /,
+  );
+
+  // Empty / nullish input returns null.
+  assert.equal(safeLlmReviewText(null), null);
+  assert.equal(safeLlmReviewText(undefined), null);
+  assert.equal(safeLlmReviewText({}), null);
+}
+
 async function main() {
   testFlowComparisons();
   await testFallbackBeatsUnsafeLlmOutput();
   testForbiddenAndToneFlags();
   testSerializerAndReviewUpdateSafety();
+  testSafeLlmReviewTextExtraction();
   await testNoDbAndActiveLiveDisabled();
   resetEnv();
   console.log(
