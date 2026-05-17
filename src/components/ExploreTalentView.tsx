@@ -5,7 +5,10 @@ import { motion } from "framer-motion";
 import { useEffect, useMemo, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { requestWebChatReset } from "@/components/web-chat/useWebChat";
-import { buildCrewRecommendationState } from "@/lib/buildMyCrewContracts";
+import {
+  buildBrowseAllTalentState,
+  buildCrewRecommendationState,
+} from "@/lib/buildMyCrewContracts";
 import {
   buildHostBriefDraft,
   buildHostBriefProject,
@@ -129,15 +132,28 @@ export function ExploreTalentView() {
   // Closes P1-OI-4 — see docs/open-issues.md.
   const hasExplicitProjectParam = Boolean(projectIdParam || projectSlug);
   const shortlistTarget = hasExplicitProjectParam ? activeProject : null;
+  // On cold-load (no active project), fall back to a "browse all
+  // talent" surface populated from the raw demo dataset. This restores
+  // the grid that was inadvertently emptied when PR e9e7bc6 removed
+  // the default-project fallback while fixing the Beauty Brand label
+  // leak. The browse-all surface is honest about its lack of project
+  // scoring: brief=null, candidates are tagged demo_seed, no
+  // shortlist target chips appear.
   const recommendationState = useMemo(
     () =>
-      buildCrewRecommendationState({
-        project: activeProject,
-        prefill: handoffPrefill,
-        searchQuery: talentSearchQuery,
-        filters: talentFilters,
-      }),
-    [activeProject, handoffPrefill, talentFilters, talentSearchQuery],
+      activeProject
+        ? buildCrewRecommendationState({
+            project: activeProject,
+            prefill: handoffPrefill,
+            searchQuery: talentSearchQuery,
+            filters: talentFilters,
+          })
+        : buildBrowseAllTalentState({
+            talent,
+            searchQuery: talentSearchQuery,
+            filters: talentFilters,
+          }),
+    [activeProject, handoffPrefill, talent, talentFilters, talentSearchQuery],
   );
   const surfacedCount = recommendationState.candidateGroups.reduce(
     (count, group) => count + group.candidates.length,
@@ -202,7 +218,7 @@ export function ExploreTalentView() {
               isDark ? "border-white/10 bg-white/8" : "border-black/8 bg-white"
             }`}>
               <p className={`text-sm leading-7 ${isDark ? "text-white/68" : "text-ink-light"}`}>
-                Tell Saga what you&apos;re planning.
+                Browse demo profiles below, or tell Saga what you&apos;re planning for a project-scored shortlist.
               </p>
               <button
                 onClick={() => {
@@ -411,9 +427,11 @@ export function ExploreTalentView() {
           <section className="space-y-5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.26em] text-ink-light">Build my crew</p>
+                <p className="text-[10px] uppercase tracking-[0.26em] text-ink-light">
+                  {activeProject ? "Build my crew" : "Browse talent"}
+                </p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight text-ink">
-                  Role-by-role review.
+                  {activeProject ? "Role-by-role review." : "Demo profiles, grouped by role."}
                 </h2>
               </div>
               <div className="rounded-pill border border-black/8 bg-white/70 px-4 py-2 text-xs font-medium text-ink-light shadow-sm">
