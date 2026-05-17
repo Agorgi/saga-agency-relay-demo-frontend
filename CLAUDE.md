@@ -304,31 +304,25 @@ Honest inventory. Update when feature state changes.
 
 ### Top items by severity
 
-**P0 (2 open):**
-- **P0-OI-1** — Persona re-classification on rich organizer brief silently flips host → creative (the Step 6 regression; details below).
-- **P0-OI-2** — Organizer brief data discarded on persona flip (silent data loss; sibling of P0-OI-1).
+**P0 (0 open):** Both P0 items closed in PR #2 — see `docs/open-issues.md` resolved appendix.
 
-**P1 (4 open):**
+**P1 (4 open, pending Cowork re-verify):**
 - **P1-OI-3** — `/explore` "0 surfaced" empty state on real briefs (search field auto-fills the full brief string).
 - **P1-OI-4** — `/explore` cold-load still labels "Shortlisting into Beauty Brand Creator Content Day" when no `projectId`.
-- **P1-OI-5** — "Cosplay cafe night Brooklyn" misclassifies as venue, not host (same root cause class as P0-OI-1).
-- **P1-OI-6** — "DM that photographer right now" enrolls user as creative instead of outbound-action boundary.
+- **P1-OI-5** — "Cosplay cafe night Brooklyn" misclassifies as venue, not host (likely indirectly closed by PR #16; pending re-verify).
+- **P1-OI-6** — "DM that photographer right now" enrolls user as creative (likely closed by PR #16's bare-noun removal; pending re-verify).
 
 P2/P3: 32 items in `docs/open-issues.md`. Don't expand inline here.
 
-Recently closed (see resolved appendix in `docs/open-issues.md`): P1-OI-7 (invalid `gpt-5.4-mini` rejected at config-read time; env var still needs production update), P1-OI-8 (`safeLlmReviewText` placeholder leak fixed via `reply` key in `textFromValue`).
+Recently closed (see resolved appendix in `docs/open-issues.md`): P0-OI-1 / P0-OI-2 (Step 6 P0 in PR #16), P1-OI-7 / P1-OI-8 (LLM mode latents in PR #15).
 
-### Step 6 P0 — persona-flip on rich brief
-**Symptom:** sending a rich host brief that contains the word "photographer" (e.g., "I have one photographer friend") silently flips persona host → creative, drops the brief, and routes to `/me?prefill=...` as if the user offered creative services.
+### Step 6 P0 — persona-flip on rich brief (CLOSED in PR #16)
+Closed via three converging fixes in `src/lib/sagasanAgent.ts`:
+1. Bare-noun creative signals (e.g., `\bphotographer\b`) removed from `CREATIVE_SIGNAL_PATTERNS`. The list is action-phrased only ("looking for gigs", "book me", etc.). Self-identity is still caught via a widened `CREATIVE_SELF_IDENTITY` regex that matches "I'm a/an/the {role}".
+2. `inferRateHint` regex rejects `$Nk` / `$Nm` — event budgets are no longer parsed as creative day rates.
+3. `inferPortfolioLink` requires possessive framing ("my portfolio", "my Instagram") — passive mentions like "I can send an Instagram reference" no longer mint a portfolio.
 
-**Root cause:** Three converging defects in `src/lib/sagasanAgent.ts`:
-1. Line ~749: bare-word `/\bphotographer\b/i` in `CREATIVE_SIGNAL_PATTERNS` — matches any mention of the noun, not just self-identification.
-2. Line ~1021: persona pivot uses loose `strongCreativeSignal` when there's no anchored persona (organic user without chip click).
-3. Lines ~463-483: `inferPortfolioLink` returns "Sample shared in chat" on bare mention of "instagram"; `inferRateHint` regex captures `$15` from `$15k`.
-
-**Structural fix (preferred):** persona becomes per-project not per-message; extraction distinguishes `userRequests` from `userOffers`. See Sagasan Layer A above.
-
-**Tactical fix (if shipping before structural):** require self-identity anchor for bare-noun creative signals; drop "instagram" from passive portfolio inference; fix rate regex.
+The deeper per-project persona latch (via `ProjectJourney`) is still queued for PR #3 + PR #4. Until then, the bare-noun fix and possessive requirement carry the load.
 
 ### Legacy `sms-engine/` top-level cleanup
 **Symptom:** Every AI assistant reading the repo gets confused by two `sms-engine/` directories.

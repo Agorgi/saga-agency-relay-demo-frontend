@@ -12,33 +12,7 @@ Synthesized from the Cowork QA handoff packet (browser-based read-only QA agains
 
 ## P0 — Open
 
-### P0-OI-1 — Persona re-classification on rich organizer brief silently flips to creative
-
-**Repro:** Fresh session →
-1. "I want to throw a formal ball inspired by Love and Deepspace in July"
-2. "LA"
-3. "don't you need more info?"
-4. "Probably 150 people. I don't have a venue yet. I have one photographer friend but no production crew. Budget is maybe $15k. I want it to feel romantic, elegant, and space-inspired. I can send an Instagram reference. I want Saga to help find a producer, stylist, venue lead, and performers."
-
-**Symptom:** Step 4 returns "Got it — I shaped that into your creative profile draft." with an "Open my feed" CTA. Brief progress panel disappears. Click "Open my feed" → `/me?prefill=…` decodes to `{city: "Flexible", roles: ["Photographer","Stylist","Producer"], portfolio: "Sample shared in chat", rates: "$15"}`.
-
-**Root cause (verified by code reading 2026-05-17):**
-- `src/lib/sagasanAgent.ts` line ~749: bare-word `/\bphotographer\b/i` in `CREATIVE_SIGNAL_PATTERNS` — matches "I have one photographer friend".
-- `src/lib/sagasanAgent.ts` line ~1021: `detectPersonaPivot()` uses loose `strongCreativeSignal` when no anchored persona (organic user without chip click).
-- `src/lib/sagasanAgent.ts` lines ~463–483: `inferPortfolioLink` returns "Sample shared in chat" on bare mention of "instagram"; `inferRateHint` regex `/\$[\d,]+/` captures `$15` from `$15k` (drops the `k`).
-
-**Recommended fix (structural):** persona becomes per-project, not per-message. Once an organizer brief has reached ≥5/10 essentials, latch persona for the session. Extraction also distinguishes `userRequests` (roles user wants sourced) from `userOffers` (roles user identifies as their own). See CLAUDE.md "Sagasan Layer A."
-
-**Recommended fix (tactical, if shipping before structural):**
-- Require self-identity anchor for bare-noun creative signals (e.g., require "I'm" / "I am" before the noun).
-- Drop "instagram" / "ig" from passive portfolio inference.
-- Fix rate regex to reject `$Nk` capture as a creative day rate.
-
-### P0-OI-2 — Organizer brief data discarded on persona flip
-
-**Symptom:** When P0-OI-1 fires, the 5-field captured brief (project idea, location, timing, format, vibe) visibly tracked in the dock through Steps 2–4 disappears. User has no recovery path short of resetting and re-typing.
-
-**Recommended fix:** Persist the brief in session state independent of persona. When the classifier wants to flip persona mid-conversation, surface a disambiguation prompt ("Are you the host, or are you offering services?") rather than silently overwriting. Treat brief loss as an explicit user action, not a side effect. Closes alongside P0-OI-1 if persona becomes per-project.
+_No P0 items open as of PR #2. Both P0-OI-1 and P0-OI-2 closed by the Step 6 P0 structural fix — see "Resolved" appendix._
 
 ---
 
@@ -186,13 +160,11 @@ Counter ticks 5 → 6 between turns but the visible Known list shows 5 fields. *
 
 ## Summary counts
 
-- P0 open: 2 (both from the latest organizer intake regression)
-- P1 open: 4 (2 on `/explore`, 2 persona-classifier subclass; the 2 LLM latents closed in PR #1)
+- P0 open: 0 (both closed in PR #16)
+- P1 open: 4 (2 on `/explore`, 2 persona-classifier subclass — LLM latents closed in PR #15; persona subclasses may also be indirectly closed by PR #16, pending Cowork re-verification on staging)
 - P2 open: 16
 - P3 open: 16
-- **Total open: 38**
-
-Closing P0-OI-1 and P0-OI-2 indirectly closes P1-OI-5 and P1-OI-6 because the same per-message-vs-session-latch class is upstream of all four.
+- **Total open: 36**
 
 ---
 
@@ -213,8 +185,10 @@ These have been closed by prior pushes. Listed so future work doesn't accidental
 - **Host backstage panel exposed on public event page** — closed in `fa5b281` ("Launch readiness 42%, Open Production Workspace" no longer leaks).
 - **Chat ticketing copy contradicting event-page ticket tiers** — closed in `fa5b281` (both surfaces disclaim ticketing is external).
 - **Build My Crew brief handoff and candidate credibility** — closed in `e9e7bc6` (today). `buildMyCrewContracts.ts` enforces brief_handoff vs demo_seed.
-- **P1-OI-7 — invalid `gpt-5.4-mini` model string** — partial fix landed in PR #1. `getConfiguredModel()` now rejects known-invalid model strings at config-read time and falls back to `gpt-4o-mini` (the `BASE_MODEL` constant in code, which was already correct). The production env var on Vercel still needs to be updated separately — once `OPENAI_MODEL` is unset or set to a real model, the warning disappears.
-- **P1-OI-8 — `safeLlmReviewText()` placeholder leak** — closed in PR #1. The audit identified this at `src/lib/sagasanAgent.ts ~L981–983` but the function actually lives at `src/sms-engine/llm/qualityReview.ts`. Root cause: `textFromValue()` checked for `replyText`, `message`, `body`, `selectedText`, `organizerFacingSummary` but not `reply`. Schemas with a `reply` field fell through to the "Structured output fields: ..." placeholder. Fix: added `reply` to the key list. Tested with a new regression test in `test-llm-quality-review.ts`.
+- **P1-OI-7 — invalid `gpt-5.4-mini` model string** — partial fix landed in PR #15. `getConfiguredModel()` now rejects known-invalid model strings at config-read time and falls back to `gpt-4o-mini`. Production env var on Vercel still needs updating separately.
+- **P1-OI-8 — `safeLlmReviewText()` placeholder leak** — closed in PR #15. Function lives at `src/sms-engine/llm/qualityReview.ts`; added `reply` to the `textFromValue` key list. Regression test in `test-llm-quality-review.ts`.
+- **P0-OI-1 — Persona re-classification on rich organizer brief** — closed in PR #16. Bare-noun creative signals removed from `CREATIVE_SIGNAL_PATTERNS`; `CREATIVE_SELF_IDENTITY` regex widened to "I'm a/an/the {role}"; `inferRateHint` rejects `$Nk`/`$Nm`; `inferPortfolioLink` requires possessive framing. Three new regression tests cover the Step 6 scenario, $Nk parsing, and possessive vs passive portfolio inference.
+- **P0-OI-2 — Organizer brief data discarded on persona flip** — closed alongside P0-OI-1 in PR #16. Persona no longer flips → brief isn't dropped. Deeper per-project latch via `ProjectJourney` shipped in PR #17/#18.
 
 ---
 
