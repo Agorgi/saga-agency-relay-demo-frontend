@@ -277,15 +277,17 @@ Honest inventory. Update when feature state changes.
 
 | Area | State | Notes |
 |------|-------|-------|
-| Sagasan persona classifier | Real, deterministic only | LLM gated off; bare-noun bug in Step 6 P0 below |
-| Sagasan organizer intake | Real, deterministic only | Readiness gate works; reply composition is template-based |
-| Sagasan LLM mode | Gated off | `LLM_ACTIVE_LIVE_DISABLED=true`. Invalid model string and `safeLlmReviewText` placeholder bug closed in PR #1. Vercel env var `OPENAI_MODEL` should be updated separately. |
+| Sagasan persona classifier | Real, deterministic only | LLM gated off; Step 6 P0 closed in PR #16 |
+| Sagasan organizer intake | Real, deterministic only | Readiness gate works; reply composition is template-based (Layer B prompt-driven composition deferred until LLM live mode is stable) |
+| Sagasan LLM mode | Gated off | `LLM_ACTIVE_LIVE_DISABLED=true`. Invalid model string + `safeLlmReviewText` bug closed in PR #15. **Action item:** update `OPENAI_MODEL` env var in Vercel from `gpt-5.4-mini` to `gpt-4o-mini`. |
 | Conversation engine | Shadow mode | `/api/health` reports `conversationEngineMode: "shadow"`, `conversationEngineEffectiveActive: false`. Observable but not active. Gated behind A2P approval. |
-| Brief → /projects/new handoff | Real | Today via base64 prefill; will move to DB-backed |
-| Build My Crew page | Real | `buildMyCrewContracts.ts` enforces brief_handoff vs demo_seed |
-| Candidate review per role | Not built | Tracer scope |
-| ProjectJourney state machine | Built + wired to chat (PR #3, #4) | Prisma model + service + API routes. Sagasan now persists host briefs as Project rows and advances the journey on readiness. UI surfaces still pending (PR #5+). |
-| WebSession → Project link | Built (PR #4) | `WebSession.projectId` column. One host brief per session; persists across turns. Chat API returns `projectId` + `journey` in every response so the client can navigate. |
+| Brief persistence (Project rows) | Real | PR #17 + #24: host briefs persist as `Project` rows linked to `WebSession.projectId`. Idempotent upsert; survives across turns. |
+| ProjectJourney state machine | Real + wired | Built in PR #17, wired to chat in PR #24. `intake → brief_ready → crew_reviewing → outreach_prep → outreach_awaiting_send → outreach_sent`. Auto-advance on readiness; soft revert on edit. **Migration must be applied to Neon — see docs/DEPLOY.md.** |
+| Brief review page (`/projects/[id]`) | Real | PR #19: server-rendered from Project + journey. Legacy fixture slugs fall through to ProjectWorkspaceView. |
+| Build my Crew page (`/projects/[id]/crew`) | Real | PR #20: role list with candidate counts, "no one contacted" badge, auto-advances journey to crew_reviewing on first visit. |
+| Candidate review per role (`/projects/[id]/crew/[roleId]`) | Real | PR #21: honesty contract enforced at the type level (`outreachStatus: "not_prepared"` is pinned). Review API at `/api/candidates/[id]/review` auto-advances journey to outreach_prep when every core role has ≥1 approval. |
+| /explore "0 surfaced" + Beauty Brand label leak | Closed | PR #22: closes P1-OI-3 and P1-OI-4. |
+| Legacy `sms-engine/` cleanup | Partial | PR #23 deleted confirmed-dead files. Remaining (uncertain): railway.json, docker-compose.yml, prisma.config.ts, leftover Next.js shell. |
 | Talent grid (/explore) | Demo | Picsum-seeded creator cards. Not in tracer. |
 | Producer agent | Real, admin-only | `src/sms-engine/producer/*` (role inference, candidate scoring) |
 | Candidate research (public web) | Real, admin-only | `src/sms-engine/sourcing/openaiWebResearchProvider.ts` |
@@ -301,7 +303,11 @@ Honest inventory. Update when feature state changes.
 
 ## Open issues / known regressions
 
-**Canonical working list:** `docs/open-issues.md` (40 items as of 2026-05-16, derived from the Cowork QA handoff packet). Update that file as items ship fixed; this section is just the top-of-list summary.
+**Canonical working list:** `docs/open-issues.md`. As of 2026-05-17 post-merge, 4 P1 items + 32 P2/P3 items remain open. PRs #15–#24 closed the P0s and the LLM latents.
+
+**Deploy operational notes:** `docs/DEPLOY.md` — what to do after a schema-touching PR merges, env-var actions, post-deploy verification.
+
+**CI:** `.github/workflows/ci.yml` runs typecheck, lint, lint:copy, journey state-machine tests on every PR + push to main, plus a separate job that spins up a Postgres service and runs the DB-dependent test suite.
 
 ### Top items by severity
 
