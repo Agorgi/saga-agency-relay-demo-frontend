@@ -102,6 +102,12 @@ type LiveAgentReply = z.infer<typeof liveAgentReplySchema>;
 
 const TICKET_REPLY = "Tickets live elsewhere — Saga doesn't handle those.";
 const BASE_MODEL = "gpt-4o-mini";
+
+// Model strings that have appeared in deployment env vars but are not real
+// OpenAI models. Reject these at config-read time and fall back to BASE_MODEL,
+// so the first live LLM call doesn't 404. Update the deployment env var to fix
+// at the source; this is a defense-in-depth backstop.
+const KNOWN_INVALID_MODELS = new Set(["gpt-5.4-mini"]);
 const GENERIC_PERSONA_STARTERS = new Set(
   PERSONA_OPTIONS.map((option) => option.firstTurn.toLowerCase()),
 );
@@ -356,7 +362,16 @@ export function normalizeRouteLlmMode(value: string | undefined): RouteLlmMode {
 }
 
 export function getConfiguredModel() {
-  return process.env.OPENAI_MODEL?.trim() || BASE_MODEL;
+  const raw = process.env.OPENAI_MODEL?.trim();
+  if (!raw) return BASE_MODEL;
+  if (KNOWN_INVALID_MODELS.has(raw)) {
+    console.warn(
+      `[sagasan] OPENAI_MODEL="${raw}" is a known-invalid model string; ` +
+        `falling back to ${BASE_MODEL}. Fix the env var in your deployment.`,
+    );
+    return BASE_MODEL;
+  }
+  return raw;
 }
 
 export function shouldAnswerTickets(message: string) {

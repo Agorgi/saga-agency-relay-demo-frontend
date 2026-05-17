@@ -73,20 +73,6 @@ Cleanest: option (a). The brief is already represented as filter chips above the
 
 **Recommended fix:** Treat imperatives directed at third parties ("DM that photographer", "text my friends", "tell them to come") as boundary turns. Reply with the outbound-action boundary copy ("Saga can help prepare outreach, but it won't contact anyone until a human reviews and approves it."). Not persona classification.
 
-### P1-OI-7 — `gpt-5.4-mini` configured model is invalid
-
-**Symptom:** Inert today (`LLM_ACTIVE_LIVE_DISABLED=true`, `ACTIVE_LIVE_ALLOWED=false`). Will 404 on the first live call once the runtime toggle flips.
-
-**Recommended fix:** Replace with a real OpenAI model. `gpt-4o-mini` for cost/latency on intake turns; reserve `gpt-5-mini` or `gpt-4.1-mini` (if available in the org account) for higher-stakes turns. Verify by `/api/health` reporting `llm.provider: "openai"` after flipping the toggle in a non-prod environment.
-
-### P1-OI-8 — `safeLlmReviewText()` receives raw `data` instead of `data.reply`
-
-**Location:** `src/lib/sagasanAgent.ts` ~L981–983.
-
-**Symptom:** Latent. User-facing reply unaffected. `/admin/llm-review` will surface "Structured output fields: reply, nextStep, persona" instead of the real model reply once live mode is enabled.
-
-**Recommended fix:** Pass `data.reply` (or `data.message`) into `safeLlmReviewText()` instead of the raw `data` object.
-
 ---
 
 ## P2 — Open
@@ -201,10 +187,10 @@ Counter ticks 5 → 6 between turns but the visible Known list shows 5 fields. *
 ## Summary counts
 
 - P0 open: 2 (both from the latest organizer intake regression)
-- P1 open: 6 (2 on `/explore`, 2 persona-classifier subclass, 2 LLM latents)
+- P1 open: 4 (2 on `/explore`, 2 persona-classifier subclass; the 2 LLM latents closed in PR #1)
 - P2 open: 16
 - P3 open: 16
-- **Total open: 40**
+- **Total open: 38**
 
 Closing P0-OI-1 and P0-OI-2 indirectly closes P1-OI-5 and P1-OI-6 because the same per-message-vs-session-latch class is upstream of all four.
 
@@ -227,6 +213,8 @@ These have been closed by prior pushes. Listed so future work doesn't accidental
 - **Host backstage panel exposed on public event page** — closed in `fa5b281` ("Launch readiness 42%, Open Production Workspace" no longer leaks).
 - **Chat ticketing copy contradicting event-page ticket tiers** — closed in `fa5b281` (both surfaces disclaim ticketing is external).
 - **Build My Crew brief handoff and candidate credibility** — closed in `e9e7bc6` (today). `buildMyCrewContracts.ts` enforces brief_handoff vs demo_seed.
+- **P1-OI-7 — invalid `gpt-5.4-mini` model string** — partial fix landed in PR #1. `getConfiguredModel()` now rejects known-invalid model strings at config-read time and falls back to `gpt-4o-mini` (the `BASE_MODEL` constant in code, which was already correct). The production env var on Vercel still needs to be updated separately — once `OPENAI_MODEL` is unset or set to a real model, the warning disappears.
+- **P1-OI-8 — `safeLlmReviewText()` placeholder leak** — closed in PR #1. The audit identified this at `src/lib/sagasanAgent.ts ~L981–983` but the function actually lives at `src/sms-engine/llm/qualityReview.ts`. Root cause: `textFromValue()` checked for `replyText`, `message`, `body`, `selectedText`, `organizerFacingSummary` but not `reply`. Schemas with a `reply` field fell through to the "Structured output fields: ..." placeholder. Fix: added `reply` to the key list. Tested with a new regression test in `test-llm-quality-review.ts`.
 
 ---
 
