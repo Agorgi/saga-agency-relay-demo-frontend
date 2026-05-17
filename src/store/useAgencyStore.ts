@@ -402,7 +402,12 @@ export const useAgencyStore = create<AgencyState>((set, get) => ({
       },
     })),
 
-  resetTalentFilters: () => set({ talentFilters: DEFAULT_TALENT_FILTERS }),
+  resetTalentFilters: () =>
+    // Closes P1-OI-3: previously the Reset button only cleared the
+    // dropdown filters and left the search query in place, so a brief
+    // string ("Throw A 100-Person Anime Picnic...") could persist and
+    // keep the grid stuck at "0 surfaced." Reset now wipes both.
+    set({ talentFilters: DEFAULT_TALENT_FILTERS, talentSearchQuery: "" }),
 
   addTalentToShortlist: (projectId, talentId, roleName) =>
     set((state) => {
