@@ -1106,6 +1106,7 @@ model Project {
   talentResearchReviews   TalentResearchReview[]
   publicWebResearchRuns   PublicWebResearchRun[]
   projectJourney          ProjectJourney?
+  webSessions             WebSession[]             @relation("WebSessionProject")
 
   @@index([source])
   @@index([status])
@@ -1841,10 +1842,13 @@ model WebSession {
   userAgent  String?
   ipHash     String?
   persona    String?
+  projectId  String?
   messages   WebChatMessage[]
+  project    Project?         @relation("WebSessionProject", fields: [projectId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
   @@index([persona])
+  @@index([projectId])
 }
 
 model AdminSession {
