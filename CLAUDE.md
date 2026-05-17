@@ -331,13 +331,11 @@ The deeper per-project persona latch (via `ProjectJourney`) is still queued for 
 **Reality:** `src/sms-engine/` is canonical (imports resolve here via `@/sms-engine/*` alias). Top-level `sms-engine/` contains:
 - Live: 14 test scripts referenced by `package.json` (import via aliases, so they ARE testing the canonical code).
 - Live: ~80 engineering docs at `sms-engine/docs/`.
-- Dead: `.github/workflows/ci.yml` (GitHub only reads root `.github/`; this never runs), `.original` package files, duplicate Next.js shell.
-- Uncertain: `railway.json`, `docker-compose.yml`, `prisma.config.ts` — may be load-bearing for a separate Railway service; verify before deleting.
+- Uncertain: `railway.json`, `docker-compose.yml`, `prisma.config.ts`, the leftover Next.js shell (`next.config.ts`, `postcss.config.mjs`, `eslint.config.mjs`, `next-env.d.ts`, `public/`) — may be load-bearing for a separate Railway service; verify before deleting.
 
-**Cleanup plan:**
-1. Confirm Railway deployment state (does anything deploy from `sms-engine/` subdir?).
-2. Move test scripts to `scripts/sms-engine/`; move docs to `docs/engine/`; delete confirmed-dead files.
-3. Add a real `.github/workflows/ci.yml` at the repo root that runs the existing test scripts.
+**Cleanup state:**
+- PR #9 deleted the obviously dead items: `package.json.original`, `package-lock.json.original`, and the unreachable CI workflow at `sms-engine/.github/workflows/ci.yml` (GitHub only reads root `.github/`).
+- The next pass (queued, post-Railway verification): move test scripts to `scripts/sms-engine/`, move docs to `docs/engine/`, delete the remaining "uncertain" set, and add a real `.github/workflows/ci.yml` at the repo root that runs the existing test scripts.
 
 ### LLM mode is off — and has known latents when flipped on
 **Current state:** `/api/health` reports `llm.provider: "fallback"`, `llm.mode: "fallback"`, `llm.model: "gpt-5.4-mini"`. Both `LLM_ACTIVE_LIVE_DISABLED=true` and `ACTIVE_LIVE_ALLOWED=false`. Conversation engine runs in `shadow` mode (observable but not active).
