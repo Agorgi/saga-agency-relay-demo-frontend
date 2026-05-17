@@ -18,23 +18,6 @@ _No P0 items open as of PR #2. Both P0-OI-1 and P0-OI-2 closed by the Step 6 P0 
 
 ## P1 — Open
 
-### P1-OI-3 — /explore "0 surfaced" empty state on real briefs
-
-**Symptom:** Build My Crew prefilled flow auto-fills the `/explore` search field with the full brief string ("Throw A 100-Person Anime Picnic In Silver Lake Next Month With A Playful Neon Vibe"), which over-filters and returns "0 surfaced". The explorer's "Reset" clears dropdown filters but not the search input.
-
-**Recommended fix (pick one):**
-- Don't auto-fill the search field; use structured filters (city, role, vibe tags).
-- OR make "Reset" also clear the search input.
-- OR add a "Closest matches" fallback when strict filters return zero.
-
-Cleanest: option (a). The brief is already represented as filter chips above the grid.
-
-### P1-OI-4 — /explore cold-load still labels "Shortlisting into Beauty Brand Creator Content Day"
-
-**Symptom:** Direct nav to `/explore` (no `projectId`) renders 18 distinct talent cards (good) but the "Shortlisting into" header still reads the old Miami fixture string.
-
-**Recommended fix:** When no `projectId` is present, drop the "Shortlisting into" header (or replace with "Browse all talent"). When `projectId` is present, use the project's actual name. Don't fall back to the Beauty Brand string.
-
 ### P1-OI-5 — "Cosplay cafe night Brooklyn" misclassified as venue, not host
 
 **Symptom:** "Thinking about a cosplay cafe night in Brooklyn" classifies as venue (replies "your space profile draft", "Open my spaces", "List a space"). Venue-shaped noun "cafe" outweighs host intent verb "thinking about throwing".
@@ -160,11 +143,11 @@ Counter ticks 5 → 6 between turns but the visible Known list shows 5 fields. *
 
 ## Summary counts
 
-- P0 open: 0 (both closed in PR #16)
-- P1 open: 4 (2 on `/explore`, 2 persona-classifier subclass — LLM latents closed in PR #15; persona subclasses may also be indirectly closed by PR #16, pending Cowork re-verification on staging)
+- P0 open: 0 (closed in PR #16)
+- P1 open: 2 (persona-classifier subclasses — likely indirectly closed by PR #16, pending Cowork re-verification on staging; /explore items closed in PR #22)
 - P2 open: 16
 - P3 open: 16
-- **Total open: 36**
+- **Total open: 34**
 
 ---
 
@@ -188,7 +171,14 @@ These have been closed by prior pushes. Listed so future work doesn't accidental
 - **P1-OI-7 — invalid `gpt-5.4-mini` model string** — partial fix landed in PR #15. `getConfiguredModel()` now rejects known-invalid model strings at config-read time and falls back to `gpt-4o-mini`. Production env var on Vercel still needs updating separately.
 - **P1-OI-8 — `safeLlmReviewText()` placeholder leak** — closed in PR #15. Function lives at `src/sms-engine/llm/qualityReview.ts`; added `reply` to the `textFromValue` key list. Regression test in `test-llm-quality-review.ts`.
 - **P0-OI-1 — Persona re-classification on rich organizer brief** — closed in PR #16. Bare-noun creative signals removed from `CREATIVE_SIGNAL_PATTERNS`; `CREATIVE_SELF_IDENTITY` regex widened to "I'm a/an/the {role}"; `inferRateHint` rejects `$Nk`/`$Nm`; `inferPortfolioLink` requires possessive framing. Three new regression tests cover the Step 6 scenario, $Nk parsing, and possessive vs passive portfolio inference.
-- **P0-OI-2 — Organizer brief data discarded on persona flip** — closed alongside P0-OI-1 in PR #16. Persona no longer flips → brief isn't dropped. Deeper per-project latch via `ProjectJourney` shipped in PR #17/#18.
+- **P0-OI-2 — Organizer brief data discarded on persona flip** — closed alongside P0-OI-1 in PR #16. Persona no longer flips → brief isn't dropped. Deeper per-project latch via `ProjectJourney` shipped in PR #17/#24.
+- **P1-OI-3 — /explore "0 surfaced" empty state on real briefs** — closed in PR #22. `useAgencyStore.resetTalentFilters` now also clears `talentSearchQuery` so the Reset button wipes both filters and search.
+- **P1-OI-4 — /explore cold-load shows Beauty Brand fixture label** — closed in PR #22. `ExploreTalentView` only shows "Shortlisting into …" when the URL explicitly indicates a project (`projectIdParam` or `projectSlug`). Otherwise the header is suppressed.
+- **ProjectJourney state machine** — built in PR #17 (Prisma model, service, API routes) and wired to Sagasan in PR #24 (host briefs persist to Project rows; journey auto-advances on readiness; chat API returns `projectId` + `journey` to client).
+- **Brief review page (`/projects/[id]`)** — shipped in PR #19.
+- **Build my Crew page (`/projects/[id]/crew`)** — shipped in PR #20.
+- **Candidate review per role (`/projects/[id]/crew/[roleId]`) + review API** — shipped in PR #21. Honesty contract pinned at the type level (`outreachStatus: "not_prepared"`).
+- **Legacy `sms-engine/` partial cleanup** — PR #23 deleted `.original` package files + dead nested CI workflow. Remaining: railway.json, docker-compose.yml, prisma.config.ts, leftover Next.js shell (`next.config.ts`, `postcss.config.mjs`, `eslint.config.mjs`, `next-env.d.ts`, `public/`) — verify Railway state before deleting.
 
 ---
 
