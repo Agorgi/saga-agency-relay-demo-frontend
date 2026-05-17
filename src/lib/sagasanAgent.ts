@@ -666,7 +666,7 @@ function getUserMessages(history: ChatMessage[], latestMessage: string) {
     .filter((content) => !GENERIC_PERSONA_STARTERS.has(content.toLowerCase()));
 }
 
-function organizerFieldsFromStored(
+export function organizerFieldsFromStored(
   fields: StoredExtractedFields,
 ): OrganizerIntakeFields {
   return {

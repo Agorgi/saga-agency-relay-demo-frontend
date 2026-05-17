@@ -284,7 +284,8 @@ Honest inventory. Update when feature state changes.
 | Brief → /projects/new handoff | Real | Today via base64 prefill; will move to DB-backed |
 | Build My Crew page | Real | `buildMyCrewContracts.ts` enforces brief_handoff vs demo_seed |
 | Candidate review per role | Not built | Tracer scope |
-| ProjectJourney state machine | Foundation built (PR #3) | Prisma model + service + API routes. Not yet wired to Sagasan (PR #4) or to any UI surface (PR #5+). |
+| ProjectJourney state machine | Built + wired to chat (PR #3, #4) | Prisma model + service + API routes. Sagasan now persists host briefs as Project rows and advances the journey on readiness. UI surfaces still pending (PR #5+). |
+| WebSession → Project link | Built (PR #4) | `WebSession.projectId` column. One host brief per session; persists across turns. Chat API returns `projectId` + `journey` in every response so the client can navigate. |
 | Talent grid (/explore) | Demo | Picsum-seeded creator cards. Not in tracer. |
 | Producer agent | Real, admin-only | `src/sms-engine/producer/*` (role inference, candidate scoring) |
 | Candidate research (public web) | Real, admin-only | `src/sms-engine/sourcing/openaiWebResearchProvider.ts` |
