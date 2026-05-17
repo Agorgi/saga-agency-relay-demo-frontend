@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Cancel older runs of the same workflow on the same ref — saves CI minutes
+# and keeps the queue snappy on rapid PR pushes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Foundational checks that don't need a database. Fast (typecheck + lint
+  # are pure compile/static-analysis; test:journey is pure logic). Catches
+  # 90% of breakage at zero infra cost.
+  fast-checks:
+    name: Typecheck + Lint + Pure tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Type-check
+        run: npm run typecheck
+      - name: Lint (ESLint)
+        run: npm run lint
+      - name: Lint (copy rules)
+        run: npm run lint:copy
+      - name: Journey state-machine tests (no DB)
+        run: npm run test:journey
+
+  # Database-dependent test suite. Spins up a Postgres service, applies all
+  # migrations via prisma migrate deploy, then runs the test:sagasan-agent
+  # suite which includes route.test.ts, projectBriefUpsert.test.ts,
+  # projectBriefView.test.ts, projectCrewView.test.ts. Slower but catches the
+  # integration-level regressions that fast-checks miss.
+  db-tests:
+    name: Sagasan agent + DB integration tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: saga
+          POSTGRES_PASSWORD: saga
+          POSTGRES_DB: saga_agency_relay_demo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # Tests default to port 5433 (matches local dev), override here so
+      # node-test can connect to the github-actions postgres on 5432.
+      PR_L_TEST_DATABASE_URL: "postgresql://saga:saga@localhost:5432/saga_agency_relay_demo?schema=public"
+      DATABASE_URL: "postgresql://saga:saga@localhost:5432/saga_agency_relay_demo?schema=public"
+      POSTGRES_URL_NON_POOLING: "postgresql://saga:saga@localhost:5432/saga_agency_relay_demo?schema=public"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Apply Prisma migrations
+        run: npx prisma migrate deploy
+      - name: Sagasan agent + DB integration tests
+        run: npm run test:sagasan-agent
