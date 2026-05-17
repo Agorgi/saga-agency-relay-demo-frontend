@@ -30,7 +30,34 @@ import {
 } from "@/lib/webChatRuntimeSettings";
 import { upsertProjectFromBrief } from "@/lib/projectBriefUpsert";
 import type { ProjectJourney } from "@/lib/journey/types";
+import { sanitizeNextStepPayload, type WebChatNextStep } from "@/lib/webChatNextStep";
 import { logServerError } from "@/sms-engine/safeLogging";
+
+/**
+ * Once a host brief has been persisted as a Project row, the agent's
+ * legacy `/projects/new?prefill=base64` handoff is obsolete — the new
+ * brief review page at `/projects/[id]` reads from the DB. Rewrite the
+ * route so the client navigates to the canonical tracer surface.
+ *
+ * No-ops when projectId is absent (early intake, non-host persona, or
+ * legacy/no-DB paths) so existing behavior is preserved.
+ */
+function bindNextStepToProject(
+  nextStep: WebChatNextStep | null | undefined,
+  projectId: string | null,
+): WebChatNextStep | null {
+  if (!nextStep) return nextStep ?? null;
+  if (!projectId) return nextStep;
+  if (nextStep.route !== "/projects/new") return nextStep;
+  // The /projects/[id] page reads brief data from the DB — drop the
+  // base64 prefill that was meant for the legacy /projects/new flow.
+  const rewritten = sanitizeNextStepPayload({
+    label: "View your project",
+    route: `/projects/${projectId}`,
+    prefill: {},
+  });
+  return rewritten ?? nextStep;
+}
 
 type ReplyMode = "autonomous" | "holding";
 
@@ -305,7 +332,7 @@ export async function POST(req: NextRequest) {
         turn,
         mode: "holding",
         sessionCookieValue,
-        nextStep: holdingReply.nextStep,
+        nextStep: bindNextStepToProject(holdingReply.nextStep, projectId),
         projectId,
         journey,
       });
@@ -368,7 +395,7 @@ export async function POST(req: NextRequest) {
       turn,
       mode: replyMode,
       sessionCookieValue,
-      nextStep: result.data.nextStep,
+      nextStep: bindNextStepToProject(result.data.nextStep, projectId),
       projectId,
       journey,
     });

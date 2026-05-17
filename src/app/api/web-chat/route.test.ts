@@ -106,7 +106,42 @@ test("web chat POST returns an autonomous mock reply in mock mode", async () => 
   assert.equal(response.status, 200);
   assert.equal(data.mode, "autonomous");
   assert.ok(data.reply.length > 0);
-  assert.equal(data.nextStep?.route, "/projects/new");
+  assert.match(data.nextStep?.route ?? "", /^\/projects\/(new|c[a-z0-9]+)$/, "host nextStep should target /projects/new (legacy) or /projects/<cuid> (PR #31 binding to persisted Project)");
+});
+
+test("host nextStep gets rewritten to /projects/<projectId> when the brief persists as a Project", async () => {
+  // Closes the missing tracer-handoff piece flagged by Cowork QA:
+  // when the chat persists a Project row, the chat API should rewrite
+  // the agent's legacy /projects/new?prefill=base64 handoff to
+  // /projects/<projectId> so the client reaches the new DB-backed
+  // brief review page (PR #19).
+  process.env.LLM_MODE = "mock_active";
+  process.env.OPENAI_API_KEY = "";
+
+  const response = await POST(
+    createRequest({
+      message:
+        "I want to throw a formal ball inspired by Love and Deepspace in Los Angeles in July. Probably 150 people. I don't have a venue yet. I have one photographer friend but no production crew. Budget is maybe $15k. Here's a Pinterest board. I want Saga to help find a producer, stylist, venue lead, and maybe performers.",
+      persona: "host",
+    }),
+  );
+
+  const data = (await response.json()) as {
+    nextStep?: { route?: string; prefill?: Record<string, unknown> };
+    projectId?: string | null;
+    journey?: { step?: string } | null;
+  };
+
+  assert.equal(response.status, 200);
+  // Project was created.
+  assert.ok(data.projectId, "expected projectId to be set");
+  assert.match(data.projectId || "", /^c[a-z0-9]+$/);
+  // Journey advanced past intake.
+  assert.equal(data.journey?.step, "brief_ready");
+  // nextStep is now bound to the new tracer surface.
+  assert.equal(data.nextStep?.route, `/projects/${data.projectId}`);
+  // Prefill is empty for the DB-backed page (no base64 needed).
+  assert.deepEqual(data.nextStep?.prefill ?? {}, {});
 });
 
 test("persona chips pass structured hints through the route", async () => {
@@ -301,7 +336,7 @@ test("web chat POST hits OpenAI in live mode when a key is present", async () =>
 
     assert.equal(response.status, 200);
     assert.equal(data.mode, "autonomous");
-    assert.equal(data.nextStep?.route, "/projects/new");
+    assert.match(data.nextStep?.route ?? "", /^\/projects\/(new|c[a-z0-9]+)$/, "host nextStep should target /projects/new (legacy) or /projects/<cuid> (PR #31 binding to persisted Project)");
     assert.match(data.reply, /event draft/i);
     assert.equal(requestCount, 1);
     assert.match(receivedBody, /Reply with Sagasan's next message/);
@@ -379,9 +414,14 @@ test("holding mode keeps the next-step handoff when the brief is routeable", asy
 
   assert.equal(response.status, 200);
   assert.equal(data.mode, "holding");
-  assert.equal(data.nextStep?.route, "/projects/new");
-  assert.equal(data.nextStep?.prefill?.city, "Los Angeles");
-  assert.match(data.nextStep?.prefill?.projectIdea || "", /formal ball/i);
+  assert.match(data.nextStep?.route ?? "", /^\/projects\/(new|c[a-z0-9]+)$/, "host nextStep should target /projects/new (legacy) or /projects/<cuid> (PR #31 binding to persisted Project)");
+  // When PR #31 rebinds the route to /projects/<cuid>, the page reads
+  // from the DB so prefill is empty. The legacy /projects/new path
+  // still carries the prefill (city + projectIdea).
+  if (data.nextStep?.route === "/projects/new") {
+    assert.equal(data.nextStep?.prefill?.city, "Los Angeles");
+    assert.match(data.nextStep?.prefill?.projectIdea || "", /formal ball/i);
+  }
 });
 
 test("production-like legacy DB mode still returns reply and nextStep", async () => {
@@ -408,8 +448,12 @@ test("production-like legacy DB mode still returns reply and nextStep", async ()
   assert.equal(response.status, 200);
   assert.equal(data.mode, "autonomous");
   assert.match(data.reply, /partial brief|production plan|crew search/i);
-  assert.equal(data.nextStep?.route, "/projects/new");
-  assert.equal(data.nextStep?.prefill?.city, "Los Angeles");
+  assert.match(data.nextStep?.route ?? "", /^\/projects\/(new|c[a-z0-9]+)$/, "host nextStep should target /projects/new (legacy) or /projects/<cuid> (PR #31 binding to persisted Project)");
+  // Prefill only present on the legacy /projects/new fallback;
+  // /projects/<cuid> reads from the DB.
+  if (data.nextStep?.route === "/projects/new") {
+    assert.equal(data.nextStep?.prefill?.city, "Los Angeles");
+  }
 
   const assistantMessage = await readLatestAssistantMessage();
   assert.ok(assistantMessage);

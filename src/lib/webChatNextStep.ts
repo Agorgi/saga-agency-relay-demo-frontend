@@ -298,7 +298,9 @@ export function getPersonaFromNextStep(nextStep: WebChatNextStep | null | undefi
     return null;
   }
 
-  if (nextStep.route === "/projects/new") {
+  // /projects/new (legacy prefill flow) and /projects/<cuid> (new
+  // DB-backed brief review page from PR #19) both signal host persona.
+  if (nextStep.route === "/projects/new" || nextStep.route.startsWith("/projects/")) {
     return "host";
   }
 
