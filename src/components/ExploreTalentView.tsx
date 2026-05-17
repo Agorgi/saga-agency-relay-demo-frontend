@@ -123,7 +123,12 @@ export function ExploreTalentView() {
     [talent],
   );
 
-  const shortlistTarget = activeProject || null;
+  // Only show "Shortlisting into …" when the URL explicitly indicates a
+  // project. Without an explicit param, a stale Zustand-store selection
+  // (default: Beauty Brand fixture) used to leak into the cold-load header.
+  // Closes P1-OI-4 — see docs/open-issues.md.
+  const hasExplicitProjectParam = Boolean(projectIdParam || projectSlug);
+  const shortlistTarget = hasExplicitProjectParam ? activeProject : null;
   const recommendationState = useMemo(
     () =>
       buildCrewRecommendationState({
