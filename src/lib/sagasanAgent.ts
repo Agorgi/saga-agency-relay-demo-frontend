@@ -6,7 +6,7 @@ import {
   buildOrganizerCorrectionReply,
   evaluateOrganizerBriefReadiness,
   extractOrganizerIntakeFieldsFromMessages,
-  formatOrganizerKnownSummary,
+  formatOrganizerReflectiveSummary,
   formatOrganizerMissingSummary,
   isOrganizerCorrectionPrompt,
   type OrganizerIntakeFields,
@@ -1436,8 +1436,14 @@ function buildDeterministicReply({
       reply =
         "Got it. Tell me the project idea, and if you know them, add the city, timing, rough attendance, venue status, budget range, and any references in the same note.";
     } else {
-      const knownSummary = formatOrganizerKnownSummary(organizerReadiness);
-      reply = `Got it — I have ${knownSummary}. ${organizerReadiness.nextBestQuestion}`;
+      // Layer B (fallback mode): reflect the user's own words instead of
+      // category names. "formal ball, LA, July, 150 people" beats
+      // "project idea, location, timing, attendance" every time.
+      const reflective = formatOrganizerReflectiveSummary(
+        organizerFieldsFromStored(extractedFields),
+        organizerReadiness,
+      );
+      reply = `Got it — ${reflective}. ${organizerReadiness.nextBestQuestion}`;
     }
   } else if (persona === "creative") {
     if (extractedFields.roles.length === 0) {
