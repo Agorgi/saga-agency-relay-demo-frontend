@@ -169,6 +169,35 @@ are race-safe at the schema level — the second creator's `create` fails
 with P2002 and `generateCrewForProject` adopts the existing row instead
 of duplicating.
 
+## OutboundDraft active-row unique index (one-time, after PR #59)
+
+PR #59 added a Postgres partial unique index that prevents duplicate
+non-terminal CANDIDATE_OUTREACH drafts per candidate
+(`20260518030000_outbounddraft_active_candidate_outreach_unique`).
+The migration:
+
+1. Deduplicates any pre-existing non-terminal duplicates (keeps the
+   newest per candidate, deletes the rest)
+2. Adds `CREATE UNIQUE INDEX ... WHERE type='CANDIDATE_OUTREACH' AND
+   status IN ('DRAFT','NEEDS_REVIEW','BLOCKED')` so concurrent
+   `upsertOutboundDraft` calls can't both insert.
+
+The index is partial (Postgres-specific), so it doesn't block legitimate
+multi-history rows — once a draft moves to APPROVED / SENT / REJECTED
+the constraint no longer applies and a fresh draft for the same
+candidate is allowed.
+
+To apply:
+
+```bash
+DATABASE_URL="<neon-url>" POSTGRES_URL_NON_POOLING="<neon-direct-url>" \
+  npx prisma migrate deploy
+```
+
+Application code (`upsertOutboundDraft`) catches P2002 and retries
+through the update branch, so the schema constraint never surfaces
+as a 500 to users.
+
 ## Composite talent seed (one-time, after PR #51)
 
 PR #51 added the `DEMO_COMPOSITE` value to `PersonSource` (migration

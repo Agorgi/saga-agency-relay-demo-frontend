@@ -3,6 +3,7 @@ import type {
   OutboundDraftType,
   Prisma,
 } from "@prisma/client";
+import { Prisma as PrismaRuntime } from "@prisma/client";
 import { z } from "zod";
 import { logAudit } from "@/sms-engine/audit";
 import { getDb } from "@/sms-engine/db";
@@ -528,13 +529,6 @@ async function upsertOutboundDraft({
   lookup: Prisma.OutboundDraftWhereInput;
 }) {
   const db = getDb();
-  const existing = await db.outboundDraft.findFirst({
-    where: {
-      ...lookup,
-      status: { in: ["DRAFT", "NEEDS_REVIEW", "BLOCKED"] },
-    },
-    orderBy: { updatedAt: "desc" },
-  });
 
   const data = {
     type: draft.type,
@@ -559,8 +553,29 @@ async function upsertOutboundDraft({
     }),
   };
 
-  return existing
-    ? getDb().outboundDraft.update({
+  // Race-safety (PR #59): two concurrent calls can both observe
+  // `findFirst` return null and both proceed to `create`. The partial
+  // unique index added by `20260518030000_outbounddraft_active_candidate_outreach_unique`
+  // covers CANDIDATE_OUTREACH rows in non-terminal status (DRAFT /
+  // NEEDS_REVIEW / BLOCKED), so the second creator now gets P2002
+  // and we fall through to the update branch.
+  //
+  // The retry is bounded: one P2002 → re-run findFirst → update. If
+  // findFirst still returns nothing (e.g. the racing writer's row
+  // moved to a terminal status between our two queries), the error
+  // propagates so we don't silently swallow data-integrity problems.
+
+  async function attempt(): Promise<Awaited<ReturnType<typeof db.outboundDraft.create>>> {
+    const existing = await db.outboundDraft.findFirst({
+      where: {
+        ...lookup,
+        status: { in: ["DRAFT", "NEEDS_REVIEW", "BLOCKED"] },
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+
+    if (existing) {
+      return db.outboundDraft.update({
         where: { id: existing.id },
         data: {
           ...data,
@@ -570,8 +585,28 @@ async function upsertOutboundDraft({
           rejectedAt: null,
           sentAt: null,
         },
-      })
-    : getDb().outboundDraft.create({ data });
+      });
+    }
+    return db.outboundDraft.create({ data });
+  }
+
+  try {
+    return await attempt();
+  } catch (err) {
+    if (!isPrismaUniqueViolation(err)) throw err;
+    // Another concurrent generator landed the row between our
+    // findFirst and create. Re-run the path — this time findFirst
+    // will surface the row the racing writer wrote, and we'll
+    // update it instead.
+    return await attempt();
+  }
+}
+
+function isPrismaUniqueViolation(err: unknown): boolean {
+  return (
+    err instanceof PrismaRuntime.PrismaClientKnownRequestError &&
+    err.code === "P2002"
+  );
 }
 
 export async function generateOrganizerShortlistMessageDraftForPacket(
