@@ -57,14 +57,16 @@ test("invalid next-step routes are rejected", () => {
   assert.equal(nextStep, null);
 });
 
-test("next-step labels are clamped to five words", () => {
+test("next-step labels are clamped to five words when no canonical label exists", () => {
+  // For routes that have a canonical label (/me, /spaces, /feed,
+  // /projects/new) the sanitizer forces the canonical value
+  // verbatim and the clamp is moot. The bound /projects/<cuid>
+  // form has no canonical label and falls through to the clamp,
+  // which is what this test exercises.
   const nextStep = sanitizeNextStepPayload({
-    label: "Open the full creative opportunities dashboard",
-    route: "/me",
-    prefill: {
-      city: "Los Angeles",
-      roles: ["Photographer"],
-    },
+    label: "Open the full project review and outreach dashboard",
+    route: "/projects/cm0abc123def456ghi789jkl",
+    prefill: {},
   });
 
   assert.ok(nextStep);
@@ -122,7 +124,11 @@ test("pending next-step handoff survives navigation state", () => {
 
     const nextStep = readPendingNextStep("/projects/new");
     assert.ok(nextStep);
-    assert.equal(nextStep?.label, "Build my event");
+    // The sanitizer forces the canonical label for /projects/new
+    // ("Review brief"), so the "Build my event" the persist call
+    // wrote gets normalized on read. The prefill payload is
+    // unaffected — the brief data survives the round-trip.
+    assert.equal(nextStep?.label, "Review brief");
     assert.equal(nextStep?.prefill.city, "Los Angeles");
     assert.equal(nextStep?.prefill.projectIdea, "Anime pop-up");
 
@@ -235,4 +241,41 @@ test("getPersonaFromNextStep returns 'host' for the bound /projects/<id> route",
     prefill: {},
   };
   assert.equal(getPersonaFromNextStep(newStep), "host");
+});
+
+test("sanitizeNextStepPayload normalises label to the canonical per-route value", () => {
+  // Closes the live-mode half of P2-OI-11 (Codex finding on PR #42).
+  // The LLM may emit historical / hallucinated labels like
+  // "Open my feed" → /me. The sanitizer must replace those with the
+  // current canonical label so live mode can't drift back to the
+  // mismatched CTA the fallback path was just fixed to avoid.
+  const cases = [
+    { input: "Open my feed", route: "/me", expected: "Open my profile" },
+    { input: "List your space", route: "/spaces", expected: "List my space" },
+    { input: "See your feed", route: "/feed", expected: "Open my feed" },
+    { input: "Build my event", route: "/projects/new", expected: "Review brief" },
+  ];
+
+  for (const { input, route, expected } of cases) {
+    const sanitized = sanitizeNextStepPayload({ label: input, route, prefill: {} });
+    assert.ok(sanitized);
+    assert.equal(sanitized?.route, route);
+    assert.equal(sanitized?.label, expected);
+  }
+});
+
+test("sanitizeNextStepPayload preserves model-supplied label for bound /projects/<cuid> routes", () => {
+  // The /projects/<cuid> route is produced by bindNextStepToProject
+  // after persistence and doesn't have a fixed canonical label —
+  // its label comes from the upstream "Review brief" CTA carried
+  // through the rewrite. The sanitizer should NOT force a label
+  // here; clampNextStepLabel keeps the model-supplied (or
+  // bind-supplied) value.
+  const sanitized = sanitizeNextStepPayload({
+    label: "Review brief",
+    route: "/projects/cm0abc123def456ghi789jkl",
+    prefill: {},
+  });
+  assert.ok(sanitized);
+  assert.equal(sanitized?.label, "Review brief");
 });

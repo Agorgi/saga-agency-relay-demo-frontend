@@ -621,6 +621,12 @@ test("live reply uses the provided OpenAI call and preserves nextStep", async ()
         data: {
           message: "Perfect. I can line up your feed now.",
           nextStep: {
+            // The mock LLM returns the OLD label "Open my feed" to
+            // simulate a real-world case where the model has been
+            // trained on / hallucinates older copy. The sanitization
+            // layer must normalize it to the current canonical
+            // label "Open my profile" for the /me route. This is
+            // the live-mode half of P2-OI-11 closed in PR #42.
             label: "Open my feed",
             route: "/me",
             prefill: {
@@ -646,7 +652,10 @@ test("live reply uses the provided OpenAI call and preserves nextStep", async ()
   );
   assert.match(capturedPrompt, /Reply with Sagasan's next message/);
   assert.equal(result.data.nextStep?.route, "/me");
-  assert.equal(result.data.nextStep?.label, "Open my feed");
+  // Sanitization forces the canonical label even if the LLM emitted
+  // the old "Open my feed" string. Closes Codex's live-mode finding
+  // on P2-OI-11.
+  assert.equal(result.data.nextStep?.label, "Open my profile");
 });
 
 test("getConfiguredModel falls back to a real model when env var is a known-invalid string", () => {

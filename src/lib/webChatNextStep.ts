@@ -279,6 +279,25 @@ export function sanitizePrefillForRoute(
   return sanitized;
 }
 
+// Canonical labels for the four persona destinations. Forced over
+// whatever the LLM provides during sanitization so live mode can't
+// drift back to mismatched copy (e.g. "Open my feed" pointing at
+// /me, which is the creative's dashboard not a feed surface).
+// Closes the live-mode side of P2-OI-11 that Codex flagged on PR #42.
+//
+// Why force vs trust the model: the model is reliable on the route
+// shape but its label often mirrors training-data phrases that don't
+// match our current copy. The destination is determined by the
+// route; the label is descriptive of that destination. Keeping them
+// in lockstep at the sanitization layer is cheaper than re-running
+// prompt iterations every time we rename a button.
+const CANONICAL_ROUTE_LABELS: Record<string, string> = {
+  "/me": "Open my profile",
+  "/spaces": "List my space",
+  "/feed": "Open my feed",
+  "/projects/new": "Review brief",
+};
+
 export function sanitizeNextStepPayload(value: unknown) {
   const parsed = webChatNextStepSchema.safeParse(value);
   if (!parsed.success) {
@@ -286,8 +305,13 @@ export function sanitizeNextStepPayload(value: unknown) {
   }
 
   const prefill = sanitizePrefillForRoute(parsed.data.route, parsed.data.prefill);
+  const canonicalLabel = CANONICAL_ROUTE_LABELS[parsed.data.route];
+  // Use the canonical label when one exists for this route. For
+  // cuid-shaped /projects/<id> routes (set by bindNextStepToProject)
+  // we fall back to clamping the model-supplied label since the
+  // bound route doesn't have a static label baked in here.
   return {
-    label: clampNextStepLabel(parsed.data.label),
+    label: canonicalLabel || clampNextStepLabel(parsed.data.label),
     route: parsed.data.route,
     prefill,
   } satisfies WebChatNextStep;
