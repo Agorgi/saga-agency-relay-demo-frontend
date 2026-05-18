@@ -1,7 +1,14 @@
+import Link from "next/link";
 import { Save } from "lucide-react";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { adminContactLabel } from "@/sms-engine/adminPrivacy";
 import { getDb } from "@/sms-engine/db";
+import {
+  ADMIN_INCLUDE_COMPOSITES_QUERY_KEY,
+  adminCompositeFilterLabel,
+  buildAdminCreatorProfileWhere,
+  shouldIncludeComposites,
+} from "@/lib/adminTalentFilter";
 import { updateCreatorProfileReviewAction } from "@/app/(admin)/admin/(dashboard)/network-actions";
 
 export const dynamic = "force-dynamic";
@@ -11,8 +18,15 @@ const inputClass =
 const buttonClass =
   "inline-flex items-center justify-center gap-2 rounded-md border border-zinc-700 px-3 py-2 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-900";
 
-export default async function CreatorProfilesPage() {
+export default async function CreatorProfilesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const includeComposites = shouldIncludeComposites(sp);
   const profiles = await getDb().creatorProfile.findMany({
+    where: buildAdminCreatorProfileWhere({ includeComposites }),
     include: {
       person: {
         include: {
@@ -32,11 +46,26 @@ export default async function CreatorProfilesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-500">
-          Creator network
-        </p>
-        <h2 className="mt-2 text-2xl font-semibold">Creator profiles</h2>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-500">
+            Creator network
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold">Creator profiles</h2>
+          <p className="mt-1 text-xs text-zinc-500">
+            {adminCompositeFilterLabel({ includeComposites })}
+          </p>
+        </div>
+        <Link
+          href={
+            includeComposites
+              ? "/admin/creator-profiles"
+              : `/admin/creator-profiles?${ADMIN_INCLUDE_COMPOSITES_QUERY_KEY}=1`
+          }
+          className="rounded-md border border-zinc-700 px-3 py-2 text-xs text-zinc-300 transition hover:border-zinc-500 hover:bg-zinc-900"
+        >
+          {includeComposites ? "Hide composites" : "Include composites"}
+        </Link>
       </div>
 
       <section className="grid gap-4 xl:grid-cols-2">
