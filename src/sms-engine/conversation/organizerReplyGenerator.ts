@@ -14,7 +14,7 @@ const fallbackReply =
 
 const stageQuestions: Record<string, string> = {
   ASK_FIRST_TIME_HOST:
-    "Love this. Have you hosted something like this before, or would this be your first one?",
+    "Love this. Have you hosted something like this before?",
   ASK_LOCATION:
     "Great. What city or general location are you thinking for this?",
   ASK_PROJECT_CONCEPT:

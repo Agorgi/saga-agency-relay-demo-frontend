@@ -79,7 +79,7 @@ async function main() {
 
   const replyFallback = intakeReplySchema.parse({
     message:
-      "Love this. Have you hosted something like this before, or would this be your first one?",
+      "Love this. Have you hosted something like this before?",
     confidence: 0.75,
     needsAdmin: false,
   });
@@ -87,7 +87,7 @@ async function main() {
     ok: true,
     data: {
       message:
-        "Love this. Have you hosted something like this before, or would this be your first one?",
+        "Love this. Have you hosted something like this before?",
       confidence: 0.91,
       needsAdmin: false,
       reason: null,

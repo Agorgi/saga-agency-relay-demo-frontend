@@ -436,6 +436,87 @@ test("boundary and capability fallbacks stay in producer voice", () => {
   }
 });
 
+test("OI-27: multi-word fandoms stay as single interest tags (no 'Jujutsu' + 'Kaisen' split)", () => {
+  // The QA bug: "Jujutsu Kaisen" was rendering as separate "Jujutsu"
+  // and "Kaisen" chips because inferInterestTags fell to the
+  // whitespace-splitting fallback when no INTEREST_PATTERNS matched.
+  // After the fix, the identity-signal pattern bank fires FIRST and
+  // catches the multi-word phrase as a single canonical token.
+  const fan = extractStructuredFields({
+    persona: "fan",
+    history: [],
+    latestMessage: "I'm into Jujutsu Kaisen and anime nights in Brooklyn.",
+  });
+  const allInterests = (fan.interests || []).map((s) => s.toLowerCase());
+  // The canonical label from identitySignals.ts is "JJK", not "Jujutsu Kaisen".
+  // Either is acceptable as long as it's ONE token, not two.
+  assert.ok(
+    allInterests.some((i) => i === "jjk" || i === "jujutsu kaisen"),
+    `expected a single JJK-shaped tag, got: ${JSON.stringify(fan.interests)}`,
+  );
+  assert.ok(
+    !allInterests.includes("jujutsu"),
+    `'Jujutsu' must not appear as a standalone tag, got: ${JSON.stringify(fan.interests)}`,
+  );
+  assert.ok(
+    !allInterests.includes("kaisen"),
+    `'Kaisen' must not appear as a standalone tag, got: ${JSON.stringify(fan.interests)}`,
+  );
+});
+
+test("OI-27: multi-word fandom 'Love and Deepspace' stays as a single tag", () => {
+  const fan = extractStructuredFields({
+    persona: "fan",
+    history: [],
+    latestMessage: "Looking for Love and Deepspace meetups.",
+  });
+  const allInterests = (fan.interests || []).map((s) => s.toLowerCase());
+  assert.ok(
+    allInterests.includes("love and deepspace"),
+    `expected 'Love and Deepspace' as one tag, got: ${JSON.stringify(fan.interests)}`,
+  );
+  // None of the constituent words should appear as standalone tags.
+  for (const word of ["love", "deepspace"]) {
+    assert.ok(
+      !allInterests.includes(word),
+      `'${word}' must not appear standalone, got: ${JSON.stringify(fan.interests)}`,
+    );
+  }
+});
+
+test("OI-26: ticketing reply offers a persona-aware continuation instead of dead-ending", () => {
+  // The deflection ("Tickets live elsewhere") must stay, but the chat
+  // shouldn't dead-end there. Each persona should get a continuation
+  // tailored to what Saga can actually help with for them.
+  const personas = ["host", "creative", "venue", "fan"] as const;
+  const continuationByPersona: Record<typeof personas[number], RegExp> = {
+    host: /what kind of event/i,
+    creative: /what kind of work/i,
+    venue: /what kind of space/i,
+    fan: /what city or scene/i,
+  };
+  for (const persona of personas) {
+    const reply = buildMockAgentReply({
+      persona,
+      history: [],
+      latestMessage: "Can you sell tickets for me?",
+    });
+    assert.match(reply.reply, /Tickets live elsewhere/i);
+    assert.match(reply.reply, continuationByPersona[persona]);
+    // Global rule — at most one question per turn.
+    assert.ok((reply.reply.match(/\?/g) || []).length <= 1);
+  }
+
+  // Router (no persona) gets a generic continuation, not a dead-end.
+  const routerReply = buildMockAgentReply({
+    persona: null,
+    history: [],
+    latestMessage: "Can you sell tickets?",
+  });
+  assert.match(routerReply.reply, /Tickets live elsewhere/i);
+  assert.match(routerReply.reply, /what are you trying to make or find/i);
+});
+
 test("extraction handles the known city and availability edge cases", () => {
   const losAngeles = extractStructuredFields({
     persona: "host",
@@ -613,7 +694,10 @@ test("portfolio inference requires possessive framing, not passive mention", () 
     history: [],
     latestMessage: "My Instagram is @creator and I have a reel ready.",
   });
-  assert.equal(possessive.portfolio, "Sample shared in chat");
+  // OI-37: placeholder renamed from "Sample shared in chat" (which
+  // implied a sample was actually shared) to "Mentioned in chat"
+  // (which honestly reflects what happened).
+  assert.equal(possessive.portfolio, "Mentioned in chat");
 });
 
 test("trust-boundary questions override persona keyword routing", () => {

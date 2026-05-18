@@ -18,9 +18,9 @@ const stageQuestions: Record<string, string> = {
   ASK_IDEA_SCOPE:
     "What kind of format are you imagining - meetup, picnic, pop-up, cafe night, party, photoshoot, or something else?",
   ASK_INTEREST_SIGNAL:
-    "Would you want to help organize it, or are you mainly hoping someone else makes it happen?",
+    "Would you want to help organize it?",
   ASK_TIMING:
-    "Is there a rough timing that would make sense, or is this just a general idea for now?",
+    "Is there a rough timing that would make sense — or is it still fuzzy?",
 };
 
 const forbiddenPromisePattern =

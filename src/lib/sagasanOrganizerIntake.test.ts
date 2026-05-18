@@ -4,6 +4,7 @@ import {
   buildOrganizerCorrectionReply,
   evaluateOrganizerBriefReadiness,
   extractOrganizerIntakeFieldsFromMessages,
+  formatOrganizerKnownSummary,
   formatOrganizerReflectiveSummary,
 } from "@/lib/sagasanOrganizerIntake";
 
@@ -151,4 +152,30 @@ test("Layer B reflective summary falls back to category labels when no string va
   // Either way the summary is non-empty (never produces a dangling
   // "Got it — . " reply).
   assert.ok(summary.length > 0);
+});
+
+test("OI-40: BRIEF PROGRESS counter and Known list reconcile when ≥ 6 essentials are answered", () => {
+  // Regression: the prior `.slice(0, 5)` cap in formatOrganizerKnownSummary
+  // capped the displayed Known list at 5 labels even when essentialsAnswered
+  // climbed to 6 / 7 / 8 / 9. The counter and visible list disagreed.
+  // After the fix, the count of labels in the Known summary equals
+  // essentialsAnswered.
+  const fields = extractOrganizerIntakeFieldsFromMessages([
+    "I want to throw a formal ball inspired by Love and Deepspace in LA in July. Probably 150 people. I don't have a venue yet. I have one photographer friend but no production crew. Budget is maybe $15k. Here's a Pinterest board. I want Saga to help find a producer, stylist, venue lead, and maybe performers.",
+  ]);
+  const readiness = evaluateOrganizerBriefReadiness(fields);
+  const summary = formatOrganizerKnownSummary(readiness);
+
+  // This brief should answer all 9 essentials.
+  assert.ok(
+    readiness.essentialsAnswered >= 6,
+    `expected ≥ 6 essentials answered, got ${readiness.essentialsAnswered}`,
+  );
+  // The Known summary is a comma-separated list. Count by splitting.
+  const labels = summary.split(/,\s*|\s+and\s+/).filter(Boolean);
+  assert.equal(
+    labels.length,
+    readiness.essentialsAnswered,
+    `Known list has ${labels.length} labels but counter says ${readiness.essentialsAnswered} essentials answered. They must match.`,
+  );
 });

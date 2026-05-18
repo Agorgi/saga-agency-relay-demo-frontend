@@ -700,9 +700,11 @@ export function formatOrganizerKnownSummary(readiness: OrganizerBriefReadiness) 
     return "the seed idea";
   }
 
-  const labels = knownKeys
-    .slice(0, 5)
-    .map((key) => REQUIRED_FIELD_LABELS[key]);
+  // OI-40: the prior `.slice(0, 5)` cap meant the Known list showed
+  // 5 labels even when the "Brief progress: X of 9 essentials"
+  // counter said 6. The mismatch read like a bug. Render every known
+  // label so the counter and the list always reconcile.
+  const labels = knownKeys.map((key) => REQUIRED_FIELD_LABELS[key]);
   return formatList(labels);
 }
 

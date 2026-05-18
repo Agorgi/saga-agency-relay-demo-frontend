@@ -328,7 +328,7 @@ Honest inventory. Update when feature state changes.
 
 ## Open issues / known regressions
 
-**Canonical working list:** `docs/open-issues.md`. As of 2026-05-17 post-merge, 4 P1 items + 32 P2/P3 items remain open. PRs #15–#24 closed the P0s and the LLM latents.
+**Canonical working list:** `docs/open-issues.md`. As of 2026-05-18 post-PR-#70, **P0/P1/P2 are all clear**; **10 P3 style refinements + 1 env-config item (OI-37 Vercel/Neon preview DB scope) remain open**. PR #70 closed the 6 functionality-impacting P3 items (OI-26, OI-27, OI-30, OI-32, OI-37 portfolio placeholder, OI-40); the remaining P3s are pure style polish.
 
 **Deploy operational notes:** `docs/DEPLOY.md` — what to do after a schema-touching PR merges, env-var actions, post-deploy verification.
 
@@ -340,7 +340,7 @@ Honest inventory. Update when feature state changes.
 
 **P1 (0 open):** P1-OI-3 / P1-OI-4 closed in PR #22 (/explore Beauty Brand label leak + reset behavior). P1-OI-5 / P1-OI-6 verified closed in PR #40 — regression tests in `src/lib/sagasanAgent.test.ts` exercise the exact strings from the original QA report and pass on every run.
 
-P2/P3: 27 items in `docs/open-issues.md`. Don't expand inline here.
+P3: 10 style-polish items in `docs/open-issues.md` (plus OI-37 env-config). Don't expand inline here.
 
 Recently closed (see resolved appendix in `docs/open-issues.md`): P0-OI-1 / P0-OI-2 (Step 6 P0 in PR #16), P1-OI-7 / P1-OI-8 (LLM mode latents in PR #15), P1-OI-3 / P1-OI-4 (/explore label leak in PR #22), P1-OI-5 / P1-OI-6 (persona-classifier subclasses verified in PR #40).
 

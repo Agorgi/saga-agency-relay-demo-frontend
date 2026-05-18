@@ -48,7 +48,7 @@ const intakeFieldOrder: Array<{
   {
     field: "firstTimeHost",
     question:
-      "Love this. I can help turn it into an actual production plan. First - have you hosted something like this before, or would this be your first one?",
+      "Love this. I can help turn it into an actual production plan. First — have you hosted something like this before?",
   },
   {
     field: "city",

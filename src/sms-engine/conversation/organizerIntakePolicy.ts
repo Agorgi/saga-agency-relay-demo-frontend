@@ -13,7 +13,7 @@ import {
 } from "@/sms-engine/conversation/conversationTypes";
 
 const FIRST_TIME_HOST_QUESTION =
-  "Love this. I can help turn it into an actual production plan. First - have you hosted something like this before, or would this be your first one?";
+  "Love this. I can help turn it into an actual production plan. First — have you hosted something like this before?";
 const LOCATION_QUESTION =
   "Great. What city or general location are you thinking for this?";
 const CONCEPT_QUESTION =

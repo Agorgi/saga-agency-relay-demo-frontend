@@ -44,7 +44,7 @@ const hostQuestionAlreadyAsked = context({
       id: "msg_first_time_question",
       direction: "OUTBOUND",
       channel: "SMS",
-      body: "Love this. I can help turn it into an actual production plan. First - have you hosted something like this before, or would this be your first one?",
+      body: "Love this. I can help turn it into an actual production plan. First — have you hosted something like this before?",
       createdAt: new Date().toISOString(),
     },
   ],
