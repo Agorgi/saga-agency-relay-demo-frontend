@@ -29,6 +29,11 @@ type MemorySession = {
   userAgent: string | null;
   ipHash: string | null;
   persona: Persona | null;
+  // In-memory sessions never own DB-persisted projects (there's no
+  // DB). The field is always null; it exists so the type unifies
+  // with the Prisma WebSession shape and downstream code (e.g.
+  // projectAuth) can treat both consistently.
+  projectId: string | null;
 };
 
 type MemoryStoredMessage = StoredWebChatMessage & {
@@ -195,6 +200,12 @@ function withNullPersona<
   return {
     ...session,
     persona: null as Persona | null,
+    // Legacy DB mode predates the projectId column. Default to null
+    // so the returned shape unifies with the modern WebSession +
+    // MemorySession variants; projectAuth treats this as
+    // "no project owned by this session" which is correct — a
+    // legacy session can't own a tracer-flow Project.
+    projectId: null as string | null,
   };
 }
 
@@ -299,6 +310,7 @@ export async function getOrCreateSession(req: NextRequest) {
       userAgent,
       ipHash: null,
       persona: null,
+      projectId: null,
     };
     memorySessions.set(session.id, session);
     return { session, isNew: true as const };

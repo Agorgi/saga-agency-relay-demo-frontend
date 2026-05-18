@@ -8,24 +8,31 @@
  *
  * Thin wrapper around `advanceJourney` in src/lib/journey/service.ts.
  *
- * TODO(auth): see the GET route — no per-user authorization yet. Don't surface
- * this endpoint to anonymous clients until session-bound auth is wired.
+ * Auth: WebSession-bound. Cookie session must own the project. See
+ * requireProjectOwnership for the contract.
  */
 
+import type { NextRequest } from "next/server";
 import { advanceJourney } from "@/lib/journey/service";
 import {
   advanceIntentSchema,
   JourneyTransitionError,
 } from "@/lib/journey/types";
+import { jsonForAuthFailure, requireProjectOwnership } from "@/lib/projectAuth";
 import { getDb } from "@/sms-engine/db";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: projectId } = await params;
+
+  const auth = await requireProjectOwnership(request, projectId);
+  if (!auth.ok) {
+    return jsonForAuthFailure(auth);
+  }
 
   let parsedBody: unknown;
   try {

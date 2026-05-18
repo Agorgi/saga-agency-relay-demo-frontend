@@ -8,24 +8,34 @@
  *
  * Returns { candidateId, newStatus, journeyAdvanced } on success.
  *
- * TODO(auth): no per-user authorization yet. Don't surface this to anonymous
- * clients in production until session-bound auth is wired (see CLAUDE.md
- * portability notes + the journey routes' TODO(auth)).
+ * Auth: WebSession-bound. The cookie session must own the project the
+ * candidate belongs to (resolved via candidate → opportunity →
+ * roleOpening → projectId). See requireCandidateOwnership.
  */
 
+import type { NextRequest } from "next/server";
 import {
   candidateReviewActionSchema,
   reviewCandidate,
 } from "@/lib/candidateReview";
+import {
+  jsonForAuthFailure,
+  requireCandidateOwnership,
+} from "@/lib/projectAuth";
 import { logServerError } from "@/sms-engine/safeLogging";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: candidateId } = await params;
+
+  const auth = await requireCandidateOwnership(request, candidateId);
+  if (!auth.ok) {
+    return jsonForAuthFailure(auth);
+  }
 
   let parsedBody: unknown;
   try {

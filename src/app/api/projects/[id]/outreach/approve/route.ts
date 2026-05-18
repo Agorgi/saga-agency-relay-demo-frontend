@@ -9,25 +9,31 @@
  *
  * Returns { projectId, approvedCount, journeyAdvanced } on success.
  *
- * TODO(auth): no per-user authorization yet. Don't surface this to
- * anonymous clients in production until session-bound auth is wired
- * (see CLAUDE.md portability notes + the journey routes' TODO(auth)
- * and the candidate review route's TODO(auth)).
+ * Auth: WebSession-bound. The cookie session must own the project.
+ * See requireProjectOwnership for the contract — 401 for no session,
+ * 403 when the session doesn't own this project.
  */
 
+import type { NextRequest } from "next/server";
 import {
   approveProjectOutreach,
   outreachApprovalActionSchema,
 } from "@/lib/outreachApproval";
+import { jsonForAuthFailure, requireProjectOwnership } from "@/lib/projectAuth";
 import { logServerError } from "@/sms-engine/safeLogging";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id: projectId } = await params;
+
+  const auth = await requireProjectOwnership(request, projectId);
+  if (!auth.ok) {
+    return jsonForAuthFailure(auth);
+  }
 
   let parsedBody: unknown;
   try {
