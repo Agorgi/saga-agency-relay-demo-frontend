@@ -93,7 +93,29 @@ See `.env.example` for the full list.
    - Optional: `SENTRY_TRACES_SAMPLE_RATE` (default `0.1`)
 3. Optional, for source maps: also set `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN`. The auth token is build-time only; treat it as a secret.
 4. Redeploy. Check `/api/health` — `sentry.dsn_configured` should be `true`.
-5. Smoke test: hit a route that throws (e.g. force-error a dev endpoint), confirm the event lands in Sentry with PII scrubbed (no email/phone/key strings in the payload).
+5. **Smoke test via `/api/admin/test-error`:** PR #41 added a deliberate-throw endpoint gated by `INTERNAL_API_KEY`. From your terminal:
+
+   ```bash
+   curl -X POST https://demo.try-saga.com/api/admin/test-error \
+     -H "x-saga-internal-key: $INTERNAL_API_KEY" \
+     -i
+   ```
+
+   Expect HTTP 500 + body:
+   ```json
+   {
+     "error": "test_error",
+     "message": "Deliberate error fired for Sentry verification.",
+     "sentry_dsn_configured": true
+   }
+   ```
+
+   Then open the Sentry dashboard. Within ~30 seconds you should see an event:
+   - **Title:** `Error: admin test error — Sentry verification`
+   - **Tags:** `action=admin_test_error`, `route=/api/admin/test-error`, `operation=sentry_verification`
+   - **Payload:** stack frames should be present (PR #33's depth-12 fix preserves them); no email, phone, or DSN strings anywhere in the body.
+
+   If the event doesn't appear: check `/api/health` is still reporting `sentry.dsn_configured: true`, verify the DSN was added for the right environment, and confirm the Sentry project hasn't been rate-limited.
 
 **To roll back Sentry:**
 - Unset `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` in Vercel and redeploy. SDK becomes a no-op; structured logs continue working unchanged.
