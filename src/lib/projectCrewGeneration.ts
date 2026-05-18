@@ -34,6 +34,7 @@
  */
 
 import type { ProximityTier } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { logAudit } from "@/sms-engine/audit";
 import { getDb } from "@/sms-engine/db";
 import { buildProjectUnderstanding } from "@/sms-engine/producer/projectUnderstanding";
@@ -147,38 +148,81 @@ export async function generateCrewForProject(
     };
   }
 
-  // Persist RoleOpening + Opportunity per role. We create them in serial
-  // rather than $transaction because each Opportunity needs the
-  // RoleOpening id and we want one Opportunity per role.
+  // Persist RoleOpening + Opportunity per role.
+  //
+  // Race-safety: the `RoleOpening @@unique([projectId, roleType])` constraint
+  // (migration 20260518010000) guarantees only one row per project/role
+  // combination at the database level. The count-check above optimises
+  // the common-case (no work needed), but it's a TOCTOU window — two
+  // concurrent /crew loads on a fresh project can both see count=0
+  // and race into creation. When that happens, the second `create`
+  // throws Prisma P2002 (unique violation). We catch it, fetch the
+  // existing row + its Opportunity, and continue — the role list ends
+  // up identical regardless of which generator "won" any individual
+  // role, and no duplicates land in the DB.
   const roleOpeningByType = new Map<string, { id: string; opportunityId: string }>();
   for (const role of allRoles) {
-    const roleOpening = await db.roleOpening.create({
-      data: {
-        projectId,
-        roleType: role.roleType,
-        title: role.title,
-        description: role.description,
-        requiredSkills: role.requiredSkills,
-        preferredFandoms: role.preferredFandoms,
-        locationRequirement: role.localRequired ? understanding.city : null,
-        compensationType: "UNKNOWN",
-        status: "OPEN",
-      },
-      select: { id: true },
-    });
-    const opportunity = await db.opportunity.create({
-      data: {
-        roleOpeningId: roleOpening.id,
-        visibility: "PRIVATE",
-        applicationMode: "INVITE_ONLY",
-        status: "ACTIVE",
-      },
-      select: { id: true },
-    });
-    roleOpeningByType.set(role.roleType, {
-      id: roleOpening.id,
-      opportunityId: opportunity.id,
-    });
+    try {
+      const roleOpening = await db.roleOpening.create({
+        data: {
+          projectId,
+          roleType: role.roleType,
+          title: role.title,
+          description: role.description,
+          requiredSkills: role.requiredSkills,
+          preferredFandoms: role.preferredFandoms,
+          locationRequirement: role.localRequired ? understanding.city : null,
+          compensationType: "UNKNOWN",
+          status: "OPEN",
+        },
+        select: { id: true },
+      });
+      const opportunity = await db.opportunity.create({
+        data: {
+          roleOpeningId: roleOpening.id,
+          visibility: "PRIVATE",
+          applicationMode: "INVITE_ONLY",
+          status: "ACTIVE",
+        },
+        select: { id: true },
+      });
+      roleOpeningByType.set(role.roleType, {
+        id: roleOpening.id,
+        opportunityId: opportunity.id,
+      });
+    } catch (err) {
+      if (!isUniqueViolation(err)) throw err;
+      // Another concurrent generator beat us to this role — adopt
+      // its existing row + opportunity so candidate scoring still
+      // hangs off the same Opportunity id.
+      const existing = await db.roleOpening.findUnique({
+        where: {
+          projectId_roleType: { projectId, roleType: role.roleType },
+        },
+        select: {
+          id: true,
+          opportunities: { select: { id: true }, take: 1 },
+        },
+      });
+      if (existing?.opportunities[0]) {
+        roleOpeningByType.set(role.roleType, {
+          id: existing.id,
+          opportunityId: existing.opportunities[0].id,
+        });
+      }
+    }
+  }
+
+  // If the racing generator finished every role before we got here,
+  // there's nothing left for us to score against. Report as the
+  // idempotent skip outcome so callers don't double-log creation.
+  if (roleOpeningByType.size === 0) {
+    return {
+      projectId,
+      skipped: "already_generated",
+      rolesCreated: 0,
+      candidatesCreated: 0,
+    };
   }
 
   // Score CreatorProfile pool against roles. Chat-created Projects don't
@@ -382,6 +426,16 @@ function proximityFor(
     tier: tierByType[edge.relationshipType] || "UNKNOWN",
     strength: edge.strength,
   };
+}
+
+/**
+ * Detect a Prisma unique-constraint violation (P2002). We catch this
+ * narrowly so unrelated DB errors still propagate.
+ */
+function isUniqueViolation(err: unknown): boolean {
+  return (
+    err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002"
+  );
 }
 
 async function logCrewGenerated(metadata: {

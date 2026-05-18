@@ -1171,6 +1171,7 @@ model RoleOpening {
   talentSearchRuns      TalentSearchRun[]
   publicWebResearchRuns PublicWebResearchRun[]
 
+  @@unique([projectId, roleType])
   @@index([projectId])
   @@index([roleType])
   @@index([status])
