@@ -4,6 +4,7 @@ import type {
   AvailabilitySignal,
   CreativeProject,
   TalentFilters,
+  TalentProfile,
   TalentRecommendation,
 } from "@/types/sagaAgency";
 
@@ -367,5 +368,134 @@ export function buildCrewRecommendationState({
     candidateGroups,
     noOneContactedDisclaimer:
       "No one here is contacted, confirmed, available, or booked yet. Saga is only surfacing demo candidates for human review.",
+  };
+}
+
+const BROWSE_ALL_TOTAL_CAP = 18;
+const BROWSE_ALL_PER_ROLE = 6;
+
+function browseAllPrimaryRole(profile: TalentProfile): string {
+  return profile.roles[0] || "Creator";
+}
+
+/**
+ * "Browse all talent" state for the cold-load /explore surface.
+ *
+ * Pre-PR #fa5b281, /explore fell back to a default Zustand "selected
+ * project" (Beauty Brand fixture) when no projectId was in the URL,
+ * which populated the grid with project-scored cards but also leaked
+ * the Beauty Brand label into the page. That PR fixed the leak by
+ * removing the fixture fallback, but inadvertently emptied the grid
+ * on cold-load.
+ *
+ * This function reinstates the grid for the no-project case by
+ * grouping the raw talent dataset by primary role, applying the same
+ * filters/search the project-scoped flow uses, and capping the total
+ * at 18 cards. No project scoring is applied — these are honest
+ * "demo seed" cards labeled as such.
+ *
+ * Returns a CrewRecommendationState with brief=null so the page UI
+ * keeps the "no brief yet" affordance and doesn't pretend to be
+ * shortlisting.
+ */
+export function buildBrowseAllTalentState({
+  talent,
+  searchQuery,
+  filters,
+}: {
+  talent: TalentProfile[];
+  searchQuery: string;
+  filters: TalentFilters;
+}): CrewRecommendationState {
+  const search = searchQuery.trim().toLowerCase();
+
+  const matched = talent.filter((profile) => {
+    const role = browseAllPrimaryRole(profile);
+    const searchMatch =
+      !search ||
+      `${profile.name} ${profile.city} ${role} ${profile.tags.join(" ")} ${profile.credits.join(" ")}`
+        .toLowerCase()
+        .includes(search);
+    const roleMatch =
+      filters.role === "All roles" ||
+      profile.roles.some((r) => r.toLowerCase() === filters.role.toLowerCase());
+    const cityMatch =
+      filters.city === "All cities" ||
+      profile.city.toLowerCase().includes(filters.city.toLowerCase());
+    const projectTypeMatch =
+      filters.projectType === "All" ||
+      profile.projectTypes.includes(filters.projectType);
+    const tagMatch =
+      filters.tag === "All tags" ||
+      profile.tags.some((tag) => tag.toLowerCase().includes(filters.tag.toLowerCase()));
+    const availabilityMatch =
+      filters.availability === "all" || profile.availabilitySignal === filters.availability;
+    const budgetMatch =
+      filters.budget === "All budgets" ||
+      profile.rateRange.toLowerCase().includes(filters.budget.toLowerCase());
+    return (
+      searchMatch &&
+      roleMatch &&
+      cityMatch &&
+      projectTypeMatch &&
+      tagMatch &&
+      availabilityMatch &&
+      budgetMatch
+    );
+  });
+
+  // Group by primary role. Cap per role and overall total so the
+  // page stays glance-able.
+  const groups = new Map<string, CrewCandidateForUI[]>();
+  let total = 0;
+  for (const profile of matched) {
+    if (total >= BROWSE_ALL_TOTAL_CAP) break;
+    const role = browseAllPrimaryRole(profile);
+    const bucket = groups.get(role) ?? [];
+    if (bucket.length >= BROWSE_ALL_PER_ROLE) continue;
+    bucket.push({
+      id: profile.id,
+      name: profile.name,
+      role,
+      location: profile.city,
+      whyThisPersonMayFit:
+        profile.bio ||
+        `Active demo profile listed as ${role}. Open the card to review their work.`,
+      evidence:
+        profile.credits.slice(0, 2).join(" · ") ||
+        "Sample work available in their public profile.",
+      reviewStatus: "Needs review",
+      contactabilityStatus: "Human review required",
+      sourceMode: "demo_seed",
+      contacted: false,
+      confirmed: false,
+      imageSrc:
+        profile.portfolioImages?.[0] ||
+        profile.avatar ||
+        "https://picsum.photos/seed/saga-demo-creator/640/640",
+      availabilityLabel: getAvailabilityLabel(profile.availabilitySignal),
+    });
+    groups.set(role, bucket);
+    total += 1;
+  }
+
+  // SuggestedRoleForUI minimal shape — used only to label the
+  // group; no project-scored rationale exists in browse-all mode.
+  const candidateGroups = Array.from(groups.entries()).map(([role, candidates]) => ({
+    role: {
+      id: `browse-all-${role.toLowerCase().replace(/\s+/g, "-")}`,
+      role,
+      rationale: `Public demo profiles tagged as ${role}.`,
+      sourceMode: "demo_seed" as const,
+    } satisfies SuggestedRoleForUI,
+    candidates,
+  }));
+
+  return {
+    brief: null,
+    suggestedRoles: candidateGroups.map((group) => group.role),
+    candidateGroups,
+    noOneContactedDisclaimer:
+      "Browse-all view. These are demo profiles for review — Saga has not contacted, confirmed, or vetted anyone here.",
   };
 }
