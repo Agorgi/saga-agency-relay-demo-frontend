@@ -96,6 +96,8 @@ function testSafePersonSerializer() {
     source: "APP",
     optedOut: false,
     consentStatus: "IMPLIED",
+    fandoms: [],
+    interests: [],
     createdAt: now,
     updatedAt: now,
     creatorProfile: profile,

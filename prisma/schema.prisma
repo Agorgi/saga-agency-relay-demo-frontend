@@ -1032,6 +1032,25 @@ model Person {
   source                       PersonSource                  @default(ADMIN)
   optedOut                     Boolean                       @default(false)
   consentStatus                ConsentStatus                 @default(UNKNOWN)
+  // Identity-graph signals (PR #63). Captured across every persona
+  // (host / creative / venue / fan) regardless of where in the app
+  // the signal appeared. The intent is cross-pollination: a host
+  // who mentions "Love and Deepspace" in their brief should be
+  // discoverable to other Love-and-Deepspace fans, and the
+  // illustrator who never briefed a project but listed "anime" in
+  // their creative intake should still surface as a potential
+  // collaborator on an anime-themed brief. `fandoms` are specific
+  // media / franchises / scenes (anime, K-pop, Love and Deepspace);
+  // `interests` are broader preferences (nightlife, brunch, raves)
+  // — keeping them separate avoids "anime" matching to
+  // "nightlife."
+  //
+  // Defaults to empty array so existing rows light up correctly
+  // after the migration; extractors populate them per session.
+  // Lifts the identity-graph backlog item documented in
+  // CLAUDE.md as the foundation tier 1.
+  fandoms                      String[]                      @default([])
+  interests                    String[]                      @default([])
   createdAt                    DateTime                      @default(now())
   updatedAt                    DateTime                      @updatedAt
   creatorProfile               CreatorProfile?
@@ -1053,6 +1072,11 @@ model Person {
   @@index([source])
   @@index([consentStatus])
   @@index([updatedAt])
+  // GIN indexes over the array fields so cross-fandom matching
+  // queries stay fast as the pool grows. Postgres array overlap
+  // (`&&`) and contains (`@>`) operators both hit a GIN index.
+  @@index([fandoms], type: Gin)
+  @@index([interests], type: Gin)
 }
 
 model CreatorProfile {
