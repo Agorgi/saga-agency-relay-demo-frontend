@@ -17,6 +17,28 @@ const GLOBAL_RULES = [
   "Do not promise bookings, paid work, confirmed teams, event execution, or ticket handling.",
 ];
 
+/**
+ * Extraction rules added in PR #65. The LLM is asked to extract
+ * structured signals alongside the reply text so Sagasan can be the
+ * brain that understands the user, not a copywriter on top of regex.
+ *
+ * These rules go in every persona's prompt (host, creative, venue,
+ * fan, router) because identity signals (fandoms, interests, city)
+ * accumulate across every persona and feed the cross-fandom matching
+ * graph downstream.
+ */
+const EXTRACTION_RULES = [
+  "On every turn, return BOTH a reply message and a structured `extractedSignals` object.",
+  "Populate `extractedSignals` with whatever the user mentioned in their LATEST message — not the whole conversation. The application accumulates across turns.",
+  "Only fill fields the user actually mentioned. Leave every field unset rather than guessing — empty is correct when the user didn't say it.",
+  "Identity-graph signals (fandoms, interests, city) apply to every persona. Capture them whenever the user mentions them, regardless of which intake you're running.",
+  "`fandoms`: specific media, franchises, scenes, characters, or cultural references the user named. Examples: 'Love and Deepspace', 'anime', 'K-pop', 'Genshin Impact', 'BTS', 'Studio Ghibli', 'Sailor Moon', 'drag culture', 'cosplay'. Include anything you recognize as a fandom even if it's not in this list — your knowledge of culture is much wider than any hardcoded pattern bank. Use canonical capitalization (proper nouns capitalized; common nouns like 'anime' lowercase).",
+  "`interests`: broader preferences and scenes the user named. Examples: 'nightlife', 'brunch', 'raves', 'rooftop venues', 'speakeasies', 'gallery openings', 'film screenings', 'pop-ups', 'creator events'.",
+  "`city`: the city or neighborhood the user named, in canonical form (e.g., 'Los Angeles' not 'LA'; 'New York' not 'NYC'). If the user named both ('Silver Lake in LA'), prefer the more specific one.",
+  "Persona-specific fields: for hosts capture projectIdea, timing, format, themeVibe, expectedAttendance, lineupStatus, helpNeeded, budget, desiredTalentRoles, inspirationReferences as the user mentions them. For creatives capture creativeRole, portfolioStatus, availability, rates. For venues capture venueType (be liberal: 'nightclub', 'lounge', 'dive bar', 'speakeasy', 'rooftop', 'coffee shop', 'bookshop', 'record store', 'gallery', 'restaurant', 'warehouse', 'theater', 'studio', and so on are all valid venueTypes — anything the user calls a venue is a venue), venueCapacity, venueOpenDates, venueNeighborhood.",
+  "`personaSignal`: if the user's message strongly suggests a persona shift (a self-described host says 'actually I'm a photographer looking for gigs'), set this to the new persona. Otherwise leave unset. This is advisory — the application decides whether to act on it.",
+];
+
 const PERSONA_GUIDANCE: Record<Exclude<Persona, null>, string[]> = {
   host: [
     "The host intake gathers high-signal brief context: project idea, location, timing, scope or format, theme or vibe, attendance, venue or crew status, budget status, references, and what help they want from Saga.",
@@ -118,8 +140,13 @@ export function buildSystemPrompt(persona: Persona | null) {
       "If no persona is set, act as a router.",
       "Ask which path fits them best: host, creative, venue, or fan.",
       "If the user clearly describes an event, host need, or staffing request in free text, you may treat them as a host.",
+      ...EXTRACTION_RULES,
     ].join("\n");
   }
 
-  return [...GLOBAL_RULES, ...PERSONA_GUIDANCE[persona]].join("\n");
+  return [
+    ...GLOBAL_RULES,
+    ...PERSONA_GUIDANCE[persona],
+    ...EXTRACTION_RULES,
+  ].join("\n");
 }

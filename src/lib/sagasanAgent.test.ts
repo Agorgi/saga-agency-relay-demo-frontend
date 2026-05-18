@@ -6,7 +6,45 @@ import {
   generateAgentReply,
   getConfiguredModel,
   resolvePersona,
+  type LiveAgentExtractedSignals,
 } from "@/lib/sagasanAgent";
+
+/**
+ * Build a mock LLM `extractedSignals` payload with all 21 fields
+ * present (every field is nullable per OpenAI's strict-mode rule —
+ * "all fields must be required, use null for absent values"). Pass
+ * the subset you care about; everything else defaults to null. Test
+ * mocks would otherwise have to enumerate the full schema by hand.
+ */
+function mockExtractedSignals(
+  partial: Partial<LiveAgentExtractedSignals> = {},
+): LiveAgentExtractedSignals {
+  return {
+    personaSignal: null,
+    fandoms: null,
+    interests: null,
+    city: null,
+    projectIdea: null,
+    timing: null,
+    format: null,
+    themeVibe: null,
+    expectedAttendance: null,
+    lineupStatus: null,
+    helpNeeded: null,
+    budget: null,
+    desiredTalentRoles: null,
+    inspirationReferences: null,
+    creativeRole: null,
+    portfolioStatus: null,
+    availability: null,
+    rates: null,
+    venueType: null,
+    venueCapacity: null,
+    venueOpenDates: null,
+    venueNeighborhood: null,
+    ...partial,
+  };
+}
 
 test("mock host reply keeps intake open until the brief has enough signal", () => {
   const result = buildMockAgentReply({
@@ -619,6 +657,7 @@ test("live reply uses the provided OpenAI call and preserves nextStep", async ()
         ok: true,
         responseId: "resp_test_live",
         data: {
+          extractedSignals: mockExtractedSignals(),
           message: "Perfect. I can line up your feed now.",
           nextStep: {
             // The mock LLM returns the OLD label "Open my feed" to
@@ -695,6 +734,7 @@ test("Layer B (LLM mode) host prompt carries the user's actual phrases as captur
           message:
             "Formal ball, LA, July, 150 people, romantic and elegant — that's enough for a brief. I'll sketch it on your project page.",
           nextStep: null,
+          extractedSignals: mockExtractedSignals(),
         },
       };
     },
@@ -750,7 +790,7 @@ test("Layer B host prompt omits the captured-brief block when nothing is capture
       return {
         ok: true,
         responseId: "resp_first_turn",
-        data: { message: "What are you thinking of making?", nextStep: null },
+        data: { message: "What are you thinking of making?", nextStep: null, extractedSignals: mockExtractedSignals() },
       };
     },
   });
@@ -779,7 +819,7 @@ test("Layer B host prompt omits the captured-brief block for non-host personas",
       return {
         ok: true,
         responseId: "resp_creative",
-        data: { message: "Where can I see your work?", nextStep: null },
+        data: { message: "Where can I see your work?", nextStep: null, extractedSignals: mockExtractedSignals() },
       };
     },
   });
@@ -951,5 +991,325 @@ test("venue extraction recognises expanded patterns (rooftop, dive bar, coffee s
       expected,
       `${JSON.stringify(input)} → expected venueType="${expected}"; got ${JSON.stringify(result.extractedFields.venueType)}`,
     );
+  }
+});
+
+test("mergeLlmExtractedSignals prefers LLM scalar values over regex baseline (PR #65)", async () => {
+  // The pivot: LLM is the brain, regex is the safety net. When the
+  // LLM returns a value for a field, it wins; when it doesn't, the
+  // regex baseline value carries through unchanged.
+  const { mergeLlmExtractedSignals } = await import("@/lib/sagasanAgent");
+
+  const regex = {
+    persona: "venue" as const,
+    city: "Los Angeles", // regex caught LA
+    venueType: null, // regex couldn't classify
+    projectIdea: null,
+    interests: [],
+    desiredTalentRoles: [],
+    inspirationReferences: [],
+    roles: [],
+    vibeTags: [],
+    socials: [],
+    safetyFlags: [],
+    missingRequiredFields: [],
+    missingImportantFields: [],
+    neighborhood: null,
+    dateWindow: null,
+    portfolio: null,
+    availability: null,
+    rates: null,
+    scale: null,
+    scopeFormat: null,
+    themeVibe: null,
+    lineupStatus: null,
+    helpNeeded: null,
+    budget: null,
+    budgetStatus: null,
+    inspirationStatus: null,
+    userRole: null,
+    userIdentity: null,
+    organization: null,
+    audience: null,
+    ticketingModel: null,
+    urgency: null,
+    readinessStage: null,
+    nextRoute: null,
+  };
+
+  // The LLM understood "speakeasy" (no regex pattern for it) as a venue
+  // type — exactly the user's challenge from the conversation.
+  const merged = mergeLlmExtractedSignals(
+    regex,
+    mockExtractedSignals({
+      venueType: "Speakeasy",
+      venueNeighborhood: "Arts District",
+      fandoms: ["Love and Deepspace"],
+    }),
+  );
+
+  // LLM-only field (venueType) takes effect.
+  assert.equal(merged.venueType, "Speakeasy");
+  // LLM-only field (neighborhood) takes effect.
+  assert.equal(merged.neighborhood, "Arts District");
+  // Regex-set field (city) stays — LLM didn't override.
+  assert.equal(merged.city, "Los Angeles");
+});
+
+test("mergeLlmExtractedSignals never lets an empty LLM string clobber a regex catch", async () => {
+  // Defensive: if the LLM returns `venueType: ""` (or whitespace),
+  // that's treated as "didn't return this field" not as "clear it."
+  // Otherwise an over-eager LLM could wipe out fields the regex
+  // correctly captured.
+  const { mergeLlmExtractedSignals } = await import("@/lib/sagasanAgent");
+
+  const regex = {
+    persona: "host" as const,
+    city: "Brooklyn",
+    venueType: "Bar",
+    projectIdea: "anime picnic",
+    interests: [],
+    desiredTalentRoles: [],
+    inspirationReferences: [],
+    roles: [],
+    vibeTags: [],
+    socials: [],
+    safetyFlags: [],
+    missingRequiredFields: [],
+    missingImportantFields: [],
+    neighborhood: null,
+    dateWindow: null,
+    portfolio: null,
+    availability: null,
+    rates: null,
+    scale: null,
+    scopeFormat: null,
+    themeVibe: null,
+    lineupStatus: null,
+    helpNeeded: null,
+    budget: null,
+    budgetStatus: null,
+    inspirationStatus: null,
+    userRole: null,
+    userIdentity: null,
+    organization: null,
+    audience: null,
+    ticketingModel: null,
+    urgency: null,
+    readinessStage: null,
+    nextRoute: null,
+  };
+
+  const merged = mergeLlmExtractedSignals(
+    regex,
+    mockExtractedSignals({
+      city: "",
+      venueType: "   ",
+      projectIdea: null,
+    }),
+  );
+
+  assert.equal(merged.city, "Brooklyn", "empty LLM string must not clobber regex");
+  assert.equal(merged.venueType, "Bar", "whitespace LLM string must not clobber regex");
+  assert.equal(merged.projectIdea, "anime picnic", "undefined LLM field must not clobber regex");
+});
+
+test("mergeLlmExtractedSignals unions array fields with case-insensitive dedup", async () => {
+  const { mergeLlmExtractedSignals } = await import("@/lib/sagasanAgent");
+
+  const regex = {
+    persona: "host" as const,
+    interests: ["nightlife"],
+    desiredTalentRoles: ["Producer"],
+    inspirationReferences: ["Love and Deepspace"],
+    roles: ["Photographer"],
+    vibeTags: [],
+    socials: [],
+    safetyFlags: [],
+    missingRequiredFields: [],
+    missingImportantFields: [],
+    city: null,
+    neighborhood: null,
+    dateWindow: null,
+    venueType: null,
+    projectIdea: null,
+    portfolio: null,
+    availability: null,
+    rates: null,
+    scale: null,
+    scopeFormat: null,
+    themeVibe: null,
+    lineupStatus: null,
+    helpNeeded: null,
+    budget: null,
+    budgetStatus: null,
+    inspirationStatus: null,
+    userRole: null,
+    userIdentity: null,
+    organization: null,
+    audience: null,
+    ticketingModel: null,
+    urgency: null,
+    readinessStage: null,
+    nextRoute: null,
+  };
+
+  const merged = mergeLlmExtractedSignals(
+    regex,
+    mockExtractedSignals({
+      interests: ["NIGHTLIFE", "raves", "brunch"], // duplicate "NIGHTLIFE" + 2 new
+      desiredTalentRoles: ["producer", "Stylist"], // duplicate "producer" + 1 new
+      creativeRole: "Illustrator", // single string → adds to roles[]
+    }),
+  );
+
+  // Dedup is case-insensitive; the FIRST-seen capitalization (regex's)
+  // wins so "nightlife" stays as the canonical form.
+  assert.deepEqual(
+    [...merged.interests].sort(),
+    ["nightlife", "raves", "brunch"].sort(),
+  );
+  // Likewise for desiredTalentRoles.
+  assert.deepEqual(
+    [...merged.desiredTalentRoles].sort(),
+    ["Producer", "Stylist"].sort(),
+  );
+  // creativeRole adds to the roles[] array.
+  assert.deepEqual(
+    [...merged.roles].sort(),
+    ["Illustrator", "Photographer"].sort(),
+  );
+});
+
+test("mergeLlmExtractedSignals returns the regex baseline unchanged when llmSignals is undefined", async () => {
+  // Backward compatibility: any deployed code path that hits an old
+  // schema (no extractedSignals field) collapses cleanly to the
+  // pre-PR-65 behavior — regex alone.
+  const { mergeLlmExtractedSignals } = await import("@/lib/sagasanAgent");
+
+  const regex = {
+    persona: "host" as const,
+    city: "LA",
+    venueType: null,
+    projectIdea: "Sailor Moon picnic",
+    interests: ["anime"],
+    desiredTalentRoles: [],
+    inspirationReferences: [],
+    roles: [],
+    vibeTags: [],
+    socials: [],
+    safetyFlags: [],
+    missingRequiredFields: [],
+    missingImportantFields: [],
+    neighborhood: null,
+    dateWindow: null,
+    portfolio: null,
+    availability: null,
+    rates: null,
+    scale: null,
+    scopeFormat: null,
+    themeVibe: null,
+    lineupStatus: null,
+    helpNeeded: null,
+    budget: null,
+    budgetStatus: null,
+    inspirationStatus: null,
+    userRole: null,
+    userIdentity: null,
+    organization: null,
+    audience: null,
+    ticketingModel: null,
+    urgency: null,
+    readinessStage: null,
+    nextRoute: null,
+  };
+
+  const merged = mergeLlmExtractedSignals(regex, undefined);
+  assert.deepEqual(merged, regex);
+});
+
+test("system prompt for every persona includes the EXTRACTION_RULES block (PR #65)", async () => {
+  // Lock in that the structured-output extraction contract is present
+  // in every persona's prompt. If a future edit removes it, the LLM
+  // could fall back to message-only responses and we'd silently lose
+  // the brain-not-copywriter behavior.
+  const { buildSystemPrompt } = await import("@/lib/sagasanSystemPrompt");
+  for (const persona of [null, "host", "creative", "venue", "fan"] as const) {
+    const prompt = buildSystemPrompt(persona);
+    assert.match(
+      prompt,
+      /structured `extractedSignals` object/i,
+      `${persona ?? "router"} prompt missing extraction contract`,
+    );
+    assert.match(
+      prompt,
+      /fandoms.*specific media/i,
+      `${persona ?? "router"} prompt missing fandoms guidance`,
+    );
+    assert.match(
+      prompt,
+      /Only fill fields the user actually mentioned/i,
+      `${persona ?? "router"} prompt missing "don't fabricate" rule`,
+    );
+  }
+});
+
+test("LLM-primary path: 'speakeasy' (no regex pattern) is captured because the LLM is now the brain", async () => {
+  // The user's challenge from the architecture conversation:
+  // "An llm would obviously be able to know that a 'nightclub' is a
+  // type of venue." Same logic for "speakeasy" — a venue type the
+  // regex has no pattern for and never will (the long tail is
+  // infinite). With the PR #65 contract, the LLM's `venueType`
+  // extraction overrides the regex's null and the field lands.
+  let capturedPrompt = "";
+
+  const result = await generateAgentReply({
+    persona: "venue",
+    history: [],
+    latestMessage: "I run a speakeasy in Silver Lake.",
+    mode: "active_live",
+    apiKey: "test-key",
+    liveStructuredCall: async (input) => {
+      capturedPrompt = input.prompt;
+      // Mock what a competent LLM would return for this input.
+      return {
+        ok: true,
+        responseId: "resp_speakeasy",
+        data: {
+          message:
+            "A Silver Lake speakeasy — that's a great room. How many people can it hold?",
+          nextStep: null,
+          extractedSignals: mockExtractedSignals({
+            venueType: "Speakeasy",
+            venueNeighborhood: "Silver Lake",
+            city: "Los Angeles",
+          }),
+        },
+      };
+    },
+  });
+
+  // System prompt told the LLM to extract — verify.
+  assert.match(
+    capturedPrompt,
+    /Persona: venue/,
+    "live LLM path should still pass persona context",
+  );
+
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    // The merge picked up the LLM's venueType. Regex had no pattern
+    // for "speakeasy" before PR #65 (it would have returned null);
+    // post-PR-65 the LLM fills the gap.
+    assert.equal(
+      result.data.extractedFields.venueType,
+      "Speakeasy",
+      "LLM-extracted venueType should win over regex's null",
+    );
+    assert.equal(result.data.extractedFields.neighborhood, "Silver Lake");
+    assert.equal(result.data.extractedFields.city, "Los Angeles");
+    // llmExtractedSignals is surfaced so the chat route can route
+    // it through upsertSessionIdentitySignals in PR #67.
+    assert.equal(result.data.llmExtractedSignals?.venueType, "Speakeasy");
   }
 });
