@@ -18,13 +18,26 @@ const REPLY_FILES = [
 ];
 
 // Match ` - ` (space-hyphen-space) inside a single-line
-// double-quoted string literal. The `[^"\n]` keeps the match from
-// crossing line boundaries (otherwise the greedy quote-search
-// matches across code regions, producing nonsense diagnostics).
-// Bare hyphens inside larger identifiers, dates, or arithmetic
-// expressions don't match. Backticks (template literals) are NOT
-// scanned to avoid false-positives on TS type annotations.
-const HYPHEN_IN_STRING_LITERAL = /"[^"\n]* - [^"\n]*"/g;
+// double-quoted OR template-literal string. The `[^"\n]` /
+// `[^`\n]` keeps each match from crossing line boundaries
+// (otherwise the greedy quote-search matches across code regions,
+// producing nonsense diagnostics).
+//
+// Template-literal coverage was added in response to a Codex review
+// finding on PR #38: several user-visible replies in the reply
+// files are backtick literals with ${...} interpolation (e.g. the
+// new buildFanSuccessReply variants), so omitting them would let
+// regressions slip through that one rule was meant to prevent.
+//
+// We scan single-line template literals only — multi-line backtick
+// templates exist in TS source for code/JSX snippets and HEREDOC-y
+// data, and matching across newlines would create too many false
+// positives. The Sagasan reply templates we care about are all
+// one-liners.
+const HYPHEN_IN_STRING_LITERALS = [
+  /"[^"\n]* - [^"\n]*"/g,
+  /`[^`\n]* - [^`\n]*`/g,
+];
 
 function walk(directory: string): string[] {
   return readdirSync(directory).flatMap((entry) => {
@@ -89,10 +102,12 @@ for (const replyFile of REPLY_FILES) {
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/\/\/[^\n]*/g, "");
 
-  for (const match of stripped.matchAll(HYPHEN_IN_STRING_LITERAL)) {
-    failures.push(
-      `${replyFile} reply-string uses ' - ' (space-hyphen-space). Use an em-dash (—) for parentheticals. Offending literal: ${match[0]}`,
-    );
+  for (const pattern of HYPHEN_IN_STRING_LITERALS) {
+    for (const match of stripped.matchAll(pattern)) {
+      failures.push(
+        `${replyFile} reply-string uses ' - ' (space-hyphen-space). Use an em-dash (—) for parentheticals. Offending literal: ${match[0]}`,
+      );
+    }
   }
 }
 
