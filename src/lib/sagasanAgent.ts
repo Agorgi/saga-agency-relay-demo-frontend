@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import { getSuggestedRoles } from "@/data/sagaAgencyData";
+import { extractIdentitySignals } from "@/lib/identitySignals";
 import {
   buildOrganizerCorrectionReply,
   evaluateOrganizerBriefReadiness,
@@ -652,17 +653,23 @@ function inferPortfolioLink(value: string) {
   if (match) {
     return match[0];
   }
-  // Require possessive / first-person framing for the "shared in chat"
-  // placeholder. Passive mentions like "I can send an Instagram reference"
+  // Require possessive / first-person framing for the placeholder
+  // signal. Passive mentions like "I can send an Instagram reference"
   // used to set portfolio="Sample shared in chat" inside a host brief,
   // which silently re-shaped organizer intake into a creative profile.
+  //
+  // OI-37: the prior placeholder "Sample shared in chat" was a lie —
+  // no sample was actually shared. "Mentioned in chat" reads honestly
+  // in the prefill payload (which surfaces in the /me URL) and on the
+  // host's review UI. The ForMeView still renders this as the
+  // "Portfolio attached" chip label, so the visible UI stays clean.
   if (
     /\bmy (?:portfolio|reel|samples?|instagram|ig|behance|dribbble)\b/i.test(value) ||
     /\bhere'?s my (?:portfolio|reel|samples?|instagram|ig|behance|dribbble)\b/i.test(
       value,
     )
   ) {
-    return "Sample shared in chat";
+    return "Mentioned in chat";
   }
   return null;
 }
@@ -726,11 +733,23 @@ function inferCreativeRoles(value: string) {
 }
 
 function inferInterestTags(value: string) {
-  const matched = uniqueStrings(
-    INTEREST_PATTERNS.filter(([pattern]) => pattern.test(value)).map(
+  // OI-27: layer in the cross-persona identity-signal patterns FIRST.
+  // These catch multi-word fandoms like "Jujutsu Kaisen", "Love and
+  // Deepspace", "Demon Slayer" as single canonical tokens — before the
+  // whitespace-splitting fallback below would shatter them into
+  // separate "Jujutsu" / "Kaisen" chips at the UI.
+  const identitySignals = extractIdentitySignals(value);
+  const fromIdentity = uniqueStrings([
+    ...identitySignals.fandoms,
+    ...identitySignals.interests,
+  ]);
+
+  const matched = uniqueStrings([
+    ...fromIdentity,
+    ...INTEREST_PATTERNS.filter(([pattern]) => pattern.test(value)).map(
       ([, label]) => label,
     ),
-  );
+  ]);
 
   if (matched.length > 0) {
     return matched.slice(0, 3);
@@ -1436,13 +1455,31 @@ function buildCapabilityReply(persona: Persona | null, fields: StoredExtractedFi
   };
 }
 
+function buildTicketingReply(persona: Persona | null): string {
+  // OI-26: the bare deflection ("Tickets live elsewhere — Saga doesn't
+  // handle those.") dead-ended every ticketing turn. Keep the deflection
+  // (the contract that Saga doesn't handle ticketing must stay clear),
+  // then add a persona-aware continuation so the user has somewhere to
+  // take the conversation. One question max per the global rules.
+  const continuationByPersona: Record<NonNullable<Persona>, string> = {
+    host: " What kind of event are you trying to put together?",
+    creative: " What kind of work are you looking to land?",
+    venue: " What kind of space do you run?",
+    fan: " What city or scene should I tune your feed for?",
+  };
+  const continuation = persona
+    ? continuationByPersona[persona]
+    : " What are you trying to make or find?";
+  return `${TICKET_REPLY}${continuation}`;
+}
+
 function buildBoundaryReply(
   kind: "ticketing" | "paid_work" | "guarantee" | "off_topic" | "external_action" | "trust_boundary",
   persona: Persona | null,
   fields: StoredExtractedFields,
   latestMessage: string,
 ): AgentReply {
-  let reply = TICKET_REPLY;
+  let reply = buildTicketingReply(persona);
 
   if (kind === "paid_work") {
     reply = "I can't promise paid work. What role and city should I anchor for you?";

@@ -22,6 +22,37 @@ function isPresent<T>(value: T | null): value is T {
   return value !== null;
 }
 
+/**
+ * OI-30: per-project "next move" text. The legacy implementation
+ * always read `staffingPlan.nextActions[0]`, which is the same
+ * hard-coded string ("Review recommended roles") for every fixture
+ * project. Derive a status-specific line so different projects
+ * surface different next moves on /me.
+ */
+function nextMoveByStatus(project: {
+  status: string;
+  staffingPlan: { nextActions: string[] };
+}): string {
+  switch (project.status) {
+    case "draft":
+      return "Sharpen the brief with Sagasan";
+    case "briefing":
+      return "Review the recommended roles";
+    case "matching":
+      return "Shortlist the first wave of talent";
+    case "outreach":
+      return "Approve the outreach drafts";
+    case "booking":
+      return "Lock terms and confirm the crew";
+    case "in-production":
+      return "Track run-of-show and deliverables";
+    case "completed":
+      return "Wrap notes and post-mortem";
+    default:
+      return project.staffingPlan.nextActions[0] || "Keep it moving.";
+  }
+}
+
 export function ForMeView({
   legacyHeader = false,
   encodedPrefill = null,
@@ -51,7 +82,11 @@ export function ForMeView({
       id: `project-${project.id}`,
       title: project.title,
       detail: "Project",
-      summary: `Next move: ${project.staffingPlan.nextActions[0] || "Keep it moving."}`,
+      // OI-30: every project used to show "Review recommended roles"
+      // (the first item of the hard-coded staffingPlan.nextActions).
+      // Differentiate by project.status so each card shows the move
+      // that's actually relevant to where the project is in the flow.
+      summary: `Next move: ${nextMoveByStatus(project)}`,
       actionLabel: "Open project",
       onAction: () => openProject(project.id),
     }));

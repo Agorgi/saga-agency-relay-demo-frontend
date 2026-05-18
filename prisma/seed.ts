@@ -204,7 +204,7 @@ async function main() {
         channel: "SMS",
         userId: user.id,
         projectBriefId: project.id,
-        body: "Love this. I can help turn it into an actual production plan. First - have you hosted something like this before, or would this be your first one?",
+        body: "Love this. I can help turn it into an actual production plan. First — have you hosted something like this before?",
         metadata: { seed: true },
       },
       {

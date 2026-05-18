@@ -13,7 +13,7 @@ const IDEA_SCOPE_QUESTION =
 const FANDOM_AUDIENCE_QUESTION =
   "What fandom, scene, or community would this be for?";
 const INTEREST_SIGNAL_QUESTION =
-  "Would you want to help organize it, or are you mainly hoping someone else makes it happen?";
+  "Would you want to help organize it?";
 const READY_REPLY =
   "Got it. This sounds like something Saga could turn into an interest-check concept for the team to review. We can use it to understand whether there's enough demand before treating it like a real project.";
 

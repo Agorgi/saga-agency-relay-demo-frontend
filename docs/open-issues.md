@@ -90,12 +90,31 @@ The fan persona's success reply now varies by extracted `city` + `interests`. Fo
 ### P3-OI-25 — `/explore` "Why this person" rationale template feels formulaic at scale
 **Fix:** Mix in concrete proof points alongside the "recurring X cues" pattern ("worked the last 3 anime activations in LA", "DJ'd 2024 LA Comic-Con afterparty").
 
-### P3-OI-26 — Ticketing chat reply doesn't offer next step
-"Tickets live elsewhere — Saga doesn't handle those." dead-ends the conversation.
-**Fix:** Add "I can pull up the public page if you want the link" or similar.
+### ~~P3-OI-26~~ — closed in PR #70
+`buildTicketingReply` in `src/lib/sagasanAgent.ts` keeps the "Tickets live elsewhere" deflection but appends a persona-aware continuation ("What kind of event are you trying to put together?" / "What kind of work are you looking to land?" / etc.). System prompt rule in `sagasanSystemPrompt.ts` updated so the LLM follows the same pattern. Regression test locks the contract.
 
-### P3-OI-27 — Tag-chip tokenization at display layer
-"Jujutsu Kaisen" renders as separate "Jujutsu" / "Kaisen" chips. **Fix:** Tokenize at the data layer.
+### ~~P3-OI-27~~ — closed in PR #70
+`inferInterestTags` in `src/lib/sagasanAgent.ts` now layers in `extractIdentitySignals` from `src/lib/identitySignals.ts` (PR #64's cross-persona pattern bank) BEFORE falling through to the whitespace-splitting tokenizer. Multi-word fandoms — "Jujutsu Kaisen" (→ "JJK"), "Love and Deepspace", "Demon Slayer" — now land as single canonical tokens instead of being shattered into separate chips. Two regression tests in `sagasanAgent.test.ts`.
+
+### ~~P3-OI-30~~ — closed in PR #70
+`ForMeView` no longer renders `staffingPlan.nextActions[0]` (which was the same hardcoded "Review recommended roles" for every fixture project). Added `nextMoveByStatus(project)` helper that emits 7 distinct lines keyed on `project.status` — `draft` / `briefing` / `matching` / `outreach` / `booking` / `in-production` / `completed`. Each card now surfaces a state-specific next move.
+
+### ~~P3-OI-32~~ — closed in PR #70
+Three scripted-question strings collapsed to a single question per turn:
+- "Love this. ... have you hosted something like this before, or would this be your first one?" → "Love this. ... have you hosted something like this before?" (3 files: `workflow.ts`, `organizerReplyGenerator.ts`, `organizerIntakePolicy.ts`)
+- "Would you want to help organize it, or are you mainly hoping someone else makes it happen?" → "Would you want to help organize it?" (2 files: `interestCheckReplyGenerator.ts`, `interestCheckPolicy.ts`)
+- "Is there a rough timing that would make sense, or is this just a general idea for now?" → "Is there a rough timing that would make sense — or is it still fuzzy?" (em-dash softener kept; still one question)
+
+Seed data + legacy test fixtures updated to match.
+
+### ~~P3-OI-37~~ — closed in PR #70 (portfolio placeholder)
+`inferPortfolioLink` in `src/lib/sagasanAgent.ts` no longer returns the misleading "Sample shared in chat" placeholder when the user mentions having a portfolio without a URL. Returns "Mentioned in chat" instead — accurate to what actually happened and readable in the /me prefill URL. Existing test updated.
+
+### ~~P3-OI-40~~ — closed in PR #70
+`formatOrganizerKnownSummary` in `src/lib/sagasanOrganizerIntake.ts` removed the `.slice(0, 5)` cap that caused the visible Known list to display 5 labels even when the "Brief progress: X of 9 essentials" counter said 6+. The counter and the list now always reconcile. Regression test in `sagasanOrganizerIntake.test.ts`.
+
+### P3-OI-25 — `/explore` "Why this person" rationale template feels formulaic at scale
+**Fix:** Mix in concrete proof points alongside the "recurring X cues" pattern ("worked the last 3 anime activations in LA", "DJ'd 2024 LA Comic-Con afterparty").
 
 ### P3-OI-28 — Light-mode toggle label reads "Light mode" while in light mode
 **Fix:** Display destination state ("Dark mode") to communicate what the click will do.
@@ -103,14 +122,8 @@ The fan persona's success reply now varies by extracted `city` + `interests`. Fo
 ### P3-OI-29 — `/explore` search placeholder references Miami beauty project regardless of brief
 **Fix:** Bind placeholder to current project.
 
-### P3-OI-30 — For-me feed projects all show same next-move text "Review recommended roles"
-**Fix:** Differentiate by actual project state.
-
 ### P3-OI-31 — Empty avatar circles next to user-sent messages
 **Fix:** Default initial or generic icon.
-
-### P3-OI-32 — Sagasan reply asks two questions in one turn
-"Have you hosted something like this before, or would this be your first one?" — violates one-question-per-turn rule.
 
 ### P3-OI-33 — No breadcrumbs from /talent/:slug back to project / explorer
 
@@ -123,17 +136,11 @@ Site sells as the AI agency for anime events; cards use stock landscape photos t
 ### P3-OI-36 — "Reset to landing" doesn't visibly clear chat scroll
 Landing chips re-render at top but prior conversation remains visible below. Next message functionally resets.
 
-### P3-OI-37 — `"portfolio": "Sample shared in chat"` placeholder in creative handoff
-**Fix:** Confirm intent and either remove or bind to real user content before design partners see it.
-
 ### P3-OI-38 — Brief content not surfaced after "I shaped that into a draft event brief"
 **Fix:** Render a short brief-summary message ("Event: rooftop summer party • City: Brooklyn • Date: June 21 • Size: ~80 • Vibe: house, natural wine") after the acknowledgment.
 
 ### P3-OI-39 — City-deferred venue/creative CTA suppression isn't explained in reply
 **Fix:** Surface "Tell me your city and I'll list this space" so the suppressed CTA doesn't look like a stale-CTA bug.
-
-### P3-OI-40 — BRIEF PROGRESS counter vs visible Known list don't reconcile
-Counter ticks 5 → 6 between turns but the visible Known list shows 5 fields. **Fix:** Re-display all known fields or expose the counter calculation transparently.
 
 ---
 
@@ -141,9 +148,9 @@ Counter ticks 5 → 6 between turns but the visible Known list shows 5 fields. *
 
 - P0 open: 0 (closed in PR #16)
 - P1 open: 0 (P1-OI-5 and P1-OI-6 verified closed by existing regression tests in PR #40; /explore items closed in PR #22)
-- P2 open: 0 (PR #38 closed 5: OI-15, OI-16, OI-22, OI-23, OI-24; PR #42 closed 4: OI-9, OI-10, OI-11, OI-13; PR #43 closed 2: OI-12, OI-21; PR #44 closed 1: OI-14; PR #45 closed 1: OI-20; PR #46 closed 3: OI-17, OI-18, OI-19. OI-37 filed in PR #36 — env-config gap, requires user action in Vercel/Neon settings.)
-- P3 open: 16
-- **Total open: 16** (all P3 style refinements; no open P0/P1/P2 issues against design partners modulo OI-37 env-config)
+- P2 open: 0 (PR #38 closed 5: OI-15, OI-16, OI-22, OI-23, OI-24; PR #42 closed 4: OI-9, OI-10, OI-11, OI-13; PR #43 closed 2: OI-12, OI-21; PR #44 closed 1: OI-14; PR #45 closed 1: OI-20; PR #46 closed 3: OI-17, OI-18, OI-19. OI-37 env-config still filed under P2 — requires user action in Vercel/Neon settings.)
+- P3 open: 10 (PR #70 closed 6 functionality-impacting items: OI-26, OI-27, OI-30, OI-32, OI-37 portfolio placeholder, OI-40)
+- **Total open: 10 style refinements + 1 env-config (OI-37 Vercel/Neon preview DB scope)**
 
 ---
 
