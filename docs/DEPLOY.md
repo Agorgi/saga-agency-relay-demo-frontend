@@ -143,6 +143,32 @@ Before merging a PR with a Prisma migration, verify:
 
 For env-only changes (no migration), no extra steps — just update Vercel and the next deploy picks it up.
 
+## RoleOpening unique constraint (one-time, after PR #53)
+
+PR #53 added `@@unique([projectId, roleType])` on `RoleOpening` plus a
+dedup pass in the migration (`20260518010000_role_opening_unique_per_project`).
+The dedup deletes any duplicate `(projectId, roleType)` rows landed by
+the pre-PR-53 race condition, keeping the oldest per pair; cascading
+relations clean up downstream rows.
+
+This is safe on staging Neon today because:
+- Duplicates were rare in practice (the count-check usually won).
+- The DELETE is bounded by the dedup CTE; it doesn't touch unique rows.
+- Cascades remove orphan Opportunity / CandidateRecommendation rows
+  that would otherwise point at deleted RoleOpenings.
+
+To apply:
+
+```bash
+DATABASE_URL="<neon-url>" POSTGRES_URL_NON_POOLING="<neon-direct-url>" \
+  npx prisma migrate deploy
+```
+
+After this lands, two concurrent /crew loads on the same fresh project
+are race-safe at the schema level — the second creator's `create` fails
+with P2002 and `generateCrewForProject` adopts the existing row instead
+of duplicating.
+
 ## Composite talent seed (one-time, after PR #51)
 
 PR #51 added the `DEMO_COMPOSITE` value to `PersonSource` (migration
