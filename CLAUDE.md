@@ -99,6 +99,7 @@ Next.js 16 + React 19 + TypeScript app with a single Postgres database (Prisma 6
 - **Talent research:** `src/sms-engine/sourcing/openaiWebResearchProvider.ts` (uses OpenAI for public-web research).
 - **SMS/Twilio:** `src/sms-engine/twilio.ts` (kill switch `TWILIO_API_CALLS_FORBIDDEN`), `src/sms-engine/twilioWebhook.ts`, `src/sms-engine/messagingProvider.ts`.
 - **Health endpoint:** `src/app/api/health/route.ts` — reports DB, Twilio mode, LLM mode, pilot stage. PR #58 added a `tracer` block (from `src/lib/tracerHealth.ts`) with `compositeTalentPoolSize` / `compositeTalentPoolSeeded`, `projectJourneyCount` + `projectJourneyCountByStep`, `latestMigration { name, appliedAt }`, and `producerDeterministicHealthy` (synthetic-input smoke test for `buildProjectUnderstanding` + `generateRoleMap`). Each probe is wrapped — a single failure (DB down, missing column) degrades to `tracerHealthAvailable: false` without 500ing the whole response.
+- **WebSession TTL cleanup:** `src/lib/webSessionCleanup.ts` (framework-agnostic) + `scripts/cleanup-web-sessions.ts` (CLI). `cleanupStaleSessions({ ttlDays, dryRun })` deletes `WebSession` rows whose `lastSeenAt` is older than the TTL AND that carry no project link OR are bound to an archived project. WebChatMessage cascades on session delete. Active-project sessions are never touched. Defaults to dry-run; runbook in `docs/DEPLOY.md`. TTL default 90 days, override via `WEB_SESSION_TTL_DAYS` env. Audit log entry on every run (`action: web_session.cleanup`).
 
 ## Core types (target architecture)
 
