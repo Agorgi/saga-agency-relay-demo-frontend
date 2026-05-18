@@ -197,21 +197,33 @@ export function AppChrome() {
           }`}
         >
           <BottomNavButton label="Home" active={onHomePath} dark={isDark} onClick={goHome} />
-          <BottomNavButton label="For me" active={onForMePath} dark={isDark} onClick={goMe} />
-          <BottomNavButton
-            label="Discover"
-            active={discoverPath === "/feed" ? pathname === "/feed" : onTalentPath}
-            dark={isDark}
-            onClick={() => {
-              if (discoverPath === "/feed") {
-                goFeed();
-              } else if (discoverPath === "/spaces") {
-                goSpaces();
-              } else {
-                goExplore();
-              }
-            }}
-          />
+          {/*
+            "For me" and "Discover" only show once the chat has
+            classified a persona — same gating the desktop top-nav
+            uses (navItems above). Before classification both
+            buttons would route into persona-specific surfaces
+            (/me, /feed, /spaces) that don't have a sensible
+            pre-persona behaviour. Closes P2-OI-21.
+          */}
+          {persona ? (
+            <BottomNavButton label="For me" active={onForMePath} dark={isDark} onClick={goMe} />
+          ) : null}
+          {discoverPath ? (
+            <BottomNavButton
+              label="Discover"
+              active={discoverPath === "/feed" ? pathname === "/feed" : onTalentPath}
+              dark={isDark}
+              onClick={() => {
+                if (discoverPath === "/feed") {
+                  goFeed();
+                } else if (discoverPath === "/spaces") {
+                  goSpaces();
+                } else {
+                  goExplore();
+                }
+              }}
+            />
+          ) : null}
         </motion.div>
       )}
     </>

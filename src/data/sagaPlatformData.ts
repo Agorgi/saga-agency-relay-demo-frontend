@@ -216,7 +216,7 @@ const EVENT_FIXTURES = [
     description:
       "A JJK-themed cup sleeve takeover with raffle tickets, photo setups, check-ins, and a full cosplay-forward guest experience.",
     longDescription:
-      "Join us for a Jujutsu Kaisen cup sleeve weekend with red carpet photos, themed merch drops, canned food raffle entries, and a fandom-first guest list. Saga is handling staffing, ticketing, and public applications from one shared event object.",
+      "Join us for a Jujutsu Kaisen cup sleeve weekend with red carpet photos, themed merch drops, canned-food raffle entries, and a fandom-first guest list. Come in cosplay or come for the photos — both lanes welcome.",
     hostName: "Saga Events",
     ticketTiers: [
       { id: "ga", name: "General Admission", description: "Entry to the raffle lounge and photo line.", price: 15, remaining: 141, maxPerPerson: 4 },
@@ -241,7 +241,7 @@ const EVENT_FIXTURES = [
     description:
       "An elegant Love and Deepspace-themed masquerade with dramatic photo moments, themed vendors, and a formal cosplay floor.",
     longDescription:
-      "Court of Stars is the clearest proof of Saga's unified product story: fans discover the event publicly, buy tickets, apply as vendors or cosplay guests, and the host staffs the production workspace using the same graph.",
+      "A formal Love and Deepspace masquerade at Castle Green: dramatic photo moments under the chandeliers, themed vendor stalls, and a full cosplay floor. Black-tie cosplay encouraged — masks provided at the door if you forget yours.",
     hostName: "Saga Studio",
     ticketTiers: [
       { id: "ga", name: "General Admission", description: "Standing room entry and themed photo access.", price: 15, remaining: 141, maxPerPerson: 4 },
@@ -266,7 +266,7 @@ const EVENT_FIXTURES = [
     description:
       "A punk-future rave where anime fandom meets warehouse dancefloor energy, graffiti visuals, and creator-led distribution.",
     longDescription:
-      "The rave public page sells scarce tickets while backstage Saga tracks DJ, social, volunteer, and photo roles against demand signals and audience reach.",
+      "A punk-future rave where Gachiakuta meets Jet Set Radio: warehouse dancefloor, graffiti visuals projected across three walls, and a creator-led lineup that runs late. Cosplay encouraged but not required.",
     hostName: "Saga Nights",
     ticketTiers: [
       { id: "ga", name: "General Admission", description: "All-night dance floor entry.", price: 22, remaining: 96, maxPerPerson: 4 },
@@ -291,7 +291,7 @@ const EVENT_FIXTURES = [
     description:
       "A free-entry anime meetup with cosplay, fandom mini games, creator posts, and a strong public RSVP loop.",
     longDescription:
-      "Even free-entry events use the same Saga production object: public demand, vendor intake, crew sourcing, and backstage launch readiness all stay connected.",
+      "A free-entry Jujutsu Kaisen meetup at Amino Ave: photo setups, cosplay roaming, fandom mini-games, and a chill afternoon for the JJK community. Bring your fits; we'll bring the printable photo zones.",
     hostName: "Saga Community",
     ticketTiers: [
       { id: "rsvp", name: "RSVP", description: "Reserve your spot for free entry.", price: 0, remaining: 94, maxPerPerson: 2 },
@@ -316,7 +316,7 @@ const EVENT_FIXTURES = [
     description:
       "A smaller fan meetup built around street-style cosplay photos, merch swaps, and soft-launch creator posts.",
     longDescription:
-      "This event showcases Saga's ability to flex from rave-scale staffing to intimate community productions without changing the underlying product model.",
+      "A small-batch Uma Musume meetup at Kinokuniya: street-style cosplay photo walk through Japantown, merch swap table, and a soft-launch creator post. Bring a friend, bring a fit, bring change for the vending machines.",
     hostName: "Saga Bay",
     ticketTiers: [
       { id: "rsvp", name: "RSVP", description: "Hold a free meetup slot.", price: 0, remaining: 61, maxPerPerson: 2 },
@@ -341,7 +341,7 @@ const EVENT_FIXTURES = [
     description:
       "A villain-coded Pokemon rave with cosplay guests, projected visuals, and a ticket-driven staffing plan.",
     longDescription:
-      "Saga is already using early ticket demand and mutual overlap to recommend more photo, social, and volunteer coverage before launch.",
+      "A villain-coded Pokemon rave in Koreatown: Team Rocket cosplay encouraged, projected battle visuals, streetwear-coded dress code, and a late-night floor that goes until last call. Catch the energy before it disbands.",
     hostName: "Saga After Dark",
     ticketTiers: [
       { id: "ga", name: "General Admission", description: "Floor entry and roaming photo access.", price: 20, remaining: 180, maxPerPerson: 4 },
@@ -366,7 +366,7 @@ const EVENT_FIXTURES = [
     description:
       "An all-day screening marathon with reserved seats, themed vendors, and a soft, cinematic public event page.",
     longDescription:
-      "Ticketing, vendor intake, social capture, and creator staffing all live together so the host can run screenings like a real production rather than a loose meetup.",
+      "An all-day Studio Ghibli screening at Central Cinema: reserved seats, themed vendor lobby between films, and a poster bundle for VIPs. Bring tissues for Spirited Away; bring snacks for Totoro.",
     hostName: "Saga Cinema Club",
     ticketTiers: [
       { id: "ga", name: "General Admission", description: "All-day screening access.", price: 18, remaining: 84, maxPerPerson: 4 },
@@ -391,7 +391,7 @@ const EVENT_FIXTURES = [
     description:
       "A daytime TCG meetup with casual tournaments, vendors, creator recaps, and a public apply funnel for community collaborators.",
     longDescription:
-      "Saga uses the public application flow to populate vendor and volunteer slots while keeping the host focused on launch readiness, venue fit, and community demand.",
+      "A daytime Pokemon TCG meetup at Optimism Brewing: casual tournaments, deck-help corner, vendor row, and a creator-led recap stream from the floor. Beer for the adults, lemonade for the kids, promo packs for the winners.",
     hostName: "Saga Cards",
     ticketTiers: [
       { id: "rsvp", name: "RSVP", description: "Reserve your free seat in the play area.", price: 0, remaining: 72, maxPerPerson: 2 },
@@ -919,7 +919,7 @@ export function buildWorkspaceEvent(query: string) {
       .join(" "),
     slug,
     description: `A Saga planning draft for ${query}.`,
-    longDescription: `This working event draft started from the landing search and is already connected to public ticketing, applications, and backstage staffing.`,
+    longDescription: `Working draft. Real event details (date, lineup, vendors) will replace this copy once the host fills the brief — for now, this is the placeholder summary shown on shared links.`,
     city: analysis.location,
     venueName: "Suggested venue hold",
     venueAddress: analysis.location,
