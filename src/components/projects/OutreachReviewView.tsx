@@ -24,6 +24,8 @@
  */
 
 import Link from "next/link";
+import { OutreachApproveButton } from "@/components/projects/OutreachApproveButton";
+import { chooseOutreachPrimaryUi } from "@/components/projects/outreachPrimaryUi";
 import type {
   OutreachDraftPresentation,
   OutreachStatusForUI,
@@ -91,7 +93,12 @@ export function OutreachReviewView({ data }: { data: OutreachViewData }) {
   const { briefSnapshot, drafts, state, journey, editCrewHref, projectId, honestyDisclaimer } =
     data;
   const action = journey.primaryAction;
-  const primaryEnabled = action.enabled && Boolean(action.href);
+  // Single source of truth for which primary-action UI renders. See
+  // chooseOutreachPrimaryUi for the contract — split out so the
+  // priority rule is unit-testable. Closes Codex's P1 finding that
+  // the approve button used to be unreachable when journey's
+  // primaryAction pointed at this page.
+  const primaryUi = chooseOutreachPrimaryUi({ state, action, projectId });
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-10 px-6 py-12">
@@ -170,28 +177,15 @@ export function OutreachReviewView({ data }: { data: OutreachViewData }) {
         <h2 id="primary-action-heading" className="sr-only">
           Primary action
         </h2>
-        {primaryEnabled ? (
+        {primaryUi === "approve" ? (
+          <OutreachApproveButton projectId={projectId} />
+        ) : primaryUi === "navigate" ? (
           <Link
             href={action.href!}
             className="inline-flex items-center justify-center rounded-md bg-zinc-900 px-6 py-3 text-base font-medium text-white transition hover:bg-zinc-800"
           >
             {action.label}
           </Link>
-        ) : state === "ready_for_review" ? (
-          <div className="flex flex-col gap-2">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center rounded-md bg-zinc-900 px-6 py-3 text-base font-medium text-white transition hover:bg-zinc-800"
-              data-project-id={projectId}
-              data-action="approve_all"
-            >
-              Approve all drafts
-            </button>
-            <p className="text-xs text-zinc-500">
-              Approval queues the drafts for sending. Sending itself is held
-              until Saga&apos;s A2P approval and Twilio kill switch are lifted.
-            </p>
-          </div>
         ) : (
           <div className="flex flex-col gap-2">
             <button
