@@ -678,24 +678,32 @@ function inferHostProjectType(value: string): ProjectType {
   const lower = value.toLowerCase();
   if (/picnic/.test(lower)) return "Pop-up / activation";
   if (/pop-?up|activation|launch/.test(lower)) return "Pop-up / activation";
-  // More-specific buckets BEFORE the generic "Fan event" fallback —
-  // a "cosplay meetup" or "screening" reads as the host's actual
-  // concept, where "Fan event" reads generic and made design
-  // partners think Saga had mis-classified them. Closes P2-OI-14.
-  if (/screening|watch party|movie night|film night/.test(lower)) return "Live performance";
+  // More-specific buckets BEFORE the generic "Fan event" fallback.
+  // Closes P2-OI-14 — "anime night" was reading as the generic "Fan
+  // event" chip instead of something more specific.
+  //
+  // Watch party / movie night / film night STAY in the Fan event
+  // bucket: they're fan-shaped events that need
+  // `buildProjectFromDraft`'s event-module (public ticketing /
+  // applications / vendor intake), which only attaches for Fan
+  // event + Pop-up / activation. Routing them to Live performance
+  // would silently drop that module. Codex caught this on the
+  // initial PR #44 commit. Screenings are also fan-shaped — added
+  // to Fan event for the same reason.
   if (/photoshoot|photo shoot|editorial|lookbook/.test(lower)) return "Photoshoot";
   if (/music video/.test(lower)) return "Music video";
   if (/video|trailer|film/.test(lower)) return "Video shoot";
   if (/brand|campaign|product/.test(lower)) return "Brand campaign";
   if (/creator/.test(lower)) return "Creator collaboration";
   if (/performance|concert|show/.test(lower)) return "Live performance";
-  // The Fan event fallback only fires for explicit "fan", "gala", or
-  // "meetup" once the more-specific patterns have had a shot. This
-  // keeps "anime gala" → Fan event but "cosplay screening" →
-  // Live performance. The label is fine for hosts running events
-  // for a fandom audience; the prior issue was overreach, not the
-  // label itself.
-  if (/fan|gala|meetup/.test(lower)) return "Fan event";
+  // Fan event covers genuinely-generic "fan", "gala", "meetup", plus
+  // the watch-party / movie-night / film-night / screening family
+  // that needs the event module. "Anime night" still resolves here
+  // because none of the more-specific buckets above match it; the
+  // chip label is acceptable for that case.
+  if (/fan|gala|meetup|watch party|movie night|film night|screening/.test(lower)) {
+    return "Fan event";
+  }
   return "Other";
 }
 
