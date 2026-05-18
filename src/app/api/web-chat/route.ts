@@ -31,7 +31,10 @@ import {
 import { upsertProjectFromBrief } from "@/lib/projectBriefUpsert";
 import type { ProjectJourney } from "@/lib/journey/types";
 import { captureServerError } from "@/lib/observability";
-import { bindNextStepToProject } from "@/lib/webChatNextStep";
+import {
+  bindNextStepToProject,
+  conversationReferencesBoundProject,
+} from "@/lib/webChatNextStep";
 
 type ReplyMode = "autonomous" | "holding";
 
@@ -210,6 +213,31 @@ export async function GET(req: NextRequest) {
 
   const latestConversation = await loadLatestConversationForSession(session.id);
   if (!latestConversation) {
+    return json({ conversationId: null, persona, messages: [] });
+  }
+
+  // Post-archive guard (PR #56): if the session's projectId is null but
+  // the latest conversation references a bound `/projects/<cuid>` route,
+  // the user must have archived the project that conversation was
+  // about (archive clears `WebSession.projectId` and the project's
+  // journey is now at `archived`). Restoring the old conversation
+  // would show the user the brief they just discarded.
+  //
+  // PR #55 covers the primary archive paths via `?fresh=1`, which the
+  // chat client uses to skip GET entirely. This guard catches the
+  // edge case where the user navigates to /chat directly (typed URL,
+  // bookmark, back button) without the flag — server returns an
+  // empty conversation so the chat client starts fresh.
+  //
+  // False-positive safety: the only way for `session.projectId` to be
+  // null AND a message to carry a bound `/projects/<cuid>` route is
+  // if the user once had a project and lost the binding. That happens
+  // only via `archiveProject` today; chat without a brief never
+  // routes the user at a bound project URL.
+  if (
+    !session.projectId &&
+    conversationReferencesBoundProject(latestConversation.messages)
+  ) {
     return json({ conversationId: null, persona, messages: [] });
   }
 

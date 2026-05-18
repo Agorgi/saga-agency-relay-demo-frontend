@@ -279,3 +279,80 @@ test("sanitizeNextStepPayload preserves model-supplied label for bound /projects
   assert.ok(sanitized);
   assert.equal(sanitized?.label, "Review brief");
 });
+
+test("isProjectBoundRoute identifies /projects/<cuid> and rejects everything else", async () => {
+  const { isProjectBoundRoute } = await import("@/lib/webChatNextStep");
+  // Bound — cuid-shaped
+  assert.equal(isProjectBoundRoute("/projects/cm0abc123def456ghi789jkl"), true);
+  assert.equal(
+    isProjectBoundRoute("/projects/cm0abc123def456ghi789jkl/crew"),
+    true,
+  );
+  assert.equal(
+    isProjectBoundRoute("/projects/cm0abc123def456ghi789jkl/outreach"),
+    true,
+  );
+  // Not bound — pre-persistence intake form
+  assert.equal(isProjectBoundRoute("/projects/new"), false);
+  // Not bound — different surfaces
+  assert.equal(isProjectBoundRoute("/me"), false);
+  assert.equal(isProjectBoundRoute("/spaces"), false);
+  assert.equal(isProjectBoundRoute("/feed"), false);
+  assert.equal(isProjectBoundRoute(""), false);
+  assert.equal(isProjectBoundRoute(null), false);
+  assert.equal(isProjectBoundRoute(undefined), false);
+  // Not bound — fixture slugs are kebab-case, not cuids
+  assert.equal(isProjectBoundRoute("/projects/anime-picnic-silver-lake"), false);
+});
+
+test("conversationReferencesBoundProject scans the route field on messages", async () => {
+  const { conversationReferencesBoundProject } = await import(
+    "@/lib/webChatNextStep"
+  );
+  // Empty conversation
+  assert.equal(conversationReferencesBoundProject([]), false);
+  // No bound routes
+  assert.equal(
+    conversationReferencesBoundProject([
+      { route: null },
+      { route: "/projects/new" },
+      { route: "/me" },
+    ]),
+    false,
+  );
+  // At least one bound route present
+  assert.equal(
+    conversationReferencesBoundProject([
+      { route: null },
+      { route: "/projects/cm0abc123def456ghi789jkl" },
+    ]),
+    true,
+  );
+});
+
+test("conversationReferencesBoundProject scans nested nextStep.route too", async () => {
+  // The chat route handler writes `route` AND a JSON `nextStep`
+  // blob — sometimes `route` is null on early-turn messages but
+  // the nextStep object carries the bound URL the user was about
+  // to navigate to. The guard must catch both.
+  const { conversationReferencesBoundProject } = await import(
+    "@/lib/webChatNextStep"
+  );
+  assert.equal(
+    conversationReferencesBoundProject([
+      { route: null, nextStep: null },
+      { route: null, nextStep: { route: "/me" } },
+      { route: null, nextStep: { route: "/projects/cm0abc123def456ghi789jkl" } },
+    ]),
+    true,
+  );
+  // Defensive: malformed nextStep shapes don't blow up
+  assert.equal(
+    conversationReferencesBoundProject([
+      { route: null, nextStep: "not-an-object" },
+      { route: null, nextStep: { label: "missing route" } },
+      { route: null, nextStep: { route: 123 } }, // wrong type
+    ]),
+    false,
+  );
+});

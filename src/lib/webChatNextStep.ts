@@ -381,3 +381,56 @@ export function bindNextStepToProject(
     prefill: {},
   };
 }
+
+/**
+ * Project-id-shaped route pattern: `/projects/<cuid>` (NOT `/projects/new`
+ * — that one is the pre-persistence intake-form route every Sagasan
+ * reply emits before `upsertProjectFromBrief` lands the row).
+ *
+ * Used by the chat GET handler to detect whether a conversation was
+ * "about a project" — i.e., did Sagasan ever route the user at a
+ * bound project URL? If yes AND the session's `projectId` is now
+ * null, the project must have been archived (PR #54) and the
+ * conversation should not be restored.
+ */
+const PROJECT_BOUND_ROUTE_PATTERN = /^\/projects\/c[a-z0-9]{20,}(?:\/|$)/i;
+
+export function isProjectBoundRoute(value: string | null | undefined): boolean {
+  if (!value) return false;
+  return PROJECT_BOUND_ROUTE_PATTERN.test(value);
+}
+
+/**
+ * Return true if any message in the conversation has a `route` field
+ * or a `nextStep.route` that points at a bound project URL
+ * (`/projects/<cuid>` or any subpath like `/projects/<cuid>/crew`).
+ *
+ * The chat GET handler uses this in combination with
+ * `session.projectId === null` to detect the "user archived their
+ * project, then navigated to /chat directly without the ?fresh=1
+ * flag" case. In that case the latest conversation references a
+ * project the session can no longer reach, so the right behavior
+ * is to render an empty chat rather than restore the discarded
+ * brief's history.
+ *
+ * Defensive on shape: tolerates `nextStep` being null, a string,
+ * or a partially-typed object. The schema is enforced elsewhere;
+ * this helper just needs to find a project-bound route if one is
+ * present.
+ */
+export function conversationReferencesBoundProject(
+  messages: ReadonlyArray<{
+    route?: string | null;
+    nextStep?: unknown;
+  }>,
+): boolean {
+  for (const message of messages) {
+    if (isProjectBoundRoute(message.route ?? null)) return true;
+    const nextStep = message.nextStep;
+    if (nextStep && typeof nextStep === "object" && "route" in nextStep) {
+      const route = (nextStep as { route?: unknown }).route;
+      if (typeof route === "string" && isProjectBoundRoute(route)) return true;
+    }
+  }
+  return false;
+}

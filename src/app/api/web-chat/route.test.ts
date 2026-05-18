@@ -538,3 +538,108 @@ test("legacy GET session payload keeps assistant content even when metadata colu
   assert.match(assistantMessage?.content || "", /partial brief|production plan|crew search/i);
   assert.equal(assistantMessage?.nextStep ?? null, null);
 });
+
+test("GET returns empty conversation when the session's project was archived (PR #56 guard)", async () => {
+  // Edge case: user briefs a project, chats with Sagasan, archives,
+  // then navigates to /chat directly (no ?fresh=1). Before this guard,
+  // the GET handler returned the latest conversation — which still
+  // referenced the now-archived project — so the user saw the brief
+  // they just discarded.
+  process.env.DATABASE_URL = TEST_DATABASE_URL;
+  process.env.POSTGRES_URL_NON_POOLING = TEST_DATABASE_URL;
+  process.env.LLM_MODE = "mock_active";
+  process.env.OPENAI_API_KEY = "";
+  process.env.WEB_CHAT_AUTONOMOUS_RESPONSES_ENABLED = "true";
+
+  // Submit a brief — produces a Project + an assistant message with
+  // a bound /projects/<cuid> route in the assistantMessage.route /
+  // nextStep.route fields.
+  const postResponse = await POST(
+    createRequest({
+      message:
+        "I want to throw a formal ball inspired by Love and Deepspace in Los Angeles in July. Probably 150 people. I don't have a venue yet. I have one photographer friend but no production crew. Budget is maybe $15k. Here's a Pinterest board. I want Saga to help find a producer, stylist, venue lead, and maybe performers.",
+      persona: "host",
+    }),
+  );
+  const postData = (await postResponse.json()) as {
+    projectId: string | null;
+    conversationId: string;
+  };
+  const sessionCookie = postResponse.cookies.get("web_session_id")?.value ?? null;
+  assert.ok(sessionCookie);
+  assert.ok(postData.projectId);
+
+  // Archive the project. archiveProject also clears the session's
+  // projectId — the exact state the guard is supposed to detect.
+  const { archiveProject } = await import("@/lib/projectArchive");
+  await archiveProject(postData.projectId!);
+
+  // Without the ?fresh=1 flag, the chat client calls GET on /chat
+  // visit. The guard should kick in: session.projectId is null,
+  // the latest conversation has a bound /projects/<cuid> route,
+  // so the response is an empty conversation.
+  const getResponse = await GET(createGetRequest({ sessionId: sessionCookie }));
+  const getData = (await getResponse.json()) as {
+    conversationId: string | null;
+    messages: unknown[];
+  };
+
+  assert.equal(getResponse.status, 200);
+  assert.equal(
+    getData.conversationId,
+    null,
+    "post-archive GET must not restore the discarded brief's conversation",
+  );
+  assert.deepEqual(getData.messages, []);
+});
+
+test("GET still restores a conversation that doesn't reference any bound project (guard false-positive check)", async () => {
+  // Defensive: a session that has no project AND no bound-route
+  // messages should still get its conversation restored. This
+  // covers the (rare) "casual chat that never produced a brief"
+  // case — we don't want to wipe a user's chat just because
+  // session.projectId happens to be null.
+  process.env.DATABASE_URL = TEST_DATABASE_URL;
+  process.env.POSTGRES_URL_NON_POOLING = TEST_DATABASE_URL;
+  process.env.LLM_MODE = "mock_active";
+  process.env.OPENAI_API_KEY = "";
+
+  const { PrismaClient } = await import("@prisma/client");
+  const db = new PrismaClient({ datasourceUrl: TEST_DATABASE_URL });
+  try {
+    const session = await db.webSession.create({ data: {} });
+    // Insert a message with no bound-project route. Sagasan emits
+    // /projects/new (unbound) in early intake turns; that should NOT
+    // trip the guard.
+    await db.webChatMessage.create({
+      data: {
+        sessionId: session.id,
+        conversationId: "conv-no-project",
+        role: "user",
+        content: "Hello Sagasan",
+        turn: 0,
+      },
+    });
+    await db.webChatMessage.create({
+      data: {
+        sessionId: session.id,
+        conversationId: "conv-no-project",
+        role: "assistant",
+        content: "Hi, what would you like to make?",
+        turn: 1,
+        route: "/projects/new", // unbound — pre-persistence
+      },
+    });
+
+    const getResponse = await GET(createGetRequest({ sessionId: session.id }));
+    const getData = (await getResponse.json()) as {
+      conversationId: string | null;
+      messages: Array<{ role: string }>;
+    };
+    assert.equal(getResponse.status, 200);
+    assert.equal(getData.conversationId, "conv-no-project");
+    assert.ok(getData.messages.length >= 1);
+  } finally {
+    await db.$disconnect();
+  }
+});
