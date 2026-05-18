@@ -1,4 +1,5 @@
 import type { Persona } from "@/lib/sagasanPersonas";
+import type { OrganizerIntakeFields } from "@/lib/sagasanOrganizerIntake";
 
 const GLOBAL_RULES = [
   "You are Sagasan, Saga's chat-first router for hosts, creatives, venues, and fans.",
@@ -27,6 +28,15 @@ const PERSONA_GUIDANCE: Record<Exclude<Persona, null>, string[]> = {
     "A host can review a partial brief once there is enough signal for a draft, but production planning and talent search stay locked until the brief readiness threshold is met.",
     "Do not call the brief complete until you have enough signal for a production plan.",
     "Once you have enough signal to review a clean brief, emit nextStep with route /projects/new.",
+    // Layer B (LLM mode) — producer-voice composition rules. These
+    // apply only when live LLM mode is on; the deterministic fallback
+    // produces its own Layer-B-style replies via the templates in
+    // sagasanOrganizerIntake.ts.
+    "When you reflect what you have captured, use the user's own words (e.g. 'formal ball', 'Love and Deepspace', '150 people') rather than category labels like 'project idea' or 'location'.",
+    "When the user references a recognizable cultural object (film, game, scene, aesthetic, fandom), anchor it briefly in your reply ('Love and Deepspace, the cosmic-romantic dating game'). Do not name something you don't know — if unsure, just echo their phrase.",
+    "When naming what's missing, name the specific gap (e.g. 'roughly how many people, venue status, and budget range') rather than 'more details' or 'the rest'.",
+    "Vary your openers naturally. Don't start every reply with 'Got it' or 'Great' — sometimes lead with the reflected facts and only acknowledge implicitly.",
+    "Producer-voice stance is allowed when it earns its place: when the user gives enough signal, you can propose sequencing ('for 150 people I'd lock the venue before pinning the date'). At most one stance move per turn, must reference a fact already in the brief.",
   ],
   creative: [
     "The creative intake gathers role or skill, city, portfolio, availability, and rates with as few useful questions as possible.",
@@ -50,6 +60,56 @@ const PERSONA_GUIDANCE: Record<Exclude<Persona, null>, string[]> = {
     "Once you have a city or one to three strong interests, emit nextStep with route /feed.",
   ],
 };
+
+/**
+ * Build a "captured brief so far" block for the LLM user prompt.
+ *
+ * The system prompt tells the LLM to reflect specifics in the user's
+ * own phrasing rather than category labels. This helper gives the LLM
+ * the actual values to reflect — pulled from whatever the deterministic
+ * extractor captured up through the current turn.
+ *
+ * Returns an empty string when nothing meaningful is captured yet —
+ * keeps the first-turn prompt clean and doesn't force the LLM to
+ * acknowledge fields the user hasn't given.
+ *
+ * Only used by the LLM live path. The deterministic fallback uses
+ * its own reflective summary in sagasanOrganizerIntake.ts.
+ */
+export function buildHostLayerBContext(fields: OrganizerIntakeFields): string {
+  const lines: string[] = [];
+  const push = (label: string, value: string | null | undefined) => {
+    if (value && value.trim()) lines.push(`- ${label}: ${value.trim()}`);
+  };
+
+  // Skip single-word project ideas — the extractor can title-case a
+  // bare greeting ("hey" → "Hey") and we don't want it polluting the
+  // captured-brief block as if it were a real concept.
+  const isSubstantiveIdea =
+    !!fields.projectIdea &&
+    fields.projectIdea.trim().split(/\s+/).length > 1;
+  if (isSubstantiveIdea) push("Project idea", fields.projectIdea);
+
+  push("Location", fields.locationMarket);
+  push("Timing", fields.timing);
+  push("Format", fields.scopeFormat);
+  push("Vibe", fields.themeVibe);
+  push("Attendance", fields.expectedAttendance);
+  push("Crew or venue status", fields.lineupStatus);
+  push("Help needed", fields.helpNeeded);
+  push("Budget", fields.budget);
+  if (fields.inspirationReferences && fields.inspirationReferences.length > 0) {
+    lines.push(
+      `- References: ${fields.inspirationReferences.slice(0, 3).join(", ")}`,
+    );
+  }
+
+  if (lines.length === 0) return "";
+  return [
+    "Captured brief so far (use these values when you reflect — quote them in the user's own words, don't replace with category labels):",
+    ...lines,
+  ].join("\n");
+}
 
 export function buildSystemPrompt(persona: Persona | null) {
   if (!persona) {
