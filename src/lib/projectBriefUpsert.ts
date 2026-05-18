@@ -100,7 +100,7 @@ export async function upsertProjectFromBrief({
 
   const session = await db.webSession.findUnique({
     where: { id: sessionId },
-    select: { id: true, projectId: true },
+    select: { id: true, projectId: true, personId: true },
   });
   if (!session) {
     // The web chat session may not have been persisted yet (legacy/in-memory
@@ -111,15 +111,37 @@ export async function upsertProjectFromBrief({
   let projectId = session.projectId;
 
   if (projectId) {
+    // PR #68: backfill `organizerPersonId` when the session now has a
+    // personId but the Project was created earlier (PR #63/64 races
+    // where the Person row appeared after the Project). This makes the
+    // identity-graph → producer-scoring boost work on already-existing
+    // projects, not just new ones.
+    const updateData: Parameters<typeof db.project.update>[0]["data"] = {
+      ...briefFields,
+    };
+    if (session.personId) {
+      const existing = await db.project.findUnique({
+        where: { id: projectId },
+        select: { organizerPersonId: true },
+      });
+      if (existing && !existing.organizerPersonId) {
+        updateData.organizerPersonId = session.personId;
+      }
+    }
     await db.project.update({
       where: { id: projectId },
-      data: briefFields,
+      data: updateData,
     });
   } else {
+    // PR #68: link the Project to the session's anchor Person at create
+    // time. This is the bridge that lets `generateCrewForProject` pull
+    // the owner's accumulated `Person.fandoms` (PRs #63–67) into the
+    // ProjectUnderstanding before scoring candidates.
     const created = await db.project.create({
       data: {
         ...briefFields,
         source: NetworkProjectSource.WEB_APP,
+        organizerPersonId: session.personId ?? null,
       },
       select: { id: true },
     });
