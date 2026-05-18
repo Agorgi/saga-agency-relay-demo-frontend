@@ -35,7 +35,11 @@ export type ProjectsListData = {
 /**
  * Load the projects this session can see. Returns `{ projects: [] }` (never
  * throws) when the session id is missing, the session row doesn't exist,
- * the session has no projectId set, or the referenced Project was deleted.
+ * the session has no projectId set, the referenced Project was deleted,
+ * OR the project's journey is at `archived` (PR #54). Archived projects
+ * are hidden from the landing page so a user who archived a brief and
+ * starts over via `/chat` sees a clean "start here" empty state instead
+ * of the project they just discarded.
  *
  * The journey is loaded via `getOrCreateJourney`, which means a project
  * that was created before the journey state machine landed still gets a
@@ -66,6 +70,13 @@ export async function loadProjectsListView(
   if (!project) return { projects: [] };
 
   const journey = await getOrCreateJourney(project.id);
+
+  // Archived projects are hidden from the landing list. The Project row
+  // and the journey row both still exist (audit-friendly), and the
+  // brief review page at /projects/[id] still renders so a user with
+  // the URL can see the archived banner — but the user's primary
+  // landing surface is clean.
+  if (journey.step === "archived") return { projects: [] };
 
   return {
     projects: [

@@ -176,3 +176,47 @@ test("loadProjectsListView surfaces the brief_ready journey when readiness has c
     );
   });
 });
+
+test("loadProjectsListView hides projects whose journey is at archived", async () => {
+  // PR #54: a user who archives a brief should see a clean empty
+  // state on /projects (then start fresh in /chat). The project row
+  // and the journey row both still exist; the loader filters on
+  // journey.step.
+  const { archiveProject } = await import("@/lib/projectArchive");
+  await withFreshDb(async (db) => {
+    const session = await db.webSession.create({ data: {} });
+    const upsert = await upsertProjectFromBrief({
+      sessionId: session.id,
+      persona: "host",
+      organizerFields: minimalBrief,
+    });
+    assert.ok(upsert.projectId);
+
+    // Before archive: project surfaces.
+    const before = await loadProjectsListView(session.id);
+    assert.equal(before.projects.length, 1);
+
+    // archiveProject also unbinds the session, so we capture the
+    // session id ahead of time and re-load via the same id.
+    const sessionId = session.id;
+    await archiveProject(upsert.projectId!);
+
+    // After archive: session was unbound, so the loader returns empty
+    // for the most direct reason (session.projectId is null). Verify
+    // that AND simulate the "session still has projectId" path by
+    // re-binding manually to isolate the journey-step filter.
+    const afterUnbind = await loadProjectsListView(sessionId);
+    assert.deepEqual(afterUnbind, { projects: [] });
+
+    await db.webSession.update({
+      where: { id: sessionId },
+      data: { projectId: upsert.projectId },
+    });
+    const afterRebind = await loadProjectsListView(sessionId);
+    assert.deepEqual(
+      afterRebind,
+      { projects: [] },
+      "even with the session re-bound, archived projects must not appear",
+    );
+  });
+});
