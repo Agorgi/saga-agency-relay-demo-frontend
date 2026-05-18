@@ -33,9 +33,8 @@ Boundary patterns in `src/lib/sagasanAgent.ts:471-474` catch the report strings 
 ### ~~P2-OI-11~~ — closed in PR #42
 Renamed `buildCreativeNextStep`'s label from "Open my feed" to "Open my profile" in `src/lib/sagasanAgent.ts:1222`. The route was always `/me` (the creative's dashboard, not a feed surface); the label is now aligned with the destination. Three test files updated to match the new fixture label: `AppChrome.test.tsx`, `useWebChat.test.ts`, `ChatThread.test.tsx`.
 
-### P2-OI-12 — Public event page hero is meta-narration about the system
-"The rave public page sells scarce tickets while backstage Saga tracks DJ, social, volunteer, and photo roles…" — internal product framing aimed at a Saga reader, not a fan landing from a share link.
-**Fix:** Replace with a normal fan-facing event tagline.
+### ~~P2-OI-12~~ — closed in PR #43
+Rewrote the `longDescription` field on all 8 fixture events in `src/data/sagaPlatformData.ts` to fan-facing copy that describes the actual event (theme, venue, dress code, vibe) instead of Saga's product story. Examples: "The rave public page sells scarce tickets while backstage Saga tracks DJ, social, volunteer, and photo roles..." → "A punk-future rave where Gachiakuta meets Jet Set Radio: warehouse dancefloor, graffiti visuals projected across three walls, and a creator-led lineup that runs late. Cosplay encouraged but not required." Also updated the working-draft template at line 922 so newly-created events from the landing search get a clear "placeholder summary" line that says exactly that, not a Saga-product framing.
 
 ### ~~P2-OI-13~~ — verified closed in PR #42
 `resolveChromePersona` in `src/components/AppChrome.tsx:33-35` returns null for `pathname === "/"` when there's no `pendingNextStep`. The top-right CTA falls back to the neutral default on landing, not the persisted-session persona. Test "landing hides stale persona CTA when no handoff is active" at `AppChrome.test.tsx:22` locks the contract. PR #42 moves it to the resolved appendix.
@@ -61,9 +60,8 @@ Operator dashboard misleading. **Fix:** Either rate calc is wrong or time-window
 ### P2-OI-20 — For-me feed shows Sammi Smith twice (once as OPPORTUNITY, once as RELAY) with identical copy
 **Fix:** Dedupe by ID, OR make the two card types substantively different.
 
-### P2-OI-21 — Top-nav "Discover" button non-functional pre-classification
-Clicking "Discover" before persona is classified does nothing. Nav labels that change behavior based on hidden state are a navigation antipattern.
-**Fix:** Either make it functional pre-classification, or hide it.
+### ~~P2-OI-21~~ — closed in PR #43
+Audit confirmed the desktop top-nav already hides "Discover" + "For me" pre-classification (`navItems` only adds them when `discoverPath`/`persona` are non-null). The mobile bottom-nav rendered both unconditionally — pre-persona, clicking Discover routed to `/explore` (functional but ambiguous), and clicking For-me routed to the creative dashboard for non-creative users. PR #43 makes the mobile bottom-nav match the desktop gating: both buttons only render once persona is known.
 
 ### ~~P2-OI-22~~ — closed in PR #38
 Two surfaces fixed: (1) the bare "Crew is distribution" pill in `AssemblyView.tsx`'s metrics row (between concrete launch-readiness + estimated-reach chips) was dropped — pill chips don't have room for a gloss. (2) The "Role board" Panel kept the slogan as its eyebrow but gained a `description` prop on the Panel component carrying a one-sentence gloss: "The crew Saga books is your audience reach — every role doubles as a distribution channel into the fandom they bring." The four other surfaces in `ProjectDetailView`, `CreateProjectFlow`, and `sagaPlatformData` already had inline explanations and were left alone.
@@ -143,9 +141,9 @@ Counter ticks 5 → 6 between turns but the visible Known list shows 5 fields. *
 
 - P0 open: 0 (closed in PR #16)
 - P1 open: 0 (P1-OI-5 and P1-OI-6 verified closed by existing regression tests in PR #40; /explore items closed in PR #22)
-- P2 open: 7 (PR #38 closed 5; PR #42 closed 4: OI-9, OI-10, OI-11, OI-13; OI-37 filed in PR #36)
+- P2 open: 5 (PR #38 closed 5: OI-15, OI-16, OI-22, OI-23, OI-24; PR #42 closed 4: OI-9, OI-10, OI-11, OI-13; PR #43 closed 2: OI-12, OI-21; OI-37 filed in PR #36)
 - P3 open: 16
-- **Total open: 23**
+- **Total open: 21**
 
 ---
 
