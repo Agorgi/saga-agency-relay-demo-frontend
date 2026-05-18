@@ -232,6 +232,26 @@ wire it when the team is ready — see `vercel.json` (not yet
 created) or any external scheduler that can run `npm run
 cleanup:web-sessions -- --apply` with the Neon env vars set.
 
+## Person identity-graph schema (one-time, after PR #63)
+
+PR #63 added `fandoms` and `interests` columns to `Person` plus GIN
+indexes (`Person_fandoms_idx`, `Person_interests_idx`) for fast
+array-overlap (`&&`) and contains (`@>`) queries. Migration:
+`20260518040000_add_person_fandoms_interests`.
+
+Both columns default to `'{}'` (empty array) so existing rows light
+up without disruption. Extractors land in PR #64 — until that
+ships, the columns stay empty on all rows but are queryable from
+day one.
+
+```bash
+DATABASE_URL="<neon-url>" POSTGRES_URL_NON_POOLING="<neon-direct-url>" \
+  npx prisma migrate deploy
+```
+
+Safe on populated DBs — additive columns with defaults and a
+`CREATE INDEX` (no concurrent flag because tables are small).
+
 ## Composite talent seed (one-time, after PR #51)
 
 PR #51 added the `DEMO_COMPOSITE` value to `PersonSource` (migration
