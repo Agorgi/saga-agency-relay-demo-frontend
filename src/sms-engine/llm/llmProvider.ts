@@ -138,8 +138,28 @@ function numberEnv(value: string | undefined, fallback: number | null) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+/**
+ * Gate for whether OpenAI live-mode calls are allowed in this
+ * runtime. Default: `false`. Set `LLM_ACTIVE_LIVE_ALLOWED=true` on
+ * the deployment to opt in. This is the single switch that takes
+ * Sagasan from "deterministic fallback" to "LLM as the brain."
+ *
+ * Required pre-flip checklist (do not flip without all four):
+ *   1. `OPENAI_API_KEY` is set on the deployment.
+ *   2. `OPENAI_MODEL` resolves to a valid model (defaults to
+ *      `gpt-4o-mini` when unset — see getConfiguredModel).
+ *   3. `/api/admin/llm-smoke-test` returns `ok: true` against the
+ *      live deploy — validates every persona's structured-output
+ *      operation parses cleanly.
+ *   4. Someone has eyes on Sentry / `/api/health` for the first
+ *      few minutes after the flip, in case the live path surfaces
+ *      a structured-output regression the smoke test missed.
+ *
+ * The flag is opt-in (not opt-out) so a misconfigured deployment
+ * can never accidentally start charging OpenAI tokens.
+ */
 function activeLiveAllowedNow() {
-  return false;
+  return process.env.LLM_ACTIVE_LIVE_ALLOWED === "true";
 }
 
 export function resolveLlmExecutionContext({
