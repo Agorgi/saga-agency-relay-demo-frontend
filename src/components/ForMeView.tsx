@@ -75,9 +75,20 @@ export function ForMeView({
       };
     });
 
+  // Conversations that surface as Saga outreach for the viewer's own
+  // active projects are excluded from the inbound-opportunities list
+  // even when `inboundOpportunityIds` repeats them. Otherwise the
+  // same conversation about the same candidate renders twice in the
+  // feed — once as "Opportunity" + once as "Saga outreach" — with
+  // identical summary copy. Closes P2-OI-20.
+  const relayConversationIds = new Set(
+    relayItems.map((item) => item.id.replace(/^relay-/, "")),
+  );
+
   const inboundItems: FeedItem[] = viewerProfile.inboundOpportunityIds
     .map((conversationId) => conversations.find((conversation) => conversation.id === conversationId) || null)
     .filter(isPresent)
+    .filter((conversation) => !relayConversationIds.has(conversation.id))
     .map((conversation) => {
       const project = projects.find((entry) => entry.id === conversation.projectId);
       return {

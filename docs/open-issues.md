@@ -57,8 +57,8 @@ Operator dashboard misleading. **Fix:** Either rate calc is wrong or time-window
 ### P2-OI-19 — "LLM output: Not captured" conflates "never called OpenAI" and "called and failed"
 **Fix:** Distinguish the two failure modes in `/admin/llm-review`.
 
-### P2-OI-20 — For-me feed shows Sammi Smith twice (once as OPPORTUNITY, once as RELAY) with identical copy
-**Fix:** Dedupe by ID, OR make the two card types substantively different.
+### ~~P2-OI-20~~ — closed in PR #45
+Both `relayItems` and `inboundItems` in `src/components/ForMeView.tsx` filter the same `conversations` array — `relayItems` by `viewerProfile.activeProjectIds.includes(conversation.projectId)` and `inboundItems` by `viewerProfile.inboundOpportunityIds.includes(conversation.id)`. A single conversation could land in both lists, producing two cards (one "Opportunity", one "Saga outreach") with identical summary copy. PR #45 adds a `relayConversationIds` Set built from the relay items and filters those conversation ids out of `inboundItems` before mapping. Active-project conversations now render only as Saga outreach; conversations that are inbound-only (e.g. for a project the viewer doesn't own yet) keep their Opportunity surface.
 
 ### ~~P2-OI-21~~ — closed in PR #43
 Audit confirmed the desktop top-nav already hides "Discover" + "For me" pre-classification (`navItems` only adds them when `discoverPath`/`persona` are non-null). The mobile bottom-nav rendered both unconditionally — pre-persona, clicking Discover routed to `/explore` (functional but ambiguous), and clicking For-me routed to the creative dashboard for non-creative users. PR #43 makes the mobile bottom-nav match the desktop gating: both buttons only render once persona is known.
@@ -141,9 +141,9 @@ Counter ticks 5 → 6 between turns but the visible Known list shows 5 fields. *
 
 - P0 open: 0 (closed in PR #16)
 - P1 open: 0 (P1-OI-5 and P1-OI-6 verified closed by existing regression tests in PR #40; /explore items closed in PR #22)
-- P2 open: 4 (PR #38 closed 5: OI-15, OI-16, OI-22, OI-23, OI-24; PR #42 closed 4: OI-9, OI-10, OI-11, OI-13; PR #43 closed 2: OI-12, OI-21; PR #44 closed 1: OI-14; OI-37 filed in PR #36)
+- P2 open: 3 (PR #38 closed 5: OI-15, OI-16, OI-22, OI-23, OI-24; PR #42 closed 4: OI-9, OI-10, OI-11, OI-13; PR #43 closed 2: OI-12, OI-21; PR #44 closed 1: OI-14; PR #45 closed 1: OI-20; OI-37 filed in PR #36; remaining: OI-17, OI-18, OI-19 — all /admin/* surfaces)
 - P3 open: 16
-- **Total open: 20**
+- **Total open: 19**
 
 ---
 
