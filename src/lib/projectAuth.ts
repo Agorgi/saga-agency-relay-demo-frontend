@@ -116,3 +116,37 @@ export async function requireCandidateOwnership(
 export function jsonForAuthFailure(failure: ProjectAuthFail): Response {
   return Response.json({ error: failure.error }, { status: failure.status });
 }
+
+/**
+ * Check whether a given WebSession id owns the requested project.
+ *
+ * Pure-data variant of `requireProjectOwnership` — takes the session
+ * id directly instead of a NextRequest, so server components can use
+ * it after reading the session cookie via `next/headers`.
+ *
+ * Returns:
+ * - true: the session exists and `session.projectId === projectId`
+ * - false: no session, missing session row, OR session owns a
+ *   different project. Caller decides whether that means notFound()
+ *   (page handlers) or 401/403 (API routes).
+ *
+ * Defensive: any database error is treated as "not authorized" so
+ * misconfigured deploys can't accidentally bypass the check.
+ */
+export async function sessionOwnsProject(
+  sessionId: string | null | undefined,
+  projectId: string,
+): Promise<boolean> {
+  if (!sessionId) {
+    return false;
+  }
+  try {
+    const session = await getDb().webSession.findUnique({
+      where: { id: sessionId },
+      select: { projectId: true },
+    });
+    return session?.projectId === projectId;
+  } catch {
+    return false;
+  }
+}
