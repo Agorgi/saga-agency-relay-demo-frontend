@@ -237,46 +237,58 @@ export async function generateCrewForProject(
     candidatePool,
   );
 
-  let candidatesCreated = 0;
-  for (const role of allRoles) {
+  // Batch candidate persistence (PR #60). Previously this was a per-row
+  // upsert loop — ~50 sequential round-trips for a real CreatorProfile
+  // pool. `createMany({ skipDuplicates: true })` collapses the inserts
+  // into one round-trip and the `@@unique([opportunityId, personId])`
+  // constraint on CandidateRecommendation cleanly skips any rows a
+  // racing generator (or a partial prior run) already wrote.
+  //
+  // What we lose vs the old upsert:
+  //   - The old `update` branch refreshed score / matchingReasons /
+  //     risks on existing rows. In practice this was a no-op for the
+  //     common path: the producer's `recommendInternalCandidates` is
+  //     deterministic given identical inputs, so re-running on the
+  //     same brief produces identical scores. The race path is
+  //     short-circuited above by the `existingRoleCount > 0` fast
+  //     path (PR #50 + #53), so we only reach here when persisting a
+  //     fresh set of recommendations.
+  //
+  // What we keep:
+  //   - Skip-on-no-personId — recommendations without a person are
+  //     non-actionable and not worth persisting.
+  //   - Identical column shape: status defaults to SUGGESTED on
+  //     create, plus score / scoreBreakdown / proximityTier /
+  //     matchingReasons / risks pass through.
+  const candidateRowsToInsert = allRoles.flatMap((role) => {
     const opportunity = roleOpeningByType.get(role.roleType);
-    if (!opportunity) continue;
+    if (!opportunity) return [];
     const recsForRole = recommendations.filter(
       (rec) => rec.recommendedRole === role.roleType,
     );
-    for (const rec of recsForRole) {
-      if (!rec.personId) continue;
-      // unique([opportunityId, personId]) means a duplicate would throw.
-      // Idempotency check above guards against this, but use upsert to
-      // be defensive against concurrent generations.
-      await db.candidateRecommendation.upsert({
-        where: {
-          opportunityId_personId: {
-            opportunityId: opportunity.opportunityId,
-            personId: rec.personId,
-          },
-        },
-        create: {
-          opportunityId: opportunity.opportunityId,
-          personId: rec.personId,
-          score: rec.score,
-          scoreBreakdown: rec.scoreBreakdown,
-          proximityTier: rec.proximityTier,
-          matchingReasons: rec.matchingReasons,
-          risks: rec.risks,
-          status: "SUGGESTED",
-        },
-        update: {
-          score: rec.score,
-          scoreBreakdown: rec.scoreBreakdown,
-          proximityTier: rec.proximityTier,
-          matchingReasons: rec.matchingReasons,
-          risks: rec.risks,
-        },
-      });
-      candidatesCreated++;
-    }
-  }
+    return recsForRole
+      .filter((rec) => rec.personId)
+      .map((rec) => ({
+        opportunityId: opportunity.opportunityId,
+        personId: rec.personId!,
+        score: rec.score,
+        scoreBreakdown: rec.scoreBreakdown,
+        proximityTier: rec.proximityTier,
+        matchingReasons: rec.matchingReasons,
+        risks: rec.risks,
+        status: "SUGGESTED" as const,
+      }));
+  });
+
+  const candidatesCreated =
+    candidateRowsToInsert.length === 0
+      ? 0
+      : (
+          await db.candidateRecommendation.createMany({
+            data: candidateRowsToInsert,
+            skipDuplicates: true,
+          })
+        ).count;
 
   await logCrewGenerated({
     projectId,
