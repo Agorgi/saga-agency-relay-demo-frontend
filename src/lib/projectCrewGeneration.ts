@@ -33,7 +33,7 @@
  * with no contract changes.
  */
 
-import type { ProximityTier } from "@prisma/client";
+import type { PrismaClient, ProximityTier } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { logAudit } from "@/sms-engine/audit";
 import { getDb } from "@/sms-engine/db";
@@ -113,7 +113,23 @@ export async function generateCrewForProject(
     throw new Error(`generateCrewForProject: project ${projectId} not found`);
   }
 
-  const understanding = buildUnderstandingForTracerProject(project);
+  const baseUnderstanding = buildUnderstandingForTracerProject(project);
+
+  // PR #68: enrich `understanding.fandoms` with the project owner's
+  // accumulated `Person.fandoms` (built up across chat turns by PRs
+  // #63–67). The producer's `scoreCandidateForRole` already weights
+  // fandom overlap; by widening the "project fandom" set with the
+  // owner's identity-graph signal, candidates who share a fandom
+  // with the owner — even if it didn't appear in the brief itself —
+  // get the existing boost. Same scoring code, more signal in.
+  //
+  // De-duped case-insensitively against project fandoms so a fandom
+  // mentioned in both places doesn't double-count.
+  const understanding = await enrichUnderstandingWithOwnerFandoms({
+    db,
+    baseUnderstanding,
+    organizerPersonId: project.organizerPersonId,
+  });
 
   // sourceKind="unknown" or non-organizer would bail out of generateRoleMap.
   // We've forced "organizer_project" above when the project has any brief
@@ -353,6 +369,63 @@ function buildUnderstandingForTracerProject(project: {
     return { ...understanding, sourceKind: "unknown" };
   }
   return { ...understanding, sourceKind: "organizer_project" };
+}
+
+/**
+ * PR #68: pull the project owner's `Person.fandoms` and merge them
+ * into `understanding.fandoms` so the producer's existing fandom-
+ * weighted scoring picks up signals captured outside the brief
+ * itself (e.g. a fandom mentioned in an earlier chat turn but not
+ * carried into the project's `fandoms` column).
+ *
+ * Case-insensitive union — preserves the existing capitalization on
+ * the project side (so the brief's "Love and Deepspace" stays
+ * canonical even if the Person row has "love and deepspace").
+ *
+ * No-op when there's no `organizerPersonId` (legacy chat-created
+ * projects pre-PR #68) or when the owner's Person has no fandoms.
+ * Defensive: a DB error here must not break crew generation — log
+ * and return the unenriched understanding.
+ */
+async function enrichUnderstandingWithOwnerFandoms({
+  db,
+  baseUnderstanding,
+  organizerPersonId,
+}: {
+  db: PrismaClient;
+  baseUnderstanding: ProjectUnderstanding;
+  organizerPersonId: string | null;
+}): Promise<ProjectUnderstanding> {
+  if (!organizerPersonId) return baseUnderstanding;
+
+  let ownerFandoms: string[] = [];
+  try {
+    const owner = await db.person.findUnique({
+      where: { id: organizerPersonId },
+      select: { fandoms: true },
+    });
+    ownerFandoms = owner?.fandoms ?? [];
+  } catch (error) {
+    console.warn(
+      "[crew-generation] failed to read owner fandoms; continuing without identity-graph boost",
+      error,
+    );
+    return baseUnderstanding;
+  }
+  if (ownerFandoms.length === 0) return baseUnderstanding;
+
+  const projectFandoms = baseUnderstanding.fandoms ?? [];
+  const seen = new Set(projectFandoms.map((f) => f.toLowerCase()));
+  const merged = [...projectFandoms];
+  for (const fandom of ownerFandoms) {
+    const trimmed = fandom.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(trimmed);
+  }
+  return { ...baseUnderstanding, fandoms: merged };
 }
 
 async function loadCreatorPool(

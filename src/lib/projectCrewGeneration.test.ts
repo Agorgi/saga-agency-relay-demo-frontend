@@ -358,6 +358,209 @@ test("generateCrewForProject coexists with an existing duplicate role landed bef
   });
 });
 
+test("generateCrewForProject pulls owner's Person.fandoms into understanding (PR #68)", async () => {
+  // The motivating scenario: the user mentioned "Genshin Impact" in
+  // an early chat turn (regex / LLM captured it on Person.fandoms),
+  // but the brief itself never re-mentioned it — so Project.fandoms
+  // doesn't contain it. PR #68 unions Person.fandoms in before
+  // scoring, so a creator who shares "Genshin Impact" still gets
+  // the fandomFit boost in `scoreCandidateForRole`.
+  await withFreshDb(async (db) => {
+    // Seed two producers, both with the same role/skill profile;
+    // one shares the owner's Person.fandoms, the other doesn't.
+    const personGenshinFan = await db.person.create({
+      data: { name: "Maya Producer", source: "ADMIN", city: "Los Angeles" },
+    });
+    await db.creatorProfile.create({
+      data: {
+        personId: personGenshinFan.id,
+        displayName: "Maya Producer",
+        city: "Los Angeles",
+        roles: ["production lead", "producer"],
+        skills: ["production", "operations"],
+        fandoms: ["Genshin Impact"],
+        portfolioUrls: ["https://example.com/maya"],
+        reviewStatus: "APPROVED",
+      },
+    });
+    const personUnrelated = await db.person.create({
+      data: { name: "Jordan Producer", source: "ADMIN", city: "Los Angeles" },
+    });
+    await db.creatorProfile.create({
+      data: {
+        personId: personUnrelated.id,
+        displayName: "Jordan Producer",
+        city: "Los Angeles",
+        roles: ["production lead", "producer"],
+        skills: ["production", "operations"],
+        fandoms: ["EDM"],
+        portfolioUrls: ["https://example.com/jordan"],
+        reviewStatus: "APPROVED",
+      },
+    });
+
+    // The session's anchor Person carries "Genshin Impact" — which is
+    // NOT in the brief (completeBrief mentions Love and Deepspace only).
+    const ownerPerson = await db.person.create({
+      data: {
+        name: "[session] owner",
+        source: "APP",
+        fandoms: ["Genshin Impact"],
+      },
+    });
+    const session = await db.webSession.create({
+      data: { personId: ownerPerson.id },
+    });
+
+    const upsert = await upsertProjectFromBrief({
+      sessionId: session.id,
+      persona: "host",
+      organizerFields: completeBrief,
+    });
+    assert.ok(upsert.projectId);
+
+    // Sanity: the upsert wired organizerPersonId from the session.
+    const project = await db.project.findUnique({
+      where: { id: upsert.projectId! },
+      select: { organizerPersonId: true, fandoms: true },
+    });
+    assert.equal(project?.organizerPersonId, ownerPerson.id);
+    // The brief itself doesn't contain Genshin Impact — only the
+    // Person row does. That's the whole point of the boost.
+    assert.ok(
+      !project?.fandoms.includes("Genshin Impact"),
+      "test assumption broken: Genshin Impact should NOT be on Project.fandoms",
+    );
+
+    const result = await generateCrewForProject(upsert.projectId!);
+    assert.ok(result.rolesCreated > 0);
+    assert.ok(
+      result.candidatesCreated && result.candidatesCreated > 0,
+      `expected candidates to be scored, got ${JSON.stringify(result)}`,
+    );
+
+    // Genshin Maya should outrank EDM Jordan on the producer role
+    // BECAUSE the owner's Person.fandoms got plumbed into scoring.
+    // Look at recommendations on the same role and compare scores.
+    const recommendations = await db.candidateRecommendation.findMany({
+      include: { opportunity: { include: { roleOpening: true } } },
+      orderBy: { score: "desc" },
+    });
+    const mayaRecs = recommendations.filter(
+      (r) => r.personId === personGenshinFan.id,
+    );
+    const jordanRecs = recommendations.filter(
+      (r) => r.personId === personUnrelated.id,
+    );
+    assert.ok(mayaRecs.length > 0, "Maya must be scored on at least one role");
+    assert.ok(
+      jordanRecs.length > 0,
+      "Jordan must be scored on at least one role",
+    );
+    // Compare top score per producer head-to-head.
+    const mayaTop = Math.max(...mayaRecs.map((r) => r.score));
+    const jordanTop = Math.max(...jordanRecs.map((r) => r.score));
+    assert.ok(
+      mayaTop > jordanTop,
+      `Maya (shares owner's Genshin Impact fandom) should outscore Jordan (no overlap). Got Maya=${mayaTop}, Jordan=${jordanTop}.`,
+    );
+  });
+});
+
+test("generateCrewForProject leaves understanding unchanged when owner has no fandoms (PR #68)", async () => {
+  // Defensive baseline — make sure the enrichment helper is a no-op
+  // when there's nothing to add, not silently dropping briefs.
+  await withFreshDb(async (db) => {
+    const ownerPerson = await db.person.create({
+      data: { name: "[session] empty", source: "APP", fandoms: [] },
+    });
+    const session = await db.webSession.create({
+      data: { personId: ownerPerson.id },
+    });
+
+    const upsert = await upsertProjectFromBrief({
+      sessionId: session.id,
+      persona: "host",
+      organizerFields: completeBrief,
+    });
+    assert.ok(upsert.projectId);
+
+    const result = await generateCrewForProject(upsert.projectId!);
+    assert.ok(result.rolesCreated > 0, "roles still generated normally");
+  });
+});
+
+test("upsertProjectFromBrief sets organizerPersonId from the session's Person (PR #68)", async () => {
+  // The wiring step that makes the producer-scoring boost work.
+  await withFreshDb(async (db) => {
+    const ownerPerson = await db.person.create({
+      data: { name: "[session] owner", source: "APP" },
+    });
+    const session = await db.webSession.create({
+      data: { personId: ownerPerson.id },
+    });
+
+    const upsert = await upsertProjectFromBrief({
+      sessionId: session.id,
+      persona: "host",
+      organizerFields: completeBrief,
+    });
+
+    assert.ok(upsert.projectId);
+    const project = await db.project.findUnique({
+      where: { id: upsert.projectId! },
+      select: { organizerPersonId: true },
+    });
+    assert.equal(project?.organizerPersonId, ownerPerson.id);
+  });
+});
+
+test("upsertProjectFromBrief backfills organizerPersonId on existing projects (PR #68)", async () => {
+  // Race-safety: PR #64 attaches Person.id to the session AFTER the
+  // session may already have created a Project. The next chat turn
+  // should heal that link rather than leave the orphaned project
+  // forever unattached.
+  await withFreshDb(async (db) => {
+    const session = await db.webSession.create({ data: {} });
+
+    // First turn: no Person yet, project gets created without owner.
+    const firstUpsert = await upsertProjectFromBrief({
+      sessionId: session.id,
+      persona: "host",
+      organizerFields: completeBrief,
+    });
+    assert.ok(firstUpsert.projectId);
+    const projectBefore = await db.project.findUnique({
+      where: { id: firstUpsert.projectId! },
+      select: { organizerPersonId: true },
+    });
+    assert.equal(projectBefore?.organizerPersonId, null);
+
+    // Now attach a Person (mirrors what PR #64's
+    // upsertSessionIdentitySignals would do on a fandom-bearing turn).
+    const owner = await db.person.create({
+      data: { name: "[session] owner", source: "APP", fandoms: ["anime"] },
+    });
+    await db.webSession.update({
+      where: { id: session.id },
+      data: { personId: owner.id },
+    });
+
+    // Next turn: upsert sees the existing project + the now-attached
+    // Person and backfills the link.
+    await upsertProjectFromBrief({
+      sessionId: session.id,
+      persona: "host",
+      organizerFields: completeBrief,
+    });
+    const projectAfter = await db.project.findUnique({
+      where: { id: firstUpsert.projectId! },
+      select: { organizerPersonId: true },
+    });
+    assert.equal(projectAfter?.organizerPersonId, owner.id);
+  });
+});
+
 test("generateCrewForProject persists multiple seeded composites in a single batched write (PR #60)", async () => {
   // PR #60 replaced the per-row `upsert` loop with a single
   // `createMany({ skipDuplicates: true })` call. This test
