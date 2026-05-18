@@ -19,6 +19,7 @@ import {
   JourneyTransitionError,
   type ProjectJourney,
 } from "@/lib/journey/types";
+import { generateCrewForProject } from "@/lib/projectCrewGeneration";
 import { logServerError } from "@/sms-engine/safeLogging";
 
 export type CrewRolePresentation = {
@@ -105,6 +106,31 @@ export async function loadCrewView(projectId: string): Promise<CrewViewData | nu
 
   const db = getDb();
 
+  // Verify the project exists before doing anything else. Generation +
+  // the view-data read both assume the row exists; fail fast for the
+  // notFound() path.
+  const exists = await db.project.findUnique({
+    where: { id: projectId },
+    select: { id: true },
+  });
+  if (!exists) return null;
+
+  const baseJourney = await getOrCreateJourney(projectId);
+  const journey = await ensureCrewReviewingStep(projectId, baseJourney);
+
+  // First-visit crew generation. Fires the producer engine on a fresh
+  // tracer project so RoleOpening + Opportunity + CandidateRecommendation
+  // rows exist before the view reads them. Idempotent: if roles already
+  // exist for this project (a return visit, or admin pre-seed), the call
+  // short-circuits. Failures are logged and swallowed so a producer-side
+  // outage falls through to the existing "researching..." empty state
+  // rather than blowing up the page.
+  try {
+    await generateCrewForProject(projectId);
+  } catch (error) {
+    logServerError("generateCrewForProject", error);
+  }
+
   const project = await db.project.findUnique({
     where: { id: projectId },
     select: {
@@ -134,9 +160,6 @@ export async function loadCrewView(projectId: string): Promise<CrewViewData | nu
   });
 
   if (!project) return null;
-
-  const baseJourney = await getOrCreateJourney(projectId);
-  const journey = await ensureCrewReviewingStep(projectId, baseJourney);
 
   const visibleRoles = project.roleOpenings.filter((role) =>
     USER_VISIBLE_ROLE_STATUSES.has(role.status as string),

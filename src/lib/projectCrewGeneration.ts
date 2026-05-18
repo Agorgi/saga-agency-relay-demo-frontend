@@ -1,0 +1,406 @@
+/**
+ * Crew generation for tracer projects — wires the producer engine to the
+ * chat-created `Project` model.
+ *
+ * The producer engine in `src/sms-engine/producer/*` was originally built
+ * for the admin-only `ProjectBrief` model: `persistInternalCandidateRecommendations`
+ * keys on `projectBriefId` and routes through `ensureProjectForProjectBrief`.
+ * Chat-created tracer projects don't have a `ProjectBrief` row, so that
+ * entry point can't see them.
+ *
+ * This module is a thin parallel orchestrator that:
+ *   1. Loads the Project row (chat-created, `legacyProjectBriefId` null).
+ *   2. Builds a `ProjectUnderstanding` from the Project fields. The
+ *      pipeline's `buildProjectUnderstanding` already accepts a `project`
+ *      input shape — we just need to ensure `sourceKind` lands on
+ *      "organizer_project" since the chat flow already classified the
+ *      persona as host before persisting the Project.
+ *   3. Runs the deterministic `generateRoleMap` + `buildSourcingPlan`.
+ *   4. Persists `RoleOpening` + `Opportunity` rows for every role.
+ *   5. Pulls the internal `CreatorProfile` pool, runs the deterministic
+ *      `recommendInternalCandidates` scorer, and writes the resulting
+ *      `CandidateRecommendation` rows. Today the pool is sparse in
+ *      staging Neon — that's fine, fewer rows is honest. Future PRs
+ *      can layer in OpenAI web research from
+ *      `src/sms-engine/sourcing/openaiWebResearchProvider.ts`.
+ *
+ * Idempotent. If the Project already has any `RoleOpening` rows, we
+ * short-circuit and report `skipped: "already_generated"`. Safe to call
+ * from every load of `/projects/[id]/crew` — `loadCrewView` will fire it
+ * before reading the role list.
+ *
+ * Framework-agnostic; liftable into `apps/app-server` during Phase 2
+ * with no contract changes.
+ */
+
+import type { ProximityTier } from "@prisma/client";
+import { logAudit } from "@/sms-engine/audit";
+import { getDb } from "@/sms-engine/db";
+import { buildProjectUnderstanding } from "@/sms-engine/producer/projectUnderstanding";
+import { generateRoleMap } from "@/sms-engine/producer/roleMap";
+import { buildSourcingPlan } from "@/sms-engine/producer/sourcingPlan";
+import { recommendInternalCandidates } from "@/sms-engine/producer/candidateRecommendations";
+import type {
+  CandidatePoolItem,
+  ProjectUnderstanding,
+  RoleMap,
+} from "@/sms-engine/producer/producerAgentTypes";
+
+export type CrewGenerationResult =
+  | {
+      projectId: string;
+      skipped: "already_generated";
+      rolesCreated: 0;
+      candidatesCreated: 0;
+    }
+  | {
+      projectId: string;
+      skipped: "no_organizer_project";
+      rolesCreated: 0;
+      candidatesCreated: 0;
+    }
+  | {
+      projectId: string;
+      skipped?: undefined;
+      rolesCreated: number;
+      candidatesCreated: number;
+    };
+
+/**
+ * Run the producer engine end-to-end on a chat-created Project.
+ *
+ * Idempotent on RoleOpening: if any roles already exist for this project,
+ * the function returns immediately without re-running understanding or
+ * touching CandidateRecommendation rows. Generation is meant to fire
+ * once per Project (on the first /crew visit) and stay stable across
+ * subsequent visits — the user reviews + approves what's been suggested,
+ * they don't expect the role list to shuffle on every page load.
+ */
+export async function generateCrewForProject(
+  projectId: string,
+): Promise<CrewGenerationResult> {
+  const db = getDb();
+
+  // Idempotency: if any role already exists, skip.
+  const existingRoleCount = await db.roleOpening.count({
+    where: { projectId },
+  });
+  if (existingRoleCount > 0) {
+    return {
+      projectId,
+      skipped: "already_generated",
+      rolesCreated: 0,
+      candidatesCreated: 0,
+    };
+  }
+
+  const project = await db.project.findUnique({
+    where: { id: projectId },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      city: true,
+      targetDate: true,
+      budgetRange: true,
+      audience: true,
+      fandoms: true,
+      organizerPersonId: true,
+    },
+  });
+  if (!project) {
+    throw new Error(`generateCrewForProject: project ${projectId} not found`);
+  }
+
+  const understanding = buildUnderstandingForTracerProject(project);
+
+  // sourceKind="unknown" or non-organizer would bail out of generateRoleMap.
+  // We've forced "organizer_project" above when the project has any brief
+  // signal at all — the only case that legitimately returns no roles is a
+  // completely empty project (no title, no description, no fandoms). Treat
+  // that as "no_organizer_project" and skip generation.
+  if (understanding.sourceKind !== "organizer_project") {
+    return {
+      projectId,
+      skipped: "no_organizer_project",
+      rolesCreated: 0,
+      candidatesCreated: 0,
+    };
+  }
+
+  const roleMap = generateRoleMap(understanding);
+  const sourcingPlan = buildSourcingPlan(understanding, roleMap);
+
+  const allRoles = [...roleMap.requiredRoles, ...roleMap.optionalRoles];
+  if (allRoles.length === 0) {
+    await logCrewGenerated({
+      projectId,
+      rolesCreated: 0,
+      candidatesCreated: 0,
+      confidence: understanding.confidence,
+      note: "role_map_empty",
+    });
+    return {
+      projectId,
+      rolesCreated: 0,
+      candidatesCreated: 0,
+    };
+  }
+
+  // Persist RoleOpening + Opportunity per role. We create them in serial
+  // rather than $transaction because each Opportunity needs the
+  // RoleOpening id and we want one Opportunity per role.
+  const roleOpeningByType = new Map<string, { id: string; opportunityId: string }>();
+  for (const role of allRoles) {
+    const roleOpening = await db.roleOpening.create({
+      data: {
+        projectId,
+        roleType: role.roleType,
+        title: role.title,
+        description: role.description,
+        requiredSkills: role.requiredSkills,
+        preferredFandoms: role.preferredFandoms,
+        locationRequirement: role.localRequired ? understanding.city : null,
+        compensationType: "UNKNOWN",
+        status: "OPEN",
+      },
+      select: { id: true },
+    });
+    const opportunity = await db.opportunity.create({
+      data: {
+        roleOpeningId: roleOpening.id,
+        visibility: "PRIVATE",
+        applicationMode: "INVITE_ONLY",
+        status: "ACTIVE",
+      },
+      select: { id: true },
+    });
+    roleOpeningByType.set(role.roleType, {
+      id: roleOpening.id,
+      opportunityId: opportunity.id,
+    });
+  }
+
+  // Score CreatorProfile pool against roles. Chat-created Projects don't
+  // set `organizerPersonId`, so proximity scoring falls back to UNKNOWN
+  // for all candidates — that's correct: we have no relationship-graph
+  // context for these projects today.
+  const candidatePool = await loadCreatorPool(project.organizerPersonId);
+  const recommendations = recommendInternalCandidates(
+    understanding,
+    roleMap,
+    sourcingPlan,
+    candidatePool,
+  );
+
+  let candidatesCreated = 0;
+  for (const role of allRoles) {
+    const opportunity = roleOpeningByType.get(role.roleType);
+    if (!opportunity) continue;
+    const recsForRole = recommendations.filter(
+      (rec) => rec.recommendedRole === role.roleType,
+    );
+    for (const rec of recsForRole) {
+      if (!rec.personId) continue;
+      // unique([opportunityId, personId]) means a duplicate would throw.
+      // Idempotency check above guards against this, but use upsert to
+      // be defensive against concurrent generations.
+      await db.candidateRecommendation.upsert({
+        where: {
+          opportunityId_personId: {
+            opportunityId: opportunity.opportunityId,
+            personId: rec.personId,
+          },
+        },
+        create: {
+          opportunityId: opportunity.opportunityId,
+          personId: rec.personId,
+          score: rec.score,
+          scoreBreakdown: rec.scoreBreakdown,
+          proximityTier: rec.proximityTier,
+          matchingReasons: rec.matchingReasons,
+          risks: rec.risks,
+          status: "SUGGESTED",
+        },
+        update: {
+          score: rec.score,
+          scoreBreakdown: rec.scoreBreakdown,
+          proximityTier: rec.proximityTier,
+          matchingReasons: rec.matchingReasons,
+          risks: rec.risks,
+        },
+      });
+      candidatesCreated++;
+    }
+  }
+
+  await logCrewGenerated({
+    projectId,
+    rolesCreated: allRoles.length,
+    candidatesCreated,
+    confidence: understanding.confidence,
+  });
+
+  return {
+    projectId,
+    rolesCreated: allRoles.length,
+    candidatesCreated,
+  };
+}
+
+/**
+ * Build a producer `ProjectUnderstanding` from a tracer Project row.
+ *
+ * The chat flow has already classified the persona as `host` before
+ * persisting the Project, so we know structurally that this is an
+ * organizer project. The deterministic classifier in
+ * `inferSourceKind` scans free-text for "I want to throw/host/produce"
+ * patterns; brief-derived titles like "Formal ball in LA" don't trip
+ * those patterns and would default to "unknown", which would in turn
+ * cause `generateRoleMap` to bail out. We patch `sourceKind` to
+ * `organizer_project` to keep the role-map producer running on tracer
+ * projects.
+ *
+ * Patch is justified: the chat flow's persona gate is a stricter check
+ * than the regex-based classifier, and we only reach this code from a
+ * Project that the chat flow has persisted as a host's brief.
+ */
+function buildUnderstandingForTracerProject(project: {
+  title: string | null;
+  description: string | null;
+  city: string | null;
+  targetDate: string | null;
+  budgetRange: string | null;
+  audience: string | null;
+  fandoms: string[];
+}): ProjectUnderstanding {
+  const understanding = buildProjectUnderstanding({
+    project: {
+      title: project.title,
+      description: project.description,
+      city: project.city,
+      targetDate: project.targetDate,
+      budgetRange: project.budgetRange,
+      audience: project.audience,
+      fandoms: project.fandoms,
+    },
+  });
+
+  // If the classifier could already see organizer signal (e.g. the title
+  // contained "I want to throw..."), keep it. Otherwise force the tag.
+  // A project with no title AND no description AND no fandoms produces
+  // no useful understanding — the caller will catch that and skip.
+  const hasAnyBriefSignal = Boolean(
+    project.title || project.description || project.fandoms.length > 0,
+  );
+  if (!hasAnyBriefSignal) {
+    return { ...understanding, sourceKind: "unknown" };
+  }
+  return { ...understanding, sourceKind: "organizer_project" };
+}
+
+async function loadCreatorPool(
+  organizerPersonId: string | null,
+): Promise<CandidatePoolItem[]> {
+  const db = getDb();
+  const [profiles, relationshipEdges] = await Promise.all([
+    db.creatorProfile.findMany({
+      include: {
+        person: {
+          include: { legacyContact: { select: { id: true } } },
+        },
+      },
+    }),
+    organizerPersonId
+      ? db.relationshipEdge.findMany({
+          where: {
+            OR: [
+              { fromPersonId: organizerPersonId },
+              { toPersonId: organizerPersonId },
+            ],
+          },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  return profiles.map((profile) => {
+    const tier = proximityFor(
+      organizerPersonId,
+      profile.personId,
+      relationshipEdges,
+    );
+    return {
+      personId: profile.personId,
+      contactId: profile.person.legacyContact?.id || null,
+      creatorProfileId: profile.id,
+      displayName:
+        profile.displayName || profile.person.name || "Internal candidate",
+      city: profile.city || profile.person.city,
+      roles: profile.roles,
+      skills: profile.skills,
+      fandoms: profile.fandoms,
+      communities: profile.communities,
+      portfolioUrls: profile.portfolioUrls,
+      socialUrls: profile.socialUrls,
+      reviewStatus: profile.reviewStatus,
+      optedOut: profile.person.optedOut,
+      consentStatus: profile.person.consentStatus,
+      proximityTier: tier.tier,
+      relationshipStrength: tier.strength,
+      privateNotes: profile.internalNotes,
+    } satisfies CandidatePoolItem;
+  });
+}
+
+function proximityFor(
+  organizerPersonId: string | null,
+  personId: string,
+  edges: Array<{
+    fromPersonId: string;
+    toPersonId: string;
+    relationshipType: string;
+    strength: number;
+  }>,
+): { tier: ProximityTier; strength: number } {
+  if (!organizerPersonId) return { tier: "UNKNOWN", strength: 1 };
+  const edge = edges.find(
+    (item) =>
+      (item.fromPersonId === organizerPersonId && item.toPersonId === personId) ||
+      (item.toPersonId === organizerPersonId && item.fromPersonId === personId),
+  );
+  if (!edge) return { tier: "UNKNOWN", strength: 1 };
+  const tierByType: Record<string, ProximityTier> = {
+    FRIEND: "FRIEND",
+    MUTUAL: "MUTUAL",
+    SAME_COMMUNITY: "COMMUNITY",
+    ATTENDED_SAME_EVENT: "COMMUNITY",
+    COLLABORATED: "COMMUNITY",
+    FOLLOWING: "EXTENDED",
+    IMPORTED_CONNECTION: "EXTENDED",
+  };
+  return {
+    tier: tierByType[edge.relationshipType] || "UNKNOWN",
+    strength: edge.strength,
+  };
+}
+
+async function logCrewGenerated(metadata: {
+  projectId: string;
+  rolesCreated: number;
+  candidatesCreated: number;
+  confidence: number;
+  note?: string;
+}): Promise<void> {
+  await logAudit({
+    actorType: "SYSTEM",
+    action: "producer.tracer_crew_generated",
+    entityType: "Project",
+    entityId: metadata.projectId,
+    metadata,
+  });
+}
+
+// Re-export so callers can keep the RoleMap shape clear without
+// reaching into sms-engine internals. Not strictly necessary today;
+// included so a future migration to apps/app-server has one boundary.
+export type { ProjectUnderstanding, RoleMap };
