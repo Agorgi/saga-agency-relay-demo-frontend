@@ -29,7 +29,10 @@ import {
   recordSystemHoldingFallback,
 } from "@/lib/webChatRuntimeSettings";
 import { upsertProjectFromBrief } from "@/lib/projectBriefUpsert";
-import { upsertSessionIdentitySignals } from "@/lib/sessionPersonStore";
+import {
+  upsertSessionIdentitySignals,
+  upsertSessionIdentitySignalsFromExtracted,
+} from "@/lib/sessionPersonStore";
 import type { ProjectJourney } from "@/lib/journey/types";
 import { captureServerError } from "@/lib/observability";
 import {
@@ -411,6 +414,34 @@ export async function POST(req: NextRequest) {
       result.data.diagnostics.providerState === "openai_not_called_gate_closed"
         ? "holding"
         : "autonomous";
+
+    // PR #67: when the LLM ran and returned `extractedSignals`,
+    // route its fandoms / interests through the identity-graph
+    // pipeline. The regex pass above is the safety net; this is
+    // the primary path once LLM mode is live, and catches the
+    // signals the regex pattern bank misses (cultural references
+    // it doesn't yet know about, unusual venue types, etc.).
+    // Wrapped — failure must never break chat reply.
+    const llmSignals = result.data.llmExtractedSignals;
+    if (llmSignals) {
+      try {
+        await upsertSessionIdentitySignalsFromExtracted({
+          sessionId: session.session.id,
+          signals: {
+            fandoms: llmSignals.fandoms,
+            interests: llmSignals.interests,
+          },
+        });
+      } catch (error) {
+        captureServerError("upsertSessionIdentitySignalsLlm", error, {
+          tags: {
+            persona: result.data.persona ?? "unknown",
+            route: "/api/web-chat",
+            operation: "identitySignalsLlm",
+          },
+        });
+      }
+    }
 
     // Persist + bind BEFORE appendTurn so the assistant message
     // stored in WebChatMessage carries the bound /projects/<cuid>

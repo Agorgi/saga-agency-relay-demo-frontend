@@ -339,6 +339,32 @@ test("web chat POST hits OpenAI in live mode when a key is present", async () =>
     assert.match(data.reply, /event draft/i);
     assert.equal(requestCount, 1);
     assert.match(receivedBody, /Reply with Sagasan's next message/);
+
+    // PR #67: the LLM's extractedSignals (`fandoms: ["anime"]`,
+    // `interests: ["pop-ups"]`) must reach the session's Person row,
+    // not just live in the response payload. This is the identity-
+    // graph wire — without it, the cross-fandom matching in PR #68
+    // has nothing to match against.
+    const prisma = new PrismaClient({ datasourceUrl: TEST_DATABASE_URL });
+    try {
+      const person = await prisma.person.findFirst({
+        where: { source: "APP" },
+        orderBy: { createdAt: "desc" },
+      });
+      assert.ok(person, "LLM-mode chat must create a session Person");
+      const fandoms = (person.fandoms ?? []).map((f) => f.toLowerCase());
+      const interests = (person.interests ?? []).map((i) => i.toLowerCase());
+      assert.ok(
+        fandoms.includes("anime"),
+        `Person.fandoms missing 'anime' from LLM signals — got ${JSON.stringify(person.fandoms)}`,
+      );
+      assert.ok(
+        interests.includes("pop-ups"),
+        `Person.interests missing 'pop-ups' from LLM signals — got ${JSON.stringify(person.interests)}`,
+      );
+    } finally {
+      await prisma.$disconnect();
+    }
   } finally {
     await new Promise<void>((resolve, reject) => {
       server.close((error) => (error ? reject(error) : resolve()));
