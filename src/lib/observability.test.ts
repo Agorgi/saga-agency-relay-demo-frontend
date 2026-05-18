@@ -5,6 +5,10 @@ import {
   sentryEnabled,
   sentryHealthSummary,
 } from "@/lib/observability";
+import {
+  redactForLog,
+  SENTRY_REDACT_MAX_DEPTH,
+} from "@/sms-engine/safeLogging";
 
 test("sentryEnabled is false when SENTRY_DSN is unset", () => {
   const original = process.env.SENTRY_DSN;
@@ -132,4 +136,99 @@ test("captureServerError redacts sensitive context via structured log", () => {
       process.env.SENTRY_DSN = original;
     }
   }
+});
+
+test("redactForLog preserves Sentry stack frames when given the Sentry depth limit", () => {
+  // Sentry exception events nest frames at
+  // event.exception.values[].stacktrace.frames[]. That's depth 6+
+  // from the event root. With the default depth limit the frames
+  // would get replaced with "[redacted-depth]"; with the Sentry
+  // limit they must survive.
+  const sentryEvent = {
+    event_id: "abc123",
+    exception: {
+      values: [
+        {
+          type: "Error",
+          value: "boom",
+          stacktrace: {
+            frames: [
+              {
+                filename: "/src/lib/observability.ts",
+                function: "captureServerError",
+                lineno: 42,
+                colno: 12,
+                in_app: true,
+              },
+            ],
+          },
+        },
+      ],
+    },
+  };
+
+  const defaultDepth = redactForLog(sentryEvent) as Record<string, unknown>;
+  const sentryDepth = redactForLog(
+    sentryEvent,
+    0,
+    SENTRY_REDACT_MAX_DEPTH,
+  ) as Record<string, unknown>;
+
+  // Default depth: drilling down to a frame field yields the
+  // "[redacted-depth]" sentinel somewhere along the path.
+  const defaultSerialized = JSON.stringify(defaultDepth);
+  assert.equal(
+    defaultSerialized.includes("[redacted-depth]"),
+    true,
+    "default depth must collapse deep frames (proves the test is exercising the cutoff)",
+  );
+
+  // Sentry depth: the full frame survives — filename + function +
+  // lineno + colno all present and unredacted.
+  const sentrySerialized = JSON.stringify(sentryDepth);
+  assert.equal(
+    sentrySerialized.includes("[redacted-depth]"),
+    false,
+    "Sentry depth must preserve stack frames",
+  );
+  assert.match(sentrySerialized, /observability\.ts/);
+  assert.match(sentrySerialized, /captureServerError/);
+  assert.match(sentrySerialized, /"lineno":42/);
+});
+
+test("redactForLog at Sentry depth still scrubs PII in nested frames", () => {
+  // Stack frames can carry function-local vars that contain emails,
+  // phones, or tokens. The deeper traversal must not skip redaction.
+  const sentryEvent = {
+    exception: {
+      values: [
+        {
+          stacktrace: {
+            frames: [
+              {
+                filename: "/src/sensitive.ts",
+                function: "doThing",
+                vars: {
+                  userEmail: "alex@try-saga.com",
+                  userPhone: "+1 415-555-1234",
+                  token: "secret-token-value",
+                },
+              },
+            ],
+          },
+        },
+      ],
+    },
+  };
+
+  const result = JSON.stringify(
+    redactForLog(sentryEvent, 0, SENTRY_REDACT_MAX_DEPTH),
+  );
+  assert.equal(result.includes("alex@try-saga.com"), false);
+  assert.equal(result.includes("415-555-1234"), false);
+  assert.equal(result.includes("secret-token-value"), false);
+  // The frame structure itself survives so a developer reading the
+  // event can still locate the failing call.
+  assert.match(result, /sensitive\.ts/);
+  assert.match(result, /doThing/);
 });

@@ -47,8 +47,25 @@ function shouldRedactKey(key: string) {
   return SENSITIVE_KEY_PATTERN.test(key);
 }
 
-export function redactForLog(value: unknown, depth = 0): unknown {
-  if (depth > 5) return "[redacted-depth]";
+// Default depth limit for structured-log redaction. Logs are usually
+// shallow (1-3 levels); this is a defense against runaway recursion
+// on user-supplied data.
+const DEFAULT_MAX_DEPTH = 5;
+
+// Sentry events legitimately go deeper. A typical exception event puts
+// stack frames at `exception.values[].stacktrace.frames[]`, which sits
+// at depth 6-7 from the event root, and frame-local vars push another
+// level. The default limit truncates frames to "[redacted-depth]",
+// losing stack traces exactly when Sentry is enabled. Use this limit
+// from the Sentry beforeSend hook.
+export const SENTRY_REDACT_MAX_DEPTH = 12;
+
+export function redactForLog(
+  value: unknown,
+  depth = 0,
+  maxDepth = DEFAULT_MAX_DEPTH,
+): unknown {
+  if (depth > maxDepth) return "[redacted-depth]";
   if (value === null || value === undefined) return value;
   if (typeof value === "string") return redactText(value);
   if (typeof value === "number" || typeof value === "boolean") return value;
@@ -66,7 +83,7 @@ export function redactForLog(value: unknown, depth = 0): unknown {
   }
 
   if (Array.isArray(value)) {
-    return value.map((item) => redactForLog(item, depth + 1));
+    return value.map((item) => redactForLog(item, depth + 1, maxDepth));
   }
 
   if (typeof value === "object") {
@@ -75,7 +92,7 @@ export function redactForLog(value: unknown, depth = 0): unknown {
         key,
         shouldRedactKey(key)
           ? "[redacted]"
-          : redactForLog(item, depth + 1),
+          : redactForLog(item, depth + 1, maxDepth),
       ]),
     );
   }

@@ -1,5 +1,8 @@
 import * as Sentry from "@sentry/nextjs";
-import { redactForLog } from "@/sms-engine/safeLogging";
+import {
+  redactForLog,
+  SENTRY_REDACT_MAX_DEPTH,
+} from "@/sms-engine/safeLogging";
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.SENTRY_DSN;
 
@@ -26,9 +29,12 @@ if (dsn) {
     // Run every event through the same redaction layer the
     // structured logger uses. Anything that looks like an email,
     // phone, OpenAI key, Twilio SID, etc. gets replaced before send.
+    // Sentry events nest deeper than typical log lines (stack frames
+    // live at event.exception.values[].stacktrace.frames[]), so pass
+    // the Sentry-tuned depth limit to preserve stack traces.
     beforeSend(event) {
       try {
-        return redactForLog(event) as typeof event;
+        return redactForLog(event, 0, SENTRY_REDACT_MAX_DEPTH) as typeof event;
       } catch {
         // If redaction blows up, drop the event rather than send
         // unredacted data.
@@ -40,7 +46,11 @@ if (dsn) {
     // breadcrumbs by default — those can contain user input).
     beforeBreadcrumb(breadcrumb) {
       try {
-        return redactForLog(breadcrumb) as typeof breadcrumb;
+        return redactForLog(
+          breadcrumb,
+          0,
+          SENTRY_REDACT_MAX_DEPTH,
+        ) as typeof breadcrumb;
       } catch {
         return null;
       }
