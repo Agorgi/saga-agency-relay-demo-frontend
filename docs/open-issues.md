@@ -141,9 +141,9 @@ Counter ticks 5 → 6 between turns but the visible Known list shows 5 fields. *
 
 - P0 open: 0 (closed in PR #16)
 - P1 open: 0 (P1-OI-5 and P1-OI-6 verified closed by existing regression tests in PR #40; /explore items closed in PR #22)
-- P2 open: 3 (PR #38 closed 5: OI-15, OI-16, OI-22, OI-23, OI-24; PR #42 closed 4: OI-9, OI-10, OI-11, OI-13; PR #43 closed 2: OI-12, OI-21; PR #44 closed 1: OI-14; PR #45 closed 1: OI-20; OI-37 filed in PR #36; remaining: OI-17, OI-18, OI-19 — all /admin/* surfaces)
+- P2 open: 0 (PR #38 closed 5: OI-15, OI-16, OI-22, OI-23, OI-24; PR #42 closed 4: OI-9, OI-10, OI-11, OI-13; PR #43 closed 2: OI-12, OI-21; PR #44 closed 1: OI-14; PR #45 closed 1: OI-20; PR #46 closed 3: OI-17, OI-18, OI-19. OI-37 filed in PR #36 — env-config gap, requires user action in Vercel/Neon settings.)
 - P3 open: 16
-- **Total open: 19**
+- **Total open: 16** (all P3 style refinements; no open P0/P1/P2 issues against design partners modulo OI-37 env-config)
 
 ---
 
