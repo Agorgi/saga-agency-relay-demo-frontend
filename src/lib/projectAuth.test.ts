@@ -6,6 +6,7 @@ import {
   jsonForAuthFailure,
   requireCandidateOwnership,
   requireProjectOwnership,
+  sessionOwnsProject,
 } from "@/lib/projectAuth";
 import { upsertProjectFromBrief } from "@/lib/projectBriefUpsert";
 import { WEB_SESSION_COOKIE_NAME } from "@/lib/webChatSessionStore";
@@ -291,4 +292,56 @@ test("jsonForAuthFailure returns a Response with the right status and error body
   assert.equal(response403.status, 403);
   const body403 = (await response403.json()) as { error: string };
   assert.equal(body403.error, "not_project_owner");
+});
+
+test("sessionOwnsProject returns false when sessionId is null or undefined", async () => {
+  await withFreshDb(async () => {
+    assert.equal(await sessionOwnsProject(null, "cm0abc123def456ghi789jkl"), false);
+    assert.equal(
+      await sessionOwnsProject(undefined, "cm0abc123def456ghi789jkl"),
+      false,
+    );
+    assert.equal(await sessionOwnsProject("", "cm0abc123def456ghi789jkl"), false);
+  });
+});
+
+test("sessionOwnsProject returns false when session doesn't exist in DB", async () => {
+  await withFreshDb(async () => {
+    assert.equal(
+      await sessionOwnsProject(
+        "nonexistent-session-id",
+        "cm0abc123def456ghi789jkl",
+      ),
+      false,
+    );
+  });
+});
+
+test("sessionOwnsProject returns false when session exists but owns a different project", async () => {
+  await withFreshDb(async (db) => {
+    const ctxA = await setupProjectWithOwner(db);
+    const ctxB = await setupProjectWithOwner(db);
+    // Session A owns project A; checking ownership of project B → false.
+    assert.equal(await sessionOwnsProject(ctxA.sessionId, ctxB.projectId), false);
+  });
+});
+
+test("sessionOwnsProject returns true when the session owns the requested project", async () => {
+  await withFreshDb(async (db) => {
+    const ctx = await setupProjectWithOwner(db);
+    assert.equal(await sessionOwnsProject(ctx.sessionId, ctx.projectId), true);
+  });
+});
+
+test("sessionOwnsProject returns false when session has no project assigned", async () => {
+  await withFreshDb(async (db) => {
+    // A session that was created but never persisted a brief — its
+    // projectId is null. Any project-ownership check must return
+    // false for this session.
+    const orphanSession = await db.webSession.create({ data: {} });
+    assert.equal(
+      await sessionOwnsProject(orphanSession.id, "cm0abc123def456ghi789jkl"),
+      false,
+    );
+  });
 });
