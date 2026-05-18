@@ -357,3 +357,63 @@ test("generateCrewForProject coexists with an existing duplicate role landed bef
     assert.equal(roleCount, 1);
   });
 });
+
+test("generateCrewForProject persists multiple seeded composites in a single batched write (PR #60)", async () => {
+  // PR #60 replaced the per-row `upsert` loop with a single
+  // `createMany({ skipDuplicates: true })` call. This test
+  // exercises the batched path by seeding a pool large enough
+  // to produce multiple candidate recommendations per role and
+  // verifying they all land. Doesn't directly assert the
+  // round-trip count (Prisma's API doesn't expose that), but a
+  // regression that put back the per-row upsert would still pass
+  // this test — the value is documenting the expected behavior
+  // with multiple persistence targets.
+  await withFreshDb(async (db) => {
+    // Seed three composite producers — the producer's role map
+    // will surface "production lead" as a required role, so all
+    // three score against the same opportunity.
+    for (let i = 0; i < 3; i++) {
+      const person = await db.person.create({
+        data: {
+          name: `Maya ${i} (composite)`,
+          source: "DEMO_COMPOSITE",
+          city: "Los Angeles",
+        },
+      });
+      await db.creatorProfile.create({
+        data: {
+          personId: person.id,
+          displayName: `Maya ${i} (composite)`,
+          city: "Los Angeles",
+          roles: ["production lead"],
+          skills: ["production", "operations"],
+          fandoms: ["Love and Deepspace"],
+          reviewStatus: "APPROVED",
+        },
+      });
+    }
+
+    const session = await db.webSession.create({ data: {} });
+    const upsert = await upsertProjectFromBrief({
+      sessionId: session.id,
+      persona: "host",
+      organizerFields: completeBrief,
+    });
+    assert.ok(upsert.projectId);
+
+    const result = await generateCrewForProject(upsert.projectId!);
+    assert.ok(
+      result.candidatesCreated && result.candidatesCreated >= 3,
+      `expected ≥3 candidates created via the batched write, got ${result.candidatesCreated}`,
+    );
+
+    // The batched write persists everything in one shot; verify
+    // the DB row count matches the function's reported count.
+    const rowCount = await db.candidateRecommendation.count();
+    assert.equal(
+      rowCount,
+      result.candidatesCreated,
+      "rowCount must match candidatesCreated — batched write should be atomic",
+    );
+  });
+});
