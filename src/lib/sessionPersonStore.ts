@@ -89,30 +89,26 @@ export type UpsertIdentitySignalsResult = {
 };
 
 /**
- * Capture identity signals from a single chat message into the
- * session's Person. Creates the Person row on demand
- * (ensureSessionPerson). Merges newly-extracted signals into the
- * existing fandom / interest arrays (case-insensitive dedup,
- * preserves the first-seen capitalization).
+ * Apply already-extracted identity signals to the session's Person.
+ * Shared inner helper for both the message-driven (regex) and the
+ * pre-extracted (LLM, PR #67) entry points.
  *
- * No-op (returns `fandomsAdded: [], interestsAdded: []`) when the
- * message contains no recognized signal. Idempotent across repeated
- * calls on the same message.
+ * Short-circuits when there are no signals AND the session already
+ * has a Person — saves the unnecessary read+write. When there are
+ * no signals AND no existing Person, returns `personId: ""` rather
+ * than creating an empty Person row; wait until there's something
+ * worth capturing.
  */
-export async function upsertSessionIdentitySignals({
+async function applyExtractedSignals({
   sessionId,
-  message,
-  db,
+  signals,
+  client,
 }: {
   sessionId: string;
-  message: string;
-  db?: DbClient;
+  signals: IdentitySignals;
+  client: DbClient;
 }): Promise<UpsertIdentitySignalsResult> {
-  const signals = extractIdentitySignals(message);
-  // Short-circuit when the message has no recognized signals AND
-  // the session already has a Person — saves an unnecessary write.
   if (signals.fandoms.length === 0 && signals.interests.length === 0) {
-    const client = db || getDb();
     const session = await client.webSession.findUnique({
       where: { id: sessionId },
       select: { personId: true },
@@ -124,15 +120,11 @@ export async function upsertSessionIdentitySignals({
         interestsAdded: [],
       };
     }
-    // No signals AND no existing person — don't create an empty
-    // Person row. Wait until there's something worth capturing.
     return { personId: "", fandomsAdded: [], interestsAdded: [] };
   }
 
-  const client = db || getDb();
   const personId = await ensureSessionPerson(sessionId, client);
 
-  // Compute the union with whatever's currently stored.
   const existing = await client.person.findUnique({
     where: { id: personId },
     select: { fandoms: true, interests: true },
@@ -169,4 +161,74 @@ export async function upsertSessionIdentitySignals({
   });
 
   return { personId, fandomsAdded, interestsAdded };
+}
+
+/**
+ * Capture identity signals from a single chat message into the
+ * session's Person. Creates the Person row on demand
+ * (ensureSessionPerson). Merges newly-extracted signals into the
+ * existing fandom / interest arrays (case-insensitive dedup,
+ * preserves the first-seen capitalization).
+ *
+ * Regex path: runs `extractIdentitySignals` against the message.
+ * For the LLM path (PR #67), call
+ * `upsertSessionIdentitySignalsFromExtracted` with the model's
+ * already-structured signals.
+ *
+ * No-op (returns `fandomsAdded: [], interestsAdded: []`) when the
+ * message contains no recognized signal. Idempotent across repeated
+ * calls on the same message.
+ */
+export async function upsertSessionIdentitySignals({
+  sessionId,
+  message,
+  db,
+}: {
+  sessionId: string;
+  message: string;
+  db?: DbClient;
+}): Promise<UpsertIdentitySignalsResult> {
+  const signals = extractIdentitySignals(message);
+  const client = db || getDb();
+  return applyExtractedSignals({ sessionId, signals, client });
+}
+
+/**
+ * PR #67: capture pre-extracted identity signals — typically from
+ * the LLM's structured output (`AgentReply.llmExtractedSignals`) —
+ * into the session's Person. Called from the chat route AFTER the
+ * regex-driven `upsertSessionIdentitySignals` runs on the raw
+ * message, so the LLM-extracted signals merge ON TOP of whatever
+ * the regex already wrote.
+ *
+ * Empty arrays are tolerated (no-op) so the chat route can call
+ * this unconditionally on every LLM reply without checking for
+ * non-emptiness first. Null/undefined inputs are normalized to
+ * empty arrays.
+ *
+ * No-op when both lists are empty AND the session already has a
+ * Person row (so callers don't need a fast-path of their own).
+ */
+export async function upsertSessionIdentitySignalsFromExtracted({
+  sessionId,
+  signals,
+  db,
+}: {
+  sessionId: string;
+  signals: {
+    fandoms: string[] | null | undefined;
+    interests: string[] | null | undefined;
+  };
+  db?: DbClient;
+}): Promise<UpsertIdentitySignalsResult> {
+  const normalized: IdentitySignals = {
+    fandoms: (signals.fandoms ?? []).filter(
+      (f) => typeof f === "string" && f.trim().length > 0,
+    ),
+    interests: (signals.interests ?? []).filter(
+      (i) => typeof i === "string" && i.trim().length > 0,
+    ),
+  };
+  const client = db || getDb();
+  return applyExtractedSignals({ sessionId, signals: normalized, client });
 }

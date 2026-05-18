@@ -4,6 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import {
   ensureSessionPerson,
   upsertSessionIdentitySignals,
+  upsertSessionIdentitySignalsFromExtracted,
 } from "@/lib/sessionPersonStore";
 
 const TEST_DATABASE_URL =
@@ -178,5 +179,129 @@ test("upsertSessionIdentitySignals separates fandoms from interests on the Perso
       person.fandoms.some((f) => /nightlife|rooftop|pop[- ]?ups?/i.test(f)),
       false,
     );
+  });
+});
+
+// PR #67: the LLM path. The LLM returns structured fandoms/interests
+// in its `extractedSignals` payload; the chat route hands them off
+// here without re-running regex extraction.
+
+test("upsertSessionIdentitySignalsFromExtracted writes LLM-supplied fandoms to Person", async () => {
+  await withFreshDb(async (db) => {
+    const session = await db.webSession.create({ data: {} });
+
+    // Imagine the LLM extracted a fandom the regex bank doesn't know
+    // about yet — the whole point of LLM-primary extraction is that
+    // these still land in Person.fandoms.
+    const result = await upsertSessionIdentitySignalsFromExtracted({
+      sessionId: session.id,
+      signals: {
+        fandoms: ["Chainsaw Man", "Spy x Family"],
+        interests: ["anime conventions"],
+      },
+    });
+
+    assert.ok(result.personId);
+    assert.deepEqual(result.fandomsAdded.sort(), ["Chainsaw Man", "Spy x Family"]);
+    assert.deepEqual(result.interestsAdded, ["anime conventions"]);
+
+    const person = await db.person.findUnique({
+      where: { id: result.personId },
+    });
+    assert.ok(person);
+    assert.ok(person.fandoms.includes("Chainsaw Man"));
+    assert.ok(person.fandoms.includes("Spy x Family"));
+    assert.ok(person.interests.includes("anime conventions"));
+  });
+});
+
+test("upsertSessionIdentitySignalsFromExtracted merges on top of regex output without duplicating", async () => {
+  // Mirrors the production chat flow: the regex pass writes first
+  // (safety net), then the LLM pass adds whatever it caught that
+  // the regex missed. Both should converge to a clean dedup'd row.
+  await withFreshDb(async (db) => {
+    const session = await db.webSession.create({ data: {} });
+
+    await upsertSessionIdentitySignals({
+      sessionId: session.id,
+      message: "I'm a Love and Deepspace fan from Brooklyn.",
+    });
+
+    // The LLM also caught Love and Deepspace AND an additional new
+    // fandom the regex doesn't have a pattern for yet.
+    await upsertSessionIdentitySignalsFromExtracted({
+      sessionId: session.id,
+      signals: {
+        fandoms: ["Love and Deepspace", "Tears of the Kingdom"],
+        interests: null,
+      },
+    });
+
+    const person = await db.person.findFirst();
+    assert.ok(person);
+    // Love and Deepspace landed exactly once.
+    const lndCount = person.fandoms.filter(
+      (f) => f.toLowerCase() === "love and deepspace",
+    ).length;
+    assert.equal(lndCount, 1);
+    assert.ok(person.fandoms.includes("Tears of the Kingdom"));
+  });
+});
+
+test("upsertSessionIdentitySignalsFromExtracted is a no-op when both lists are empty", async () => {
+  // Chat route calls this unconditionally on every LLM reply; when
+  // the LLM didn't extract anything, we should not create or touch
+  // a Person row.
+  await withFreshDb(async (db) => {
+    const session = await db.webSession.create({ data: {} });
+
+    const result = await upsertSessionIdentitySignalsFromExtracted({
+      sessionId: session.id,
+      signals: { fandoms: [], interests: [] },
+    });
+
+    assert.equal(result.personId, "");
+    assert.deepEqual(result.fandomsAdded, []);
+    assert.deepEqual(result.interestsAdded, []);
+    assert.equal(await db.person.count(), 0);
+  });
+});
+
+test("upsertSessionIdentitySignalsFromExtracted tolerates null and undefined input arrays", async () => {
+  // LLM contract has fandoms/interests as `string[] | null` — the
+  // route normalizes nullables to empty arrays before calling.
+  // Validating directly that null/undefined still work end-to-end.
+  await withFreshDb(async (db) => {
+    const session = await db.webSession.create({ data: {} });
+
+    const result = await upsertSessionIdentitySignalsFromExtracted({
+      sessionId: session.id,
+      signals: {
+        fandoms: null,
+        interests: undefined,
+      },
+    });
+
+    assert.equal(result.personId, "");
+    assert.equal(await db.person.count(), 0);
+  });
+});
+
+test("upsertSessionIdentitySignalsFromExtracted filters empty/whitespace strings", async () => {
+  // The LLM is told to leave fields null when there's nothing to
+  // extract, but defending against an empty-string slip is cheap.
+  await withFreshDb(async (db) => {
+    const session = await db.webSession.create({ data: {} });
+
+    const result = await upsertSessionIdentitySignalsFromExtracted({
+      sessionId: session.id,
+      signals: {
+        fandoms: ["", "   ", "BTS"],
+        interests: ["", "rooftop venues"],
+      },
+    });
+
+    assert.deepEqual(result.fandomsAdded, ["BTS"]);
+    assert.deepEqual(result.interestsAdded, ["rooftop venues"]);
   });
 });
