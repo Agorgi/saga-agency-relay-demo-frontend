@@ -18,6 +18,7 @@ import {
   getOrCreateJourney,
 } from "@/lib/journey/service";
 import { JourneyTransitionError } from "@/lib/journey/types";
+import { generateCandidateOutreachDraftsForProject } from "@/sms-engine/producer/outboundDrafts";
 import { logServerError } from "@/sms-engine/safeLogging";
 
 export const candidateReviewActionSchema = z.enum([
@@ -92,7 +93,6 @@ async function maybeAdvanceToOutreachPrep(projectId: string): Promise<boolean> {
   if (!ready) return false;
   try {
     await advanceJourney(projectId, "approve_candidates");
-    return true;
   } catch (error) {
     if (!(error instanceof JourneyTransitionError)) {
       logServerError("maybeAdvanceToOutreachPrep", error);
@@ -100,6 +100,19 @@ async function maybeAdvanceToOutreachPrep(projectId: string): Promise<boolean> {
     }
     return false;
   }
+
+  // Kick off outreach draft generation now that every core role has
+  // an approved candidate. This is best-effort: a failure here must
+  // not roll back the journey advance — the outreach page will
+  // surface a "preparing" state if drafts are missing and an admin
+  // (or a follow-up retry) can recover.
+  try {
+    await generateCandidateOutreachDraftsForProject(projectId);
+  } catch (error) {
+    logServerError("generateCandidateOutreachDraftsForProject", error);
+  }
+
+  return true;
 }
 
 export async function reviewCandidate({
