@@ -133,6 +133,7 @@ export async function loadCandidateReview({
                   name: true,
                   city: true,
                   state: true,
+                  source: true,
                   creatorProfile: {
                     select: {
                       displayName: true,
@@ -185,11 +186,18 @@ export async function loadCandidateReview({
       profile?.bio ||
       "Saga is gathering more detail on this match.";
 
+    // Honesty contract: anything seeded as DEMO_COMPOSITE (PR #51 seed
+    // pool) is labeled accordingly so design partners always know what
+    // they're looking at. Real Persons whose profile lacks a name fall
+    // back to "demo_composite" so we never show an unlabeled "Demo
+    // candidate" placeholder as if it were real.
+    const isCompositeSource = person.source === "DEMO_COMPOSITE";
+    const hasRealName = Boolean(profile?.displayName || person.name);
     return {
       id: rec.id,
       display: {
         name: profile?.displayName || person.name || "Demo candidate",
-        sourceMode: profile?.displayName || person.name ? "real" : "demo_composite",
+        sourceMode: isCompositeSource || !hasRealName ? "demo_composite" : "real",
         location: [person.city, person.state].filter(Boolean).join(", ") || null,
         primaryRole: profile?.roles?.[0] ?? null,
         secondaryRoles: profile?.roles?.slice(1, 3) ?? [],
