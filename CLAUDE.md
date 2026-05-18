@@ -98,7 +98,7 @@ Next.js 16 + React 19 + TypeScript app with a single Postgres database (Prisma 6
 - **Matching:** `src/sms-engine/matchingEval/`, `src/sms-engine/networkMatching.ts`.
 - **Talent research:** `src/sms-engine/sourcing/openaiWebResearchProvider.ts` (uses OpenAI for public-web research).
 - **SMS/Twilio:** `src/sms-engine/twilio.ts` (kill switch `TWILIO_API_CALLS_FORBIDDEN`), `src/sms-engine/twilioWebhook.ts`, `src/sms-engine/messagingProvider.ts`.
-- **Health endpoint:** `src/app/api/health/route.ts` — reports DB, Twilio mode, LLM mode, pilot stage.
+- **Health endpoint:** `src/app/api/health/route.ts` — reports DB, Twilio mode, LLM mode, pilot stage. PR #58 added a `tracer` block (from `src/lib/tracerHealth.ts`) with `compositeTalentPoolSize` / `compositeTalentPoolSeeded`, `projectJourneyCount` + `projectJourneyCountByStep`, `latestMigration { name, appliedAt }`, and `producerDeterministicHealthy` (synthetic-input smoke test for `buildProjectUnderstanding` + `generateRoleMap`). Each probe is wrapped — a single failure (DB down, missing column) degrades to `tracerHealthAvailable: false` without 500ing the whole response.
 
 ## Core types (target architecture)
 

@@ -32,6 +32,7 @@ import { getTalentResearchQualityHealthSnapshot } from "@/sms-engine/sourcing/ta
 import { getCandidateGraphHealthSnapshot } from "@/sms-engine/graph/candidateGraphHealth";
 import { getMatchingEvaluationHealthSnapshot } from "@/sms-engine/matchingEval/matchingEvaluationHealth";
 import { sentryHealthSummary } from "@/lib/observability";
+import { getTracerHealthSnapshot } from "@/lib/tracerHealth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -91,6 +92,7 @@ export async function GET() {
     await getTalentResearchQualityHealthSnapshot();
   const candidateGraph = await getCandidateGraphHealthSnapshot();
   const matchingEvaluation = getMatchingEvaluationHealthSnapshot();
+  const tracer = await getTracerHealthSnapshot();
   const smsHealth = {
     ...sms,
     smsComplianceApproved: pilot.complianceApproved,
@@ -257,6 +259,7 @@ export async function GET() {
       },
       candidateGraph,
       matchingEvaluation,
+      tracer,
       llm: {
         ...llm,
         ...llmQualityReview,
