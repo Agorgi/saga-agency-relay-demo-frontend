@@ -99,7 +99,7 @@ export function BriefReviewView({ data }: { data: BriefReviewData }) {
               This brief has been discarded. Start a fresh one in chat.
             </p>
             <Link
-              href="/chat"
+              href="/chat?fresh=1"
               className="inline-flex items-center justify-center self-start rounded-md bg-zinc-900 px-6 py-3 text-base font-medium text-white transition hover:bg-zinc-800"
             >
               Start a new brief

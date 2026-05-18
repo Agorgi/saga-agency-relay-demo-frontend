@@ -50,9 +50,13 @@ export function ProjectArchiveButton({
         };
         throw new Error(body?.error || `HTTP ${response.status}`);
       }
-      // Server cleared WebSession.projectId; sending the user to /chat
-      // gives them a fresh intake surface.
-      router.push("/chat");
+      // Server cleared WebSession.projectId. Route to /chat with the
+      // fresh flag (?fresh=1) so the chat client clears its locally-
+      // cached conversation state — otherwise the next /chat visit
+      // restores the archived project's chat history and the user
+      // sees the brief they just discarded. The flag is handled by
+      // `hasFreshConversationFlag` in useWebChat.
+      router.push("/chat?fresh=1");
       router.refresh();
     } catch (err) {
       setState("error");
