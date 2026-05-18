@@ -24,24 +24,21 @@ _No P1 items open. P1-OI-5 and P1-OI-6 closed via regression tests verified in P
 
 ## P2 — Open
 
-### P2-OI-9 — Time-bound fan questions fall to generic lane router
-"Where should I go this weekend?" / "What's happening on Friday?" → "I can route hosts, creatives, venues, and fans. Which lane fits you best?" instead of fan setup.
-**Fix:** Default time-bound discovery questions to fan persona setup.
+### ~~P2-OI-9~~ — verified closed in PR #42
+FAN_SIGNAL_PATTERNS in `src/lib/sagasanAgent.ts` already catches the report strings (`\bwhere should i go\b`, `\bwhat'?s happening on\b`, `\bthis weekend\b`, `\bon friday\b`). Test "time-bound discovery prompts default to fan" at `sagasanAgent.test.ts:300` exercises both report strings ("Where should I go this weekend?" + "What's happening on Friday?") and asserts persona === "fan" + reply matches fan-routing copy. PR #42 moves it to the resolved appendix.
 
-### P2-OI-10 — Edge boundary prompts fall to generic lane router
-"Can you book my whole team for an event?" / "Am I 100% sure I'll book gigs?" → generic lane router instead of mirroring the paid-work boundary tone.
-**Fix:** Expand the boundary fallback library to cover team-booking and outcome-guarantee prompts.
+### ~~P2-OI-10~~ — verified closed in PR #42
+Boundary patterns in `src/lib/sagasanAgent.ts:471-474` catch the report strings (`\bguarantee\b`, `\bbook my whole team\b`, `\bbook gigs?\b`, `\b100%\s+sure\b`). Test "edge boundary prompts return the paid-work boundary" at `sagasanAgent.test.ts:337` exercises both report strings and asserts the reply matches the boundary copy. PR #42 moves it to the resolved appendix.
 
-### P2-OI-11 — "Open my feed" creative CTA routes to /me, not /feed
-**Fix:** Rename button to "Open my profile" (cleaner — `/me` is the creative's home dashboard, not a feed surface).
+### ~~P2-OI-11~~ — closed in PR #42
+Renamed `buildCreativeNextStep`'s label from "Open my feed" to "Open my profile" in `src/lib/sagasanAgent.ts:1222`. The route was always `/me` (the creative's dashboard, not a feed surface); the label is now aligned with the destination. Three test files updated to match the new fixture label: `AppChrome.test.tsx`, `useWebChat.test.ts`, `ChatThread.test.tsx`.
 
 ### P2-OI-12 — Public event page hero is meta-narration about the system
 "The rave public page sells scarce tickets while backstage Saga tracks DJ, social, volunteer, and photo roles…" — internal product framing aimed at a Saga reader, not a fan landing from a share link.
 **Fix:** Replace with a normal fan-facing event tagline.
 
-### P2-OI-13 — Cold-load top-right CTA uses persisted localStorage persona
-On a fresh tab where localStorage has a prior persona, the top-right CTA shows the prior persona's CTA before any new turn. Reads as stale on the empty landing state.
-**Fix:** Reset the top-right CTA to the neutral default on landing/empty state unless persona-on-cold-load is a deliberate feature.
+### ~~P2-OI-13~~ — verified closed in PR #42
+`resolveChromePersona` in `src/components/AppChrome.tsx:33-35` returns null for `pathname === "/"` when there's no `pendingNextStep`. The top-right CTA falls back to the neutral default on landing, not the persisted-session persona. Test "landing hides stale persona CTA when no handoff is active" at `AppChrome.test.tsx:22` locks the contract. PR #42 moves it to the resolved appendix.
 
 ### P2-OI-14 — /projects/new shows EVENT TYPE = "Fan event" on host-oriented prefill
 Cosmetic — brief still creates correctly. **Fix:** Map host intent to a host-appropriate event type label.
@@ -146,9 +143,9 @@ Counter ticks 5 → 6 between turns but the visible Known list shows 5 fields. *
 
 - P0 open: 0 (closed in PR #16)
 - P1 open: 0 (P1-OI-5 and P1-OI-6 verified closed by existing regression tests in PR #40; /explore items closed in PR #22)
-- P2 open: 11 (5 closed in PR #38: OI-15, OI-16, OI-22, OI-23, OI-24; OI-37 filed in PR #36)
+- P2 open: 7 (PR #38 closed 5; PR #42 closed 4: OI-9, OI-10, OI-11, OI-13; OI-37 filed in PR #36)
 - P3 open: 16
-- **Total open: 27**
+- **Total open: 23**
 
 ---
 

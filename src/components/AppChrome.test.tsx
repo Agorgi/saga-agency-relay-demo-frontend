@@ -6,7 +6,7 @@ test("creative pending handoff overrides stale host persona in the app chrome", 
   const persona = resolveChromePersona({
     persona: "host",
     pendingNextStep: {
-      label: "Open my feed",
+      label: "Open my profile",
       route: "/me",
       prefill: {
         city: "Los Angeles",

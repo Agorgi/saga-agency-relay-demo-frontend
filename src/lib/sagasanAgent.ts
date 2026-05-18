@@ -1219,7 +1219,11 @@ function buildCreativeNextStep(
   }
 
   return {
-    label: "Open my feed",
+    // Was "Open my feed" — but the route is /me, which is the
+    // creative's dashboard, not a feed surface. Renaming clears the
+    // mismatch Cowork flagged in P2-OI-11. /feed remains the fan
+    // surface; that label is unchanged.
+    label: "Open my profile",
     route: "/me",
     prefill: {
       city: fields.city || "Flexible",

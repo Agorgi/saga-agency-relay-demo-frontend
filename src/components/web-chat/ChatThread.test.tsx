@@ -45,7 +45,7 @@ test("chat thread keeps backend reply labels short", () => {
           role: "assistant",
           content: "Here is your next move.",
           nextStep: {
-            label: "Open my feed",
+            label: "Open my profile",
             route: "/me",
             prefill: {
               city: "Los Angeles",
@@ -57,6 +57,6 @@ test("chat thread keeps backend reply labels short", () => {
     />,
   );
 
-  assert.match(markup, /Open my feed/);
-  assert.equal("Open my feed".split(/\s+/).length <= 5, true);
+  assert.match(markup, /Open my profile/);
+  assert.equal("Open my profile".split(/\s+/).length <= 5, true);
 });
