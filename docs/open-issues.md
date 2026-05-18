@@ -18,17 +18,7 @@ _No P0 items open as of PR #2. Both P0-OI-1 and P0-OI-2 closed by the Step 6 P0 
 
 ## P1 — Open
 
-### P1-OI-5 — "Cosplay cafe night Brooklyn" misclassified as venue, not host
-
-**Symptom:** "Thinking about a cosplay cafe night in Brooklyn" classifies as venue (replies "your space profile draft", "Open my spaces", "List a space"). Venue-shaped noun "cafe" outweighs host intent verb "thinking about throwing".
-
-**Recommended fix:** Re-rank intent verbs ("throw", "host", "plan", "thinking about", "want to do") over object nouns when both are present. Indirectly closed by the P0 session-latch fix because the same per-message-vs-session-latch class is upstream.
-
-### P1-OI-6 — "DM that photographer right now" enrolls user as creative instead of producing outbound-action boundary
-
-**Symptom:** Imperative directed at a named third party gets keyword-classified as creative because of the noun "photographer". Should be a boundary turn — Saga doesn't send outbound on behalf of users without human review.
-
-**Recommended fix:** Treat imperatives directed at third parties ("DM that photographer", "text my friends", "tell them to come") as boundary turns. Reply with the outbound-action boundary copy ("Saga can help prepare outreach, but it won't contact anyone until a human reviews and approves it."). Not persona classification.
+_No P1 items open. P1-OI-5 and P1-OI-6 closed via regression tests verified in PR #40; see "Resolved" appendix._
 
 ---
 
@@ -155,10 +145,10 @@ Counter ticks 5 → 6 between turns but the visible Known list shows 5 fields. *
 ## Summary counts
 
 - P0 open: 0 (closed in PR #16)
-- P1 open: 2 (persona-classifier subclasses — likely indirectly closed by PR #16, pending Cowork re-verification on staging; /explore items closed in PR #22)
-- P2 open: 16
+- P1 open: 0 (P1-OI-5 and P1-OI-6 verified closed by existing regression tests in PR #40; /explore items closed in PR #22)
+- P2 open: 11 (5 closed in PR #38: OI-15, OI-16, OI-22, OI-23, OI-24; OI-37 filed in PR #36)
 - P3 open: 16
-- **Total open: 34**
+- **Total open: 27**
 
 ---
 
@@ -185,6 +175,8 @@ These have been closed by prior pushes. Listed so future work doesn't accidental
 - **P0-OI-2 — Organizer brief data discarded on persona flip** — closed alongside P0-OI-1 in PR #16. Persona no longer flips → brief isn't dropped. Deeper per-project latch via `ProjectJourney` shipped in PR #17/#24.
 - **P1-OI-3 — /explore "0 surfaced" empty state on real briefs** — closed in PR #22. `useAgencyStore.resetTalentFilters` now also clears `talentSearchQuery` so the Reset button wipes both filters and search.
 - **P1-OI-4 — /explore cold-load shows Beauty Brand fixture label** — closed in PR #22. `ExploreTalentView` only shows "Shortlisting into …" when the URL explicitly indicates a project (`projectIdParam` or `projectSlug`). Otherwise the header is suppressed.
+- **P1-OI-5 — "Cosplay cafe night Brooklyn" misclassified as venue** — verified closed in PR #40. Test `"host planning intent beats venue nouns for event concepts"` in `src/lib/sagasanAgent.test.ts:154` exercises the exact strings from the QA report ("Thinking about a cosplay cafe night in Brooklyn." and "I want to plan a cosplay cafe night in Brooklyn.") and asserts `resolvePersona(...) === "host"`. Test was added in PR #16 (the bare-noun-removal fix) and passes 159/159 sagasan-agent runs. PR #40 moves the issue to the resolved appendix.
+- **P1-OI-6 — "DM that photographer right now" enrolls user as creative** — verified closed in PR #40. Test `"outbound action prompts stay in the boundary lane"` in `src/lib/sagasanAgent.test.ts:257` exercises the exact string from the QA report and asserts (a) `persona !== "creative"`, (b) the reply matches the outbound-action boundary copy `/won't contact anyone until a human reviews and approves it/i`, (c) `nextStep === null`. Test was added in PR #16 and passes 159/159 sagasan-agent runs. PR #40 moves the issue to the resolved appendix.
 - **/explore cold-load shows 0 cards regression** — closed in PR #32. PR #22's fix for the Beauty Brand label leak removed the default-project fallback in `activeProject` resolution, which inadvertently emptied the grid on cold-load (because `buildCrewRecommendationState` returns empty `candidateGroups` when project is null). PR #32 introduces `buildBrowseAllTalentState` in `src/lib/buildMyCrewContracts.ts`: when no `activeProject`, `ExploreTalentView` renders an honest "Browse all talent" surface populated from `TALENT_PROFILES`, grouped by primary role, capped at 18 cards / 6 per role. The page header switches to "Browse talent / Demo profiles, grouped by role." and the empty-state CTA reads "Browse demo profiles below, or tell Saga what you're planning for a project-scored shortlist." Cards stay `sourceMode: demo_seed`, `contacted: false`, `confirmed: false`, `contactabilityStatus: "Human review required"`.
 - **ProjectJourney state machine** — built in PR #17 (Prisma model, service, API routes) and wired to Sagasan in PR #24 (host briefs persist to Project rows; journey auto-advances on readiness; chat API returns `projectId` + `journey` to client).
 - **Brief review page (`/projects/[id]`)** — shipped in PR #19.
