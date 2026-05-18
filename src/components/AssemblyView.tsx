@@ -47,9 +47,13 @@ export function AssemblyView({ eventSlug }: { eventSlug?: string }) {
                 <span className="rounded-pill bg-canvas px-3 py-1.5 text-xs font-medium text-ink-light">
                   Estimated reach {event.productionPlan.estimatedReach.toLocaleString()}
                 </span>
-                <span className="rounded-pill bg-canvas px-3 py-1.5 text-xs font-medium text-ink-light">
-                  Crew is distribution
-                </span>
+                {/*
+                  Removed "Crew is distribution" pill — it sat between
+                  concrete metric chips ("Launch readiness 67%",
+                  "Estimated reach 12,400") and read as jargon without
+                  context. The same phrase remains in the Role board
+                  panel below, where it carries a one-line gloss.
+                */}
               </div>
             </div>
 
@@ -179,7 +183,11 @@ export function AssemblyView({ eventSlug }: { eventSlug?: string }) {
             </Panel>
           </div>
 
-          <Panel title="Role board" eyebrow="Crew is distribution">
+          <Panel
+            title="Role board"
+            eyebrow="Crew is distribution"
+            description="The crew Saga books is your audience reach — every role doubles as a distribution channel into the fandom they bring."
+          >
             <div className="space-y-4">
               {event.productionPlan.roles.map((role) => {
                 const assigned = teamSlots[role.name];
@@ -331,10 +339,18 @@ export function AssemblyView({ eventSlug }: { eventSlug?: string }) {
 function Panel({
   eyebrow,
   title,
+  description,
   children,
 }: {
   eyebrow: string;
   title: string;
+  /**
+   * Optional one-line gloss that renders between the title and the
+   * panel body. Use this to explain a jargon-y eyebrow on first
+   * use (e.g. "Crew is distribution") so users don't have to infer
+   * meaning from the pill alone.
+   */
+  description?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -345,6 +361,9 @@ function Panel({
     >
       <p className="text-[10px] uppercase tracking-[0.26em] text-ink-light">{eyebrow}</p>
       <h2 className="mt-3 text-2xl font-semibold tracking-tight text-ink">{title}</h2>
+      {description ? (
+        <p className="mt-2 text-sm leading-6 text-ink-light">{description}</p>
+      ) : null}
       <div className="mt-5">{children}</div>
     </motion.section>
   );
