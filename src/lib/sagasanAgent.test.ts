@@ -676,3 +676,51 @@ test("getConfiguredModel falls back to a real model when env var is a known-inva
     console.warn = originalWarn;
   }
 });
+
+test("fan success reply varies by extracted city + interests (P2-OI-24)", () => {
+  // Before this change, the fan persona returned the same line —
+  // "Got it. I tuned that into your event feed setup." — for every
+  // routeable fan message regardless of what Saga had extracted.
+  // The new variant logic should reflect the user's specifics.
+
+  // Both city and interests: the reply names both.
+  const bothFields = buildMockAgentReply({
+    persona: "fan",
+    history: [],
+    latestMessage:
+      "I want to find cool anime and cosplay events in Brooklyn.",
+  });
+  assert.match(bothFields.reply, /Brooklyn/i);
+  // The reply should NOT be the generic fallback line in this case.
+  assert.doesNotMatch(
+    bothFields.reply,
+    /I tuned that into your event feed setup/,
+  );
+
+  // City only (no interest tags inferred from "where should I go").
+  // The question-word stopword filter strips "Where" / "Should" so
+  // the variant reply doesn't read nonsense.
+  const cityOnly = buildMockAgentReply({
+    persona: "fan",
+    history: [],
+    latestMessage: "Where should I go in LA this weekend?",
+  });
+  // City surfaces in either short ("LA") or expanded ("Los Angeles") form.
+  assert.match(cityOnly.reply, /LA|Los Angeles/i);
+  // Sanity check the stopword filter is doing its job — neither
+  // "Where" nor "Should" should appear as an interest in the reply.
+  assert.doesNotMatch(cityOnly.reply, /\bWhere\b/);
+  assert.doesNotMatch(cityOnly.reply, /\bShould\b/);
+
+  // The "Hey what's up" message doesn't surface a routeable fan
+  // next-step (no city, no fandom signal), so it falls to a
+  // follow-up question instead of the success path. Lock the
+  // contract that's actually testable here: any fan reply that DOES
+  // fire never invents a city the user didn't mention.
+  const generic = buildMockAgentReply({
+    persona: "fan",
+    history: [],
+    latestMessage: "Hey what's up.",
+  });
+  assert.doesNotMatch(generic.reply, /\bin (Brooklyn|LA|NYC|Seattle)\b/);
+});

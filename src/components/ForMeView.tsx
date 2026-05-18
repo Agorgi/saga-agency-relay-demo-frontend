@@ -64,10 +64,13 @@ export function ForMeView({
       const profile = getTalentById(conversation.talentId, talent);
       return {
         id: `relay-${conversation.id}`,
-        title: profile?.name || "Relay thread",
-        detail: "Relay",
+        title: profile?.name || "Outreach thread",
+        // Was "Relay" — too gnomic for a feed eyebrow. The new label
+        // makes the card-type self-explanatory: Saga is messaging a
+        // candidate on the viewer's behalf. Closes P2-OI-23.
+        detail: "Saga outreach",
         summary: conversation.sagaSummary,
-        actionLabel: "Open relay",
+        actionLabel: "Open thread",
         onAction: () => goRelay(project?.id, conversation.id),
       };
     });

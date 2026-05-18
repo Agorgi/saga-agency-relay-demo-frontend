@@ -226,6 +226,86 @@ function normalizeProjectIdea(text: string) {
   );
 }
 
+function formatInterestList(items: string[]): string {
+  if (items.length === 0) return "";
+  if (items.length === 1) return items[0];
+  return `${items[0]} and ${items[1]}`;
+}
+
+// Words the interest extractor sometimes captures from question
+// stems ("where", "should") or filler phrases. We refuse to render
+// these into a user-visible reply because the variant copy reads
+// nonsensical when it does ("tune your feed for Where and Should").
+// Lowercase comparison.
+const FAN_INTEREST_STOPWORDS = new Set([
+  "where",
+  "what",
+  "when",
+  "why",
+  "how",
+  "who",
+  "which",
+  "should",
+  "would",
+  "could",
+  "might",
+  "find",
+  "look",
+  "looking",
+  "going",
+  "stuff",
+  "things",
+  "event",
+  "events",
+  "nights",
+  "weekend",
+  "tonight",
+  "tomorrow",
+  "friday",
+  "saturday",
+  "sunday",
+  "scene",
+  "scenes",
+]);
+
+function isUsableFanInterest(value: string): boolean {
+  if (value.length < 3) return false;
+  if (FAN_INTEREST_STOPWORDS.has(value.toLowerCase())) return false;
+  return true;
+}
+
+/**
+ * Compose a fan success-reply that reflects what Saga actually
+ * extracted from the user's message. Before this helper, the fan
+ * persona served the same line ("Got it. I tuned that into your
+ * event feed setup.") for every fan-classified prompt regardless
+ * of whether a city, interests, both, or neither were present.
+ * Closes P2-OI-24.
+ *
+ * Defensive: interests that look like question stems or filler
+ * words ("Where", "Should") are filtered out so the variant reply
+ * never surfaces nonsense the extractor accidentally captured. The
+ * city-only variant covers that case.
+ */
+function buildFanSuccessReply(extractedFields: StoredExtractedFields): string {
+  const city = (extractedFields.city || "").trim();
+  const interests = (extractedFields.interests || [])
+    .map((value) => value.trim())
+    .filter(isUsableFanInterest)
+    .slice(0, 2);
+
+  if (city && interests.length > 0) {
+    return `Got it — I'll tune your feed for ${formatInterestList(interests)} in ${city}.`;
+  }
+  if (city) {
+    return `Got it — I'll watch what's stirring in ${city}.`;
+  }
+  if (interests.length > 0) {
+    return `Got it — I'll surface ${formatInterestList(interests)} events near you.`;
+  }
+  return "Got it — I tuned that into your event feed setup.";
+}
+
 function getOpenAiClient({
   apiKey,
   baseUrl,
@@ -1386,7 +1466,11 @@ function buildDeterministicReply({
         : "Got it — I can shape this into a partial brief now. Keep filling in the project details.",
       creative: "Got it — I shaped that into your creative profile draft.",
       venue: "Got it — I shaped that into your space profile draft.",
-      fan: "Got it. I tuned that into your event feed setup.",
+      // Fan reply varies by what we extracted (city + interests) so
+      // the user sees Saga reflecting back the specifics they
+      // mentioned, not the same chatbot line for every prompt.
+      // Closes P2-OI-24.
+      fan: buildFanSuccessReply(extractedFields),
     } satisfies Record<Exclude<Persona, null>, string>;
 
     return {

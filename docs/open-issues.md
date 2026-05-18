@@ -56,11 +56,11 @@ On a fresh tab where localStorage has a prior persona, the top-right CTA shows t
 ### P2-OI-14 — /projects/new shows EVENT TYPE = "Fan event" on host-oriented prefill
 Cosmetic — brief still creates correctly. **Fix:** Map host intent to a host-appropriate event type label.
 
-### P2-OI-15 — Generic openers "Great." / "Love this." feel chatbot
-**Fix:** Drop these or replace with producer-voice acknowledgments that quote a noun from the user's message ("Anime picnic in Silver Lake, got it.").
+### ~~P2-OI-15~~ — closed in PR #38
+Audit found no bare "Great." / "Love this." openers in the current Sagasan fallback library. Likely closed earlier when the producer-voice copy was tightened. Verified clean by exhaustive grep + producer-voice review.
 
-### P2-OI-16 — Hyphens vs em-dashes inconsistent across producer-voice copy
-**Fix:** Pick a house style and apply consistently in the fallback string library.
+### ~~P2-OI-16~~ — closed in PR #38
+Code already standardizes on em-dashes (—) for parentheticals across all four Sagasan reply files. PR #38 adds a regression-prevention rule to `scripts/lint-copy.ts` that scans `sagasanAgent.ts`, `sagasanOrganizerIntake.ts`, `sagasanSystemPrompt.ts`, and `hostBriefHandoff.ts` for ` - ` (space-hyphen-space) inside string literals and fails the lint if found. Comment-stripped first so example copy in comments doesn't trigger.
 
 ### P2-OI-17 — /admin/observability fallback-rate widget shows 0 while RECENT FALLBACKS = 27
 Operator dashboard misleading. **Fix:** Either rate calc is wrong or time-window mismatch — resolve.
@@ -78,14 +78,14 @@ Operator dashboard misleading. **Fix:** Either rate calc is wrong or time-window
 Clicking "Discover" before persona is classified does nothing. Nav labels that change behavior based on hidden state are a navigation antipattern.
 **Fix:** Either make it functional pre-classification, or hide it.
 
-### P2-OI-22 — "Crew is distribution" jargon repeated three times across surfaces without gloss
-**Fix:** Add a one-sentence gloss the first time a user sees it.
+### ~~P2-OI-22~~ — closed in PR #38
+Two surfaces fixed: (1) the bare "Crew is distribution" pill in `AssemblyView.tsx`'s metrics row (between concrete launch-readiness + estimated-reach chips) was dropped — pill chips don't have room for a gloss. (2) The "Role board" Panel kept the slogan as its eyebrow but gained a `description` prop on the Panel component carrying a one-sentence gloss: "The crew Saga books is your audience reach — every role doubles as a distribution channel into the fandom they bring." The four other surfaces in `ProjectDetailView`, `CreateProjectFlow`, and `sagaPlatformData` already had inline explanations and were left alone.
 
-### P2-OI-23 — "Relay" card type unexplained in For-me feed
-**Fix:** Add a definition tooltip or in-context micro-copy.
+### ~~P2-OI-23~~ — closed in PR #38
+`ForMeView.tsx` Relay card's `detail` label changed from "Relay" (gnomic) to "Saga outreach" (self-explanatory). The fallback title is "Outreach thread" (was "Relay thread") and the action label is "Open thread" (was "Open relay"). Conveys that Saga is messaging a candidate on the viewer's behalf without requiring users to learn what "Relay" means.
 
-### P2-OI-24 — "Got it. I tuned that into your event feed setup" served for 4 distinct fan-classified prompts
-**Fix:** Vary the acknowledgment by intent.
+### ~~P2-OI-24~~ — closed in PR #38
+The fan persona's success reply now varies by extracted `city` + `interests`. Four branches in `buildFanSuccessReply` (`src/lib/sagasanAgent.ts`): both → "Got it — I'll tune your feed for [interests] in [city]."; city only → "Got it — I'll watch what's stirring in [city]."; interests only → "Got it — I'll surface [interests] events near you."; neither → "Got it — I tuned that into your event feed setup." (canonical fallback). A `FAN_INTEREST_STOPWORDS` filter strips question-stem words ("where", "should", etc.) the inferInterestTags extractor sometimes captures, so the variant reply never surfaces "tune your feed for Where and Should." Regression test in `sagasanAgent.test.ts`.
 
 ### P2-OI-37 — Vercel preview environment has no DATABASE_URL, so PR previews can't exercise DB-dependent code paths
 **Symptom:** PR #34's Cowork re-test couldn't validate the chat→outreach tracer end-to-end because `bindNextStepToProject` (PR #35) requires a successful `upsertProjectFromBrief` write, and there's no DB on preview. Cowork verified the fix code is in the deployed bundle but couldn't observe the rewrite firing.
