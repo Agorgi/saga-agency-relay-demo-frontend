@@ -272,6 +272,48 @@ function sinceDate(hours = RECENT_WINDOW_HOURS) {
   return new Date(Date.now() - hours * 60 * 60 * 1000);
 }
 
+/**
+ * Fraction of recent reply attempts that ended in the deterministic
+ * fallback handler. Closes Cowork P2-OI-17.
+ *
+ * Bug it replaces: `fallbackRate = fallbackUsed / callStarted`.
+ * With LLM gated off (no `llm.call_started` events) but every reply
+ * still logging `llm.fallback_used`, the operator saw
+ * "Recent fallbacks: 27 / Fallback rate: 0" — the widget reported
+ * zero exactly when the fallback was always firing.
+ *
+ * New denominator approximates total reply attempts:
+ *   callStarted + max(0, fallbackUsed − callFailed)
+ *
+ * i.e. OpenAI calls + fallbacks that fired WITHOUT a prior call.
+ * Every `llm.call_failed` is paired with an `llm.fallback_used`, so
+ * we subtract `callFailed` to avoid double-counting the
+ * failed-call → fallback path. Result is rounded to 2 decimals.
+ *
+ * Examples:
+ *   LLM gated off:     callStarted=0, failed=0, fallback=27 → 27/27 = 1.00
+ *   All live + success: callStarted=100, failed=0, fallback=0 → 0/100 = 0.00
+ *   Live + 5 failed:   callStarted=100, failed=5, fallback=5 → 5/100 = 0.05
+ *   Mixed:             callStarted=10, failed=2, fallback=12 → 12/20 = 0.60
+ *   Empty window:      all zero → 0
+ */
+export function computeLlmFallbackRate({
+  callStarted,
+  callFailed,
+  fallbackUsed,
+}: {
+  callStarted: number;
+  callFailed: number;
+  fallbackUsed: number;
+}): number {
+  const totalReplyAttempts =
+    callStarted + Math.max(0, fallbackUsed - callFailed);
+  if (totalReplyAttempts <= 0) {
+    return 0;
+  }
+  return Number((fallbackUsed / totalReplyAttempts).toFixed(2));
+}
+
 async function checkDatabase(): Promise<string> {
   if (!process.env.DATABASE_URL) return "not_configured";
   try {
@@ -596,14 +638,11 @@ export async function getObservabilitySummary(): Promise<ObservabilitySummary> {
     failedJobs:
       dbSummary.pipeline.failedJobs ?? pipelineHealth.failedJobCount ?? null,
   };
-  const fallbackRate =
-    dbSummary.llmCounts.callStarted > 0
-      ? Number(
-          (dbSummary.llmCounts.fallbackUsed / dbSummary.llmCounts.callStarted).toFixed(
-            2,
-          ),
-        )
-      : 0;
+  const fallbackRate = computeLlmFallbackRate({
+    callStarted: dbSummary.llmCounts.callStarted,
+    callFailed: dbSummary.llmCounts.callFailed,
+    fallbackUsed: dbSummary.llmCounts.fallbackUsed,
+  });
   const recentOutboundCount = dbSummary.recentOutboundCount;
   const summaryWithoutRisk = {
     generatedAt,
