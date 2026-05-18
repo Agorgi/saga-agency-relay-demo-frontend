@@ -39,8 +39,8 @@ Rewrote the `longDescription` field on all 8 fixture events in `src/data/sagaPla
 ### ~~P2-OI-13~~ — verified closed in PR #42
 `resolveChromePersona` in `src/components/AppChrome.tsx:33-35` returns null for `pathname === "/"` when there's no `pendingNextStep`. The top-right CTA falls back to the neutral default on landing, not the persisted-session persona. Test "landing hides stale persona CTA when no handoff is active" at `AppChrome.test.tsx:22` locks the contract. PR #42 moves it to the resolved appendix.
 
-### P2-OI-14 — /projects/new shows EVENT TYPE = "Fan event" on host-oriented prefill
-Cosmetic — brief still creates correctly. **Fix:** Map host intent to a host-appropriate event type label.
+### ~~P2-OI-14~~ — closed in PR #44
+Reordered `inferHostProjectType` in `src/lib/sagasanAgent.ts:677` so more-specific event-concept matches fire BEFORE the generic "Fan event" fallback. Adds new buckets: "screening / watch party / movie night / film night" → Live performance, plus pre-existing photoshoot/video/brand/creator rules now run first. "Fan event" is reserved for genuinely-generic "fan", "gala", or "meetup" mentions where no more-specific concept appears. The prior overreach (`/fan|gala|watch party|meetup/.test(lower)` matched too eagerly and the prefill chip read generic) is fixed.
 
 ### ~~P2-OI-15~~ — closed in PR #38
 Audit found no bare "Great." / "Love this." openers in the current Sagasan fallback library. Likely closed earlier when the producer-voice copy was tightened. Verified clean by exhaustive grep + producer-voice review.
@@ -141,9 +141,9 @@ Counter ticks 5 → 6 between turns but the visible Known list shows 5 fields. *
 
 - P0 open: 0 (closed in PR #16)
 - P1 open: 0 (P1-OI-5 and P1-OI-6 verified closed by existing regression tests in PR #40; /explore items closed in PR #22)
-- P2 open: 5 (PR #38 closed 5: OI-15, OI-16, OI-22, OI-23, OI-24; PR #42 closed 4: OI-9, OI-10, OI-11, OI-13; PR #43 closed 2: OI-12, OI-21; OI-37 filed in PR #36)
+- P2 open: 4 (PR #38 closed 5: OI-15, OI-16, OI-22, OI-23, OI-24; PR #42 closed 4: OI-9, OI-10, OI-11, OI-13; PR #43 closed 2: OI-12, OI-21; PR #44 closed 1: OI-14; OI-37 filed in PR #36)
 - P3 open: 16
-- **Total open: 21**
+- **Total open: 20**
 
 ---
 
