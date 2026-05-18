@@ -2,11 +2,24 @@ import Link from "next/link";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { adminContactLabel } from "@/sms-engine/adminPrivacy";
 import { getDb } from "@/sms-engine/db";
+import {
+  ADMIN_INCLUDE_COMPOSITES_QUERY_KEY,
+  adminCompositeFilterLabel,
+  buildAdminPersonWhere,
+  shouldIncludeComposites,
+} from "@/lib/adminTalentFilter";
 
 export const dynamic = "force-dynamic";
 
-export default async function PeoplePage() {
+export default async function PeoplePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const includeComposites = shouldIncludeComposites(sp);
   const people = await getDb().person.findMany({
+    where: buildAdminPersonWhere({ includeComposites }),
     include: {
       creatorProfile: true,
       recommendations: true,
@@ -18,11 +31,26 @@ export default async function PeoplePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-500">
-          Production network
-        </p>
-        <h2 className="mt-2 text-2xl font-semibold">People</h2>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-zinc-500">
+            Production network
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold">People</h2>
+          <p className="mt-1 text-xs text-zinc-500">
+            {adminCompositeFilterLabel({ includeComposites })}
+          </p>
+        </div>
+        <Link
+          href={
+            includeComposites
+              ? "/admin/people"
+              : `/admin/people?${ADMIN_INCLUDE_COMPOSITES_QUERY_KEY}=1`
+          }
+          className="rounded-md border border-zinc-700 px-3 py-2 text-xs text-zinc-300 transition hover:border-zinc-500 hover:bg-zinc-900"
+        >
+          {includeComposites ? "Hide composites" : "Include composites"}
+        </Link>
       </div>
 
       <section className="overflow-hidden rounded-lg border border-zinc-800 bg-black">
