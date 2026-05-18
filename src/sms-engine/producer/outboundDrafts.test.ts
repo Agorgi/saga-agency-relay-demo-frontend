@@ -247,3 +247,213 @@ test("generateCandidateOutreachDraft on an approved candidate produces NEEDS_REV
   assert.match(draft.body, /Open to being considered for the team/);
   assert.equal(draft.adminReviewRequired, true);
 });
+
+test("generateCandidateOutreachDraftsForProject is race-safe under concurrent calls (PR #59)", async () => {
+  // Regression for the partial unique index added in
+  // `20260518030000_outbounddraft_active_candidate_outreach_unique`.
+  // Before the index, two concurrent calls would both see findFirst
+  // return null and both create — leaving two non-terminal rows for
+  // the same candidateRecommendationId. With the index, the second
+  // creator gets P2002 and upsertOutboundDraft retries through the
+  // update branch, so exactly one row remains.
+  const TEST_DATABASE_URL =
+    process.env.PR_L_TEST_DATABASE_URL ||
+    "postgresql://saga@127.0.0.1:5433/saga_agency_relay_demo?schema=public";
+  process.env.DATABASE_URL = TEST_DATABASE_URL;
+  process.env.POSTGRES_URL_NON_POOLING = TEST_DATABASE_URL;
+
+  const { PrismaClient } = await import("@prisma/client");
+  const { generateCandidateOutreachDraftsForProject } = await import(
+    "@/sms-engine/producer/outboundDrafts"
+  );
+
+  const db = new PrismaClient({ datasourceUrl: TEST_DATABASE_URL });
+  try {
+    // Clean dependency tree
+    await db.outboundDraft.deleteMany();
+    await db.candidateRecommendation.deleteMany();
+    await db.opportunity.deleteMany();
+    await db.roleOpening.deleteMany();
+    await db.relationshipEdge.deleteMany();
+    await db.creatorProfile.deleteMany();
+    await db.webSession.deleteMany();
+    await db.projectJourney.deleteMany();
+    await db.project.deleteMany();
+    await db.person.deleteMany();
+
+    // Minimal fixture: Project + RoleOpening + Opportunity + Person +
+    // CandidateRecommendation in APPROVED_FOR_SHORTLIST (the status
+    // generateCandidateOutreachDraftsForProject pulls).
+    const project = await db.project.create({
+      data: { source: "WEB_APP", title: "Race fixture", city: "Los Angeles" },
+    });
+    const role = await db.roleOpening.create({
+      data: {
+        projectId: project.id,
+        roleType: "photographer",
+        title: "Photographer",
+        status: "OPEN",
+      },
+    });
+    const opportunity = await db.opportunity.create({
+      data: {
+        roleOpeningId: role.id,
+        visibility: "PRIVATE",
+        applicationMode: "INVITE_ONLY",
+        status: "ACTIVE",
+      },
+    });
+    const person = await db.person.create({
+      data: { name: "Composite Maya", source: "DEMO_COMPOSITE" },
+    });
+    await db.creatorProfile.create({
+      data: {
+        personId: person.id,
+        displayName: "Composite Maya",
+        roles: ["photographer"],
+        reviewStatus: "APPROVED",
+      },
+    });
+    await db.candidateRecommendation.create({
+      data: {
+        opportunityId: opportunity.id,
+        personId: person.id,
+        score: 0.85,
+        matchingReasons: ["Role match: photographer"],
+        risks: [],
+        status: "APPROVED_FOR_SHORTLIST",
+      },
+    });
+
+    // Fire two concurrent draft generations for the same project.
+    // Pre-PR-59 this races and creates two non-terminal drafts. After
+    // PR #59 the partial unique constraint catches the duplicate
+    // create and upsertOutboundDraft falls through to update.
+    await Promise.all([
+      generateCandidateOutreachDraftsForProject(project.id),
+      generateCandidateOutreachDraftsForProject(project.id),
+    ]);
+
+    const drafts = await db.outboundDraft.findMany({
+      where: { projectId: project.id, type: "CANDIDATE_OUTREACH" },
+    });
+    assert.equal(
+      drafts.length,
+      1,
+      `expected exactly one CANDIDATE_OUTREACH draft per candidate after concurrent generations, got ${drafts.length}`,
+    );
+  } finally {
+    await db.$disconnect();
+  }
+});
+
+test("upsertOutboundDraft preserves multi-history when an earlier draft is in a terminal status", async () => {
+  // The partial unique constraint is scoped to non-terminal statuses
+  // (DRAFT / NEEDS_REVIEW / BLOCKED). A terminal-status draft (APPROVED,
+  // SENT, REJECTED) plus a new non-terminal draft for the same candidate
+  // is the existing multi-history pattern in upsertOutboundDraft — the
+  // constraint must NOT forbid that.
+  const TEST_DATABASE_URL =
+    process.env.PR_L_TEST_DATABASE_URL ||
+    "postgresql://saga@127.0.0.1:5433/saga_agency_relay_demo?schema=public";
+  process.env.DATABASE_URL = TEST_DATABASE_URL;
+  process.env.POSTGRES_URL_NON_POOLING = TEST_DATABASE_URL;
+
+  const { PrismaClient } = await import("@prisma/client");
+  const { generateCandidateOutreachDraftsForProject } = await import(
+    "@/sms-engine/producer/outboundDrafts"
+  );
+
+  const db = new PrismaClient({ datasourceUrl: TEST_DATABASE_URL });
+  try {
+    await db.outboundDraft.deleteMany();
+    await db.candidateRecommendation.deleteMany();
+    await db.opportunity.deleteMany();
+    await db.roleOpening.deleteMany();
+    await db.relationshipEdge.deleteMany();
+    await db.creatorProfile.deleteMany();
+    await db.webSession.deleteMany();
+    await db.projectJourney.deleteMany();
+    await db.project.deleteMany();
+    await db.person.deleteMany();
+
+    const project = await db.project.create({
+      data: { source: "WEB_APP", title: "Terminal-history fixture", city: "Los Angeles" },
+    });
+    const role = await db.roleOpening.create({
+      data: {
+        projectId: project.id,
+        roleType: "photographer",
+        title: "Photographer",
+        status: "OPEN",
+      },
+    });
+    const opportunity = await db.opportunity.create({
+      data: {
+        roleOpeningId: role.id,
+        visibility: "PRIVATE",
+        applicationMode: "INVITE_ONLY",
+        status: "ACTIVE",
+      },
+    });
+    const person = await db.person.create({
+      data: { name: "Composite Maya", source: "DEMO_COMPOSITE" },
+    });
+    await db.creatorProfile.create({
+      data: {
+        personId: person.id,
+        displayName: "Composite Maya",
+        roles: ["photographer"],
+        reviewStatus: "APPROVED",
+      },
+    });
+    const rec = await db.candidateRecommendation.create({
+      data: {
+        opportunityId: opportunity.id,
+        personId: person.id,
+        score: 0.85,
+        matchingReasons: ["Role match: photographer"],
+        risks: [],
+        status: "APPROVED_FOR_SHORTLIST",
+      },
+    });
+
+    // Insert a terminal-status draft directly. The partial unique
+    // excludes terminal rows, so this should not block a new
+    // non-terminal draft for the same candidate.
+    await db.outboundDraft.create({
+      data: {
+        type: "CANDIDATE_OUTREACH",
+        status: "APPROVED",
+        body: "Old draft body (terminal).",
+        source: "PRODUCER_AGENT",
+        projectId: project.id,
+        candidateRecommendationId: rec.id,
+        recipientKind: "CANDIDATE",
+        metadata: {},
+        approvedAt: new Date(),
+      },
+    });
+
+    // Now generate fresh drafts — creates a new NEEDS_REVIEW row.
+    await generateCandidateOutreachDraftsForProject(project.id);
+
+    const drafts = await db.outboundDraft.findMany({
+      where: {
+        projectId: project.id,
+        type: "CANDIDATE_OUTREACH",
+        candidateRecommendationId: rec.id,
+      },
+      orderBy: { createdAt: "asc" },
+    });
+    assert.equal(
+      drafts.length,
+      2,
+      "terminal-status draft + new non-terminal draft must both exist",
+    );
+    const statuses = drafts.map((d) => d.status).sort();
+    assert.deepEqual(statuses.sort(), ["APPROVED", "NEEDS_REVIEW"].sort());
+  } finally {
+    await db.$disconnect();
+  }
+});
