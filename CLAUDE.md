@@ -318,15 +318,11 @@ Honest inventory. Update when feature state changes.
 
 **P0 (0 open):** Both P0 items closed in PR #2 — see `docs/open-issues.md` resolved appendix.
 
-**P1 (4 open, pending Cowork re-verify):**
-- **P1-OI-3** — `/explore` "0 surfaced" empty state on real briefs (search field auto-fills the full brief string).
-- **P1-OI-4** — `/explore` cold-load still labels "Shortlisting into Beauty Brand Creator Content Day" when no `projectId`.
-- **P1-OI-5** — "Cosplay cafe night Brooklyn" misclassifies as venue, not host (likely indirectly closed by PR #16; pending re-verify).
-- **P1-OI-6** — "DM that photographer right now" enrolls user as creative (likely closed by PR #16's bare-noun removal; pending re-verify).
+**P1 (0 open):** P1-OI-3 / P1-OI-4 closed in PR #22 (/explore Beauty Brand label leak + reset behavior). P1-OI-5 / P1-OI-6 verified closed in PR #40 — regression tests in `src/lib/sagasanAgent.test.ts` exercise the exact strings from the original QA report and pass on every run.
 
-P2/P3: 32 items in `docs/open-issues.md`. Don't expand inline here.
+P2/P3: 27 items in `docs/open-issues.md`. Don't expand inline here.
 
-Recently closed (see resolved appendix in `docs/open-issues.md`): P0-OI-1 / P0-OI-2 (Step 6 P0 in PR #16), P1-OI-7 / P1-OI-8 (LLM mode latents in PR #15).
+Recently closed (see resolved appendix in `docs/open-issues.md`): P0-OI-1 / P0-OI-2 (Step 6 P0 in PR #16), P1-OI-7 / P1-OI-8 (LLM mode latents in PR #15), P1-OI-3 / P1-OI-4 (/explore label leak in PR #22), P1-OI-5 / P1-OI-6 (persona-classifier subclasses verified in PR #40).
 
 ### Step 6 P0 — persona-flip on rich brief (CLOSED in PR #16)
 Closed via three converging fixes in `src/lib/sagasanAgent.ts`:
