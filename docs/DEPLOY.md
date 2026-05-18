@@ -143,6 +143,34 @@ Before merging a PR with a Prisma migration, verify:
 
 For env-only changes (no migration), no extra steps — just update Vercel and the next deploy picks it up.
 
+## Composite talent seed (one-time, after PR #51)
+
+PR #51 added the `DEMO_COMPOSITE` value to `PersonSource` (migration
+`20260518000000_add_demo_composite_person_source`) plus an idempotent
+seed script that creates ~18 Person + CreatorProfile rows tagged with
+that source. The seed isn't run automatically — Neon stays empty until
+you invoke it.
+
+To populate staging Neon with composites:
+
+```bash
+# 1. Apply the migration (no-op if already applied)
+DATABASE_URL="<neon-url>" POSTGRES_URL_NON_POOLING="<neon-direct-url>" \
+  npx prisma migrate deploy
+
+# 2. Run the seed
+DATABASE_URL="<neon-url>" POSTGRES_URL_NON_POOLING="<neon-direct-url>" \
+  npm run seed:creator-pool
+```
+
+The script is idempotent — running it twice yields the same DB state.
+Honesty: composites carry `source: DEMO_COMPOSITE`, no phone, no email.
+Candidate cards surface a "Demo candidate · Composite from public
+sources" badge on every row from this source.
+
+After seeding, verify by visiting any /projects/[id]/crew page that has
+roles — every role should now have ≥1 candidate scored.
+
 ## Post-deploy verification
 
 After every deploy, regardless of changes:

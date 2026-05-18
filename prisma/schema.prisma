@@ -81,6 +81,12 @@ enum PersonSource {
   ADMIN
   IMPORT
   PUBLIC
+  // Composite demo persona — not a real human. Used to seed the
+  // CreatorProfile pool so the producer engine has talent to score
+  // against during pre-A2P demos. Real outreach can never fire to
+  // these rows because the Twilio kill switch is on and they carry
+  // no phone/email. UI surfaces a "Composite" badge on every card.
+  DEMO_COMPOSITE
 }
 
 enum ConsentStatus {

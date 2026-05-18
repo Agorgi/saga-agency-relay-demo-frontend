@@ -1,0 +1,204 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { PrismaClient } from "@prisma/client";
+import {
+  COMPOSITE_NAME_SUFFIX,
+  SEEDS,
+  seedCreatorPool,
+} from "./seed-creator-pool";
+
+const TEST_DATABASE_URL =
+  process.env.PR_L_TEST_DATABASE_URL ||
+  "postgresql://saga@127.0.0.1:5433/saga_agency_relay_demo?schema=public";
+
+process.env.DATABASE_URL = TEST_DATABASE_URL;
+process.env.POSTGRES_URL_NON_POOLING = TEST_DATABASE_URL;
+
+async function withFreshDb<T>(fn: (db: PrismaClient) => Promise<T>): Promise<T> {
+  const db = new PrismaClient({ datasourceUrl: TEST_DATABASE_URL });
+  try {
+    // Clear any prior composites; leave non-composite Persons alone.
+    await db.creatorProfile.deleteMany({
+      where: { displayName: { endsWith: COMPOSITE_NAME_SUFFIX } },
+    });
+    await db.person.deleteMany({
+      where: { source: "DEMO_COMPOSITE" },
+    });
+    return await fn(db);
+  } finally {
+    await db.$disconnect();
+  }
+}
+
+test("seedCreatorPool creates the full SEEDS set on first run", async () => {
+  await withFreshDb(async (db) => {
+    const result = await seedCreatorPool(db);
+    assert.equal(result.created, SEEDS.length);
+    assert.equal(result.updated, 0);
+
+    const personCount = await db.person.count({
+      where: { source: "DEMO_COMPOSITE" },
+    });
+    assert.equal(personCount, SEEDS.length);
+  });
+});
+
+test("seedCreatorPool is idempotent — second run only updates, never duplicates", async () => {
+  await withFreshDb(async (db) => {
+    await seedCreatorPool(db);
+    const second = await seedCreatorPool(db);
+    assert.equal(second.created, 0);
+    assert.equal(second.updated, SEEDS.length);
+
+    const personCount = await db.person.count({
+      where: { source: "DEMO_COMPOSITE" },
+    });
+    assert.equal(
+      personCount,
+      SEEDS.length,
+      "second run must not create duplicate Person rows",
+    );
+  });
+});
+
+test("seedCreatorPool marks every Person as DEMO_COMPOSITE with no contactable fields", async () => {
+  await withFreshDb(async (db) => {
+    await seedCreatorPool(db);
+    const composites = await db.person.findMany({
+      where: { source: "DEMO_COMPOSITE" },
+    });
+    for (const person of composites) {
+      // Honesty contract: composites must carry the explicit source tag
+      // and must never carry contact fields. The kill switch is the
+      // second line of defense; no contact data on the row is the first.
+      assert.equal(person.source, "DEMO_COMPOSITE");
+      assert.equal(person.phone, null);
+      assert.equal(person.email, null);
+    }
+  });
+});
+
+test("seedCreatorPool covers the role-types the producer's role map emits", async () => {
+  // The producer generates a deterministic role map with Production Lead
+  // as the required role plus a per-brief mix of photographer / DJ /
+  // videographer / host / illustrator etc. The seed pool must cover
+  // every role the producer can suggest so a generated crew always has
+  // at least one candidate per slot to score against.
+  await withFreshDb(async (db) => {
+    await seedCreatorPool(db);
+    const profiles = await db.creatorProfile.findMany({
+      where: { displayName: { endsWith: COMPOSITE_NAME_SUFFIX } },
+    });
+    const coveredRoles = new Set<string>();
+    for (const profile of profiles) {
+      for (const role of profile.roles) coveredRoles.add(role);
+    }
+
+    // Critical: production lead is the always-required role
+    const expectedRoles = [
+      "production lead",
+      "photographer",
+      "videographer",
+      "dj",
+      "host",
+      "illustrator",
+      "venue",
+      "volunteer coordinator",
+    ];
+    for (const role of expectedRoles) {
+      assert.ok(
+        coveredRoles.has(role),
+        `seed pool missing producer role "${role}"`,
+      );
+    }
+  });
+});
+
+test("seedCreatorPool spreads composites across the cities the producer can infer", async () => {
+  await withFreshDb(async (db) => {
+    await seedCreatorPool(db);
+    const profiles = await db.creatorProfile.findMany({
+      where: { displayName: { endsWith: COMPOSITE_NAME_SUFFIX } },
+      select: { city: true },
+    });
+    const cities = new Set(profiles.map((p) => p.city).filter(Boolean));
+    // The producer's `inferCity` recognises LA, NYC, Brooklyn, Atlanta,
+    // and Chicago directly. The seed pool should have at least one
+    // composite in each of those markets so a brief in any of them
+    // gets a same-city match (which the location-fit scorer rewards).
+    for (const expected of [
+      "Los Angeles",
+      "New York",
+      "Brooklyn",
+      "Atlanta",
+      "Chicago",
+    ]) {
+      assert.ok(
+        cities.has(expected),
+        `seed pool missing city "${expected}"`,
+      );
+    }
+  });
+});
+
+test("seeded composites surface as candidates when the producer runs on a fresh brief", async () => {
+  // Integration: this is the whole point of the seed. Without seed
+  // composites, a chat-created project at /crew shows "real roles,
+  // 0 candidates". With seeds, every role generated by the producer
+  // should have at least one scored candidate.
+  await withFreshDb(async (db) => {
+    await seedCreatorPool(db);
+
+    const { upsertProjectFromBrief } = await import(
+      "@/lib/projectBriefUpsert"
+    );
+    const { generateCrewForProject } = await import(
+      "@/lib/projectCrewGeneration"
+    );
+
+    const session = await db.webSession.create({ data: {} });
+    const upsert = await upsertProjectFromBrief({
+      sessionId: session.id,
+      persona: "host",
+      organizerFields: {
+        projectIdea: "Formal ball inspired by Love and Deepspace",
+        locationMarket: "Los Angeles",
+        timing: "July",
+        scopeFormat: "ball",
+        themeVibe: "romantic, elegant, space-inspired",
+        expectedAttendance: "150 people",
+        lineupStatus: "one photographer friend",
+        helpNeeded: "find a producer, stylist, venue lead, and performers",
+        budget: "$15k",
+        budgetStatus: null,
+        inspirationStatus: "provided" as const,
+        inspirationReferences: ["Love and Deepspace"],
+        userRole: null,
+        userIdentity: null,
+        organization: null,
+        socials: [],
+        audience: null,
+        ticketingModel: null,
+        safetyFlags: [],
+        urgency: null,
+        desiredTalentRoles: ["Producer", "Stylist", "Venue Lead", "Performer"],
+      },
+    });
+    assert.ok(upsert.projectId);
+
+    const result = await generateCrewForProject(upsert.projectId!);
+    assert.ok(
+      result.candidatesCreated && result.candidatesCreated > 0,
+      `expected seeded composites to score onto roles, got ${JSON.stringify(result)}`,
+    );
+
+    // Every recommendation must point at a DEMO_COMPOSITE Person.
+    const recs = await db.candidateRecommendation.findMany({
+      include: { person: { select: { source: true } } },
+    });
+    assert.ok(recs.length > 0);
+    for (const rec of recs) {
+      assert.equal(rec.person.source, "DEMO_COMPOSITE");
+    }
+  });
+});
