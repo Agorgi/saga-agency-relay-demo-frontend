@@ -15,6 +15,7 @@ process.env.POSTGRES_URL_NON_POOLING = TEST_DATABASE_URL;
 async function withFreshDb<T>(fn: (db: PrismaClient) => Promise<T>): Promise<T> {
   const db = new PrismaClient({ datasourceUrl: TEST_DATABASE_URL });
   try {
+    await db.outboundDraft.deleteMany();
     await db.candidateRecommendation.deleteMany();
     await db.opportunity.deleteMany();
     await db.roleOpening.deleteMany();
@@ -202,5 +203,37 @@ test("once journey is past crew_reviewing, further approves don't try to advance
     assert.equal(result?.journeyAdvanced, false);
     const journey = await getOrCreateJourney(ctx.projectId);
     assert.equal(journey.step, "outreach_prep");
+  });
+});
+
+test("approving the last candidate generates CANDIDATE_OUTREACH OutboundDraft rows", async () => {
+  await withFreshDb(async (db) => {
+    const ctx = await setupProjectWithRolesAndCandidates(db);
+
+    // Approve producer → still crew_reviewing → no drafts yet.
+    await reviewCandidate({ candidateId: ctx.producerRec.id, action: "approve" });
+    const draftsAfterFirst = await db.outboundDraft.count({
+      where: { projectId: ctx.projectId, type: "CANDIDATE_OUTREACH" },
+    });
+    assert.equal(draftsAfterFirst, 0);
+
+    // Approve stylist → journey advances to outreach_prep, drafts kick off.
+    await reviewCandidate({ candidateId: ctx.stylistRec.id, action: "approve" });
+
+    const drafts = await db.outboundDraft.findMany({
+      where: { projectId: ctx.projectId, type: "CANDIDATE_OUTREACH" },
+      orderBy: [{ createdAt: "asc" }],
+    });
+    // One draft per APPROVED_FOR_SHORTLIST recommendation. Both
+    // recommendations are approved, so 2 drafts.
+    assert.equal(drafts.length, 2);
+    for (const draft of drafts) {
+      assert.equal(draft.projectId, ctx.projectId);
+      assert.equal(draft.type, "CANDIDATE_OUTREACH");
+      // Producer agent assigns NEEDS_REVIEW or BLOCKED — never SENT or
+      // APPROVED out of the gate.
+      assert.notEqual(draft.status, "SENT");
+      assert.notEqual(draft.status, "APPROVED");
+    }
   });
 });

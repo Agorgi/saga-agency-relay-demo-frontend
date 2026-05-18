@@ -530,12 +530,31 @@ export async function generateCandidateOutreachDraftsForProjectBrief(
     );
   }
 
+  return generateCandidateOutreachDraftsForProject(project.id);
+}
+
+/**
+ * Sibling of generateCandidateOutreachDraftsForProjectBrief that accepts
+ * a Project id directly. New tracer-flow Projects (created via
+ * upsertProjectFromBrief) don't always have a legacyProjectBriefId, so
+ * this is the path the journey/candidate-review code uses to kick off
+ * draft generation when transitioning to outreach_prep.
+ *
+ * Behaviour is identical to the project-brief variant: reads every
+ * APPROVED_FOR_SHORTLIST recommendation under the project, runs them
+ * through the quality gate, and upserts an OutboundDraft per
+ * candidate. Idempotent: re-running re-resolves drafts in place rather
+ * than duplicating.
+ */
+export async function generateCandidateOutreachDraftsForProject(
+  projectId: string,
+) {
   const recommendations = await getDb().candidateRecommendation.findMany({
     where: {
       status: "APPROVED_FOR_SHORTLIST",
       opportunity: {
         roleOpening: {
-          projectId: project.id,
+          projectId,
         },
       },
     },

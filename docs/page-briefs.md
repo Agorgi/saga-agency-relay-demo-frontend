@@ -173,6 +173,50 @@ At least one approved candidate for this role. Confidence in why those candidate
 
 ---
 
+## Page: Outreach review
+**URL:** `/projects/[id]/outreach`
+
+### What it is
+The fifth and final tracer page. Saga has drafted an outreach message for every approved candidate. The user reads the drafts, then approves the batch. Approval queues the drafts for sending — but sending itself is held until Saga's A2P approval lands. The page is honest about that wait.
+
+### Who uses it
+The user has approved at least one candidate per core role on the crew page. They came here either via the journey CTA on the crew page ("Review outreach drafts") or by clicking the page-level CTA on the brief page.
+
+### What they do here
+Read each draft. Confirm the tone is what they'd send. Approve all. The page never sends anything — sending is a separate, gated step that happens elsewhere (and isn't reachable today).
+
+### What they leave with
+A queue of approved outreach drafts. Confidence that nothing has been or will be sent without explicit human approval after this page.
+
+### Core components (top-to-bottom)
+- **Back link.** "Back to crew" — top-left.
+- **Project snapshot bar.** Same compressed brief facts as the crew page.
+- **Persistent honesty disclaimer.** "Nothing has been sent. Saga prepares the messages; a human approves and a human delivers." Always visible, never collapsed.
+- **Draft cards.** One card per approved candidate. Each card has:
+  - Candidate name + role tag
+  - One-sentence match rationale (from the candidate's `matchingReasons` — same producer voice as the crew page)
+  - Message body — full text, plain-formatted, no truncation
+  - Status pill: "Draft — awaiting your review" / "Approved · send is gated" / (never "sent" since send is unreachable)
+  - "not contacted · not confirmed" badge
+- **Page-level primary action.** "Approve all drafts" when at outreach_prep. After approval, the button switches to the journey-driven "Send outreach" CTA, which is disabled with a blocked-reason line: "Outreach is held until A2P approval and the Twilio kill switch are lifted."
+
+### What's NOT on this page
+- Per-draft edit-in-place (deferred — v1 is read-and-approve-all)
+- Per-draft approve/reject buttons (batch approval only)
+- "Send now" affordance (sending is gated; the page never offers a path to bypass)
+- SMS / phone numbers (admin-only and gated)
+- Sent confirmations / delivery receipts (sending hasn't happened)
+- Reply preview or thread view (post-tracer)
+
+### Tone
+The disclaimer copy is direct, not legalistic. "Nothing has been sent." not "Saga makes no representations regarding the delivery state of any communication." The draft cards are the producer's voice — same register the candidate review page uses.
+
+### What the page contract enforces
+- `outreachStatus` on each draft is type-pinned to one of four values; "sent" is structurally unreachable today.
+- The page primary action is driven by `journey.primaryAction` — when at `outreach_awaiting_send`, the CTA is disabled with a `blockedReason` and the page renders that verbatim. The page never builds its own "send" affordance.
+
+---
+
 # Cosmetic-pass pages
 
 These pages exist and stay roughly as they are. The cosmetic pass strips them to essentials and unifies them under the design tokens. **No behavior changes.** No new features. The goal is consistency, not redesign.
