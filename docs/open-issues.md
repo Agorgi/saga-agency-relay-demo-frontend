@@ -87,6 +87,17 @@ Clicking "Discover" before persona is classified does nothing. Nav labels that c
 ### P2-OI-24 — "Got it. I tuned that into your event feed setup" served for 4 distinct fan-classified prompts
 **Fix:** Vary the acknowledgment by intent.
 
+### P2-OI-37 — Vercel preview environment has no DATABASE_URL, so PR previews can't exercise DB-dependent code paths
+**Symptom:** PR #34's Cowork re-test couldn't validate the chat→outreach tracer end-to-end because `bindNextStepToProject` (PR #35) requires a successful `upsertProjectFromBrief` write, and there's no DB on preview. Cowork verified the fix code is in the deployed bundle but couldn't observe the rewrite firing.
+
+**Root cause:** the Neon Storage integration scopes `DATABASE_URL` / `POSTGRES_URL_NON_POOLING` to Production only. The integration owns those vars (badged with the Neon icon), so Vercel's per-variable "add Preview scope" toggle doesn't appear on them — the scope is controlled inside the Neon↔Vercel integration settings, which requires Neon dashboard login to edit.
+
+**Workarounds for now:**
+- Verify DB-dependent flows on production after merge (the path used for PR #34).
+- For PR-specific testing, run the branch locally with a dev Neon connection string.
+
+**Real fix:** sign into https://console.neon.tech → the Saga project → Integrations → Vercel → add "Preview" to the environment-scope multi-select. Or: manually create Preview-only override env vars on Vercel by copying values from the integration-managed rows (Cowork can do this once you give explicit OK to reveal the values). After either change, redeploy PR previews and the DB-dependent code paths will exercise.
+
 ---
 
 ## P3 — Open
