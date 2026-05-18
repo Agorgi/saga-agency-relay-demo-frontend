@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  bindNextStepToProject,
   buildNextStepHref,
   clearPendingNextStep,
   decodePrefillPayload,
+  getPersonaFromNextStep,
   persistPendingNextStep,
   readPendingNextStep,
   sanitizeNextStepPayload,
+  type WebChatNextStep,
 } from "@/lib/webChatNextStep";
 
 function installWindowStorageMock() {
@@ -128,4 +131,101 @@ test("pending next-step handoff survives navigation state", () => {
   } finally {
     teardown();
   }
+});
+
+test("bindNextStepToProject rewrites /projects/new to /projects/<id> when projectId is present", () => {
+  const projectId = "cm0abc123def456ghi789jkl";
+  const before: WebChatNextStep = {
+    label: "Review brief",
+    route: "/projects/new",
+    prefill: { city: "Los Angeles", projectIdea: "Anime pop-up" },
+  };
+  const after = bindNextStepToProject(before, projectId);
+  assert.equal(after?.route, `/projects/${projectId}`);
+  assert.equal(after?.label, "Review brief");
+  // Prefill is stripped — the brief review page reads from the DB,
+  // not from URL params.
+  assert.deepEqual(after?.prefill, {});
+});
+
+test("bindNextStepToProject is a no-op when projectId is null", () => {
+  const before: WebChatNextStep = {
+    label: "Review brief",
+    route: "/projects/new",
+    prefill: { city: "Los Angeles" },
+  };
+  const after = bindNextStepToProject(before, null);
+  assert.equal(after, before);
+});
+
+test("bindNextStepToProject is a no-op when nextStep is null", () => {
+  const after = bindNextStepToProject(null, "cm0abc123def456ghi789jkl");
+  assert.equal(after, null);
+});
+
+test("bindNextStepToProject is a no-op when route is not /projects/new", () => {
+  const meStep: WebChatNextStep = {
+    label: "Open my profile",
+    route: "/me",
+    prefill: { city: "Los Angeles" },
+  };
+  const exploreStep: WebChatNextStep = {
+    label: "Browse talent",
+    route: "/explore",
+    prefill: { city: "Los Angeles" },
+  };
+  const meResult = bindNextStepToProject(meStep, "cm0xyz");
+  const exploreResult = bindNextStepToProject(exploreStep, "cm0xyz");
+  assert.ok(meResult);
+  assert.ok(exploreResult);
+  assert.equal(meResult?.route, "/me");
+  assert.equal(exploreResult?.route, "/explore");
+});
+
+test("bindNextStepToProject is idempotent — already-bound routes pass through unchanged", () => {
+  const already: WebChatNextStep = {
+    label: "Review brief",
+    route: "/projects/cm0abc123def456ghi789jkl",
+    prefill: {},
+  };
+  const result = bindNextStepToProject(already, "cm0newproject");
+  // Route is NOT /projects/new, so it doesn't get rewritten — even
+  // if the caller passes a different projectId.
+  assert.equal(result?.route, "/projects/cm0abc123def456ghi789jkl");
+});
+
+test("bindNextStepToProject output still validates against the next-step schema", () => {
+  const before: WebChatNextStep = {
+    label: "Review brief",
+    route: "/projects/new",
+    prefill: { city: "LA", projectIdea: "Anime pop-up" },
+  };
+  const after = bindNextStepToProject(before, "cm0abc123def456ghi789jkl");
+  // The cuid form (string-matching-regex variant of the route union)
+  // must round-trip through sanitizeNextStepPayload without being
+  // rejected.
+  const sanitized = sanitizeNextStepPayload(after);
+  assert.ok(sanitized);
+  assert.equal(sanitized?.route, "/projects/cm0abc123def456ghi789jkl");
+});
+
+test("getPersonaFromNextStep returns 'host' for the bound /projects/<id> route", () => {
+  // Before this PR, getPersonaFromNextStep only recognised
+  // /projects/new as a host route. /projects/<cuid> got null, which
+  // broke top-nav persona chips after the rewrite. The check is
+  // now prefix-based.
+  const bound: WebChatNextStep = {
+    label: "Review brief",
+    route: "/projects/cm0abc123def456ghi789jkl",
+    prefill: {},
+  };
+  assert.equal(getPersonaFromNextStep(bound), "host");
+
+  // The original /projects/new still maps to host.
+  const newStep: WebChatNextStep = {
+    label: "Review brief",
+    route: "/projects/new",
+    prefill: {},
+  };
+  assert.equal(getPersonaFromNextStep(newStep), "host");
 });

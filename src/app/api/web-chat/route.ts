@@ -31,6 +31,7 @@ import {
 import { upsertProjectFromBrief } from "@/lib/projectBriefUpsert";
 import type { ProjectJourney } from "@/lib/journey/types";
 import { captureServerError } from "@/lib/observability";
+import { bindNextStepToProject } from "@/lib/webChatNextStep";
 
 type ReplyMode = "autonomous" | "holding";
 
@@ -304,6 +305,11 @@ export async function POST(req: NextRequest) {
         extractedFields: holdingReply.extractedFields,
       });
 
+      // Once persistence has a real Project id, rewrite the chat
+      // CTA from /projects/new to /projects/<id> so the "Review brief"
+      // button lands on the server-rendered brief page.
+      const boundNextStep = bindNextStepToProject(holdingReply.nextStep, projectId);
+
       return successResponse({
         conversationId,
         persona,
@@ -311,7 +317,7 @@ export async function POST(req: NextRequest) {
         turn,
         mode: "holding",
         sessionCookieValue,
-        nextStep: holdingReply.nextStep,
+        nextStep: boundNextStep,
         projectId,
         journey,
       });
@@ -377,6 +383,10 @@ export async function POST(req: NextRequest) {
       extractedFields: result.data.extractedFields,
     });
 
+    // Bind /projects/new → /projects/<projectId> when persistence succeeded.
+    // See bindNextStepToProject contract.
+    const boundNextStep = bindNextStepToProject(result.data.nextStep, projectId);
+
     return successResponse({
       conversationId,
       persona: result.data.persona,
@@ -384,7 +394,7 @@ export async function POST(req: NextRequest) {
       turn,
       mode: replyMode,
       sessionCookieValue,
-      nextStep: result.data.nextStep,
+      nextStep: boundNextStep,
       projectId,
       journey,
     });

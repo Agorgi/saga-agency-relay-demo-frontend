@@ -101,12 +101,16 @@ test("web chat POST returns an autonomous mock reply in mock mode", async () => 
     reply: string;
     mode: string;
     nextStep?: { route?: string };
+    projectId?: string | null;
   };
 
   assert.equal(response.status, 200);
   assert.equal(data.mode, "autonomous");
   assert.ok(data.reply.length > 0);
-  assert.equal(data.nextStep?.route, "/projects/new");
+  // The before-each hook configures DATABASE_URL, so persistence
+  // succeeds and bindNextStepToProject rewrites /projects/new →
+  // /projects/<cuid>.
+  assert.match(data.nextStep?.route || "", /^\/projects\/[a-z0-9]{8,}$/);
 });
 
 test("persona chips pass structured hints through the route", async () => {
@@ -297,11 +301,13 @@ test("web chat POST hits OpenAI in live mode when a key is present", async () =>
       reply: string;
       mode: string;
       nextStep?: { route?: string };
+      projectId?: string | null;
     };
 
     assert.equal(response.status, 200);
     assert.equal(data.mode, "autonomous");
-    assert.equal(data.nextStep?.route, "/projects/new");
+    // DB present → bindNextStepToProject rewrites /projects/new → /projects/<cuid>
+    assert.match(data.nextStep?.route || "", /^\/projects\/[a-z0-9]{8,}$/);
     assert.match(data.reply, /event draft/i);
     assert.equal(requestCount, 1);
     assert.match(receivedBody, /Reply with Sagasan's next message/);
@@ -374,14 +380,20 @@ test("holding mode keeps the next-step handoff when the brief is routeable", asy
 
   const data = (await response.json()) as {
     mode: string;
-    nextStep?: { route?: string; prefill?: { city?: string; projectIdea?: string } };
+    nextStep?: { route?: string; prefill?: Record<string, string | string[]> };
+    projectId?: string | null;
   };
 
   assert.equal(response.status, 200);
   assert.equal(data.mode, "holding");
-  assert.equal(data.nextStep?.route, "/projects/new");
-  assert.equal(data.nextStep?.prefill?.city, "Los Angeles");
-  assert.match(data.nextStep?.prefill?.projectIdea || "", /formal ball/i);
+  // With a DB present, persistence succeeds and bindNextStepToProject
+  // rewrites /projects/new → /projects/<cuid>. Prefill is stripped
+  // because the brief review page reads from the Project row, not
+  // from URL params.
+  assert.ok(data.projectId, "persistence should yield a projectId");
+  assert.equal(data.nextStep?.route, `/projects/${data.projectId}`);
+  assert.match(data.nextStep?.route || "", /^\/projects\/[a-z0-9]{8,}$/);
+  assert.deepEqual(data.nextStep?.prefill, {});
 });
 
 test("production-like legacy DB mode still returns reply and nextStep", async () => {
@@ -402,19 +414,60 @@ test("production-like legacy DB mode still returns reply and nextStep", async ()
   const data = (await response.json()) as {
     reply: string;
     mode: string;
-    nextStep?: { route?: string; prefill?: { city?: string } };
+    nextStep?: { route?: string; prefill?: Record<string, string | string[]> };
+    projectId?: string | null;
   };
 
   assert.equal(response.status, 200);
   assert.equal(data.mode, "autonomous");
   assert.match(data.reply, /partial brief|production plan|crew search/i);
-  assert.equal(data.nextStep?.route, "/projects/new");
-  assert.equal(data.nextStep?.prefill?.city, "Los Angeles");
+  // Legacy DB mode still drives upsertProjectFromBrief → projectId
+  // → bindNextStepToProject rewrite. Route lands on the cuid form.
+  assert.ok(data.projectId, "legacy DB path should still persist a Project");
+  assert.equal(data.nextStep?.route, `/projects/${data.projectId}`);
+  assert.match(data.nextStep?.route || "", /^\/projects\/[a-z0-9]{8,}$/);
+  assert.deepEqual(data.nextStep?.prefill, {});
 
   const assistantMessage = await readLatestAssistantMessage();
   assert.ok(assistantMessage);
   assert.equal(assistantMessage?.role, "assistant");
   assert.equal(assistantMessage?.content.length > 0, true);
+});
+
+test("web chat persistence regression — nextStep route uses the persisted projectId, not /projects/new", async () => {
+  // Locks in the Cowork-reported regression fix from PR #34's QA pass:
+  // before this fix the chat CTA still pointed at /projects/new, which
+  // 404'd the entire downstream tracer (/crew, /outreach). The
+  // bindNextStepToProject helper rewrites the route to /projects/<id>
+  // once persistence succeeds. This test would have caught the
+  // missing rewrite immediately.
+  process.env.DATABASE_URL = TEST_DATABASE_URL;
+  process.env.POSTGRES_URL_NON_POOLING = TEST_DATABASE_URL;
+  process.env.LLM_MODE = "mock_active";
+  process.env.OPENAI_API_KEY = "";
+  process.env.WEB_CHAT_AUTONOMOUS_RESPONSES_ENABLED = "true";
+
+  const response = await POST(
+    createRequest({
+      message:
+        "I want to throw a formal ball inspired by Love and Deepspace in Los Angeles in July. Probably 150 people. I don't have a venue yet. I have one photographer friend but no production crew. Budget is maybe $15k. Here's a Pinterest board. I want Saga to help find a producer, stylist, venue lead, and maybe performers.",
+      persona: "host",
+    }),
+  );
+
+  const data = (await response.json()) as {
+    nextStep?: { route?: string; prefill?: Record<string, string | string[]> };
+    projectId?: string | null;
+  };
+
+  // The fix the regression demanded:
+  assert.ok(data.projectId, "host brief should persist and return projectId");
+  assert.notEqual(data.nextStep?.route, "/projects/new");
+  assert.equal(data.nextStep?.route, `/projects/${data.projectId}`);
+  // Cuid form — at least 8 base36 chars after /projects/. (The real
+  // cuid is 25 chars; the regex is loose enough to survive cuid2
+  // length changes.)
+  assert.match(data.nextStep?.route || "", /^\/projects\/[a-z0-9]{8,}$/);
 });
 
 test("legacy GET session payload keeps assistant content even when metadata columns are unavailable", async () => {

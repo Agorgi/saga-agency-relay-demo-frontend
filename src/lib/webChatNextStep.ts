@@ -298,7 +298,10 @@ export function getPersonaFromNextStep(nextStep: WebChatNextStep | null | undefi
     return null;
   }
 
-  if (nextStep.route === "/projects/new") {
+  // /projects/<anything> is the host surface (intake → brief review →
+  // crew → outreach). The cuid form is what bindNextStepToProject
+  // rewrites the default /projects/new to once the brief persists.
+  if (nextStep.route.startsWith("/projects/")) {
     return "host";
   }
 
@@ -315,4 +318,42 @@ export function getPersonaFromNextStep(nextStep: WebChatNextStep | null | undefi
   }
 
   return null;
+}
+
+/**
+ * Rewrite a chat nextStep so the user lands on a real Project page
+ * after the brief persists.
+ *
+ * Sagasan composes replies with `nextStep.route = "/projects/new"` by
+ * default — that's the right destination before persistence happens.
+ * Once the web-chat API has called `upsertProjectFromBrief` and gotten
+ * a real `projectId` back, this helper rewrites the route to
+ * `/projects/<projectId>` so the "Review brief" CTA opens the
+ * server-rendered brief view, not the form. Prefill is stripped:
+ * `/projects/[id]` is a server-rendered surface that reads from the
+ * Project row, not from URL params.
+ *
+ * No-op when:
+ * - nextStep is null/undefined
+ * - projectId is null
+ * - the route is anything other than `/projects/new`
+ *
+ * Idempotent: passing a nextStep that's already on `/projects/<cuid>`
+ * returns it unchanged.
+ */
+export function bindNextStepToProject(
+  nextStep: WebChatNextStep | null | undefined,
+  projectId: string | null,
+): WebChatNextStep | null | undefined {
+  if (!nextStep || !projectId) {
+    return nextStep;
+  }
+  if (nextStep.route !== "/projects/new") {
+    return nextStep;
+  }
+  return {
+    ...nextStep,
+    route: `/projects/${projectId}`,
+    prefill: {},
+  };
 }
