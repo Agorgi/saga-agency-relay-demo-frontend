@@ -658,6 +658,139 @@ test("live reply uses the provided OpenAI call and preserves nextStep", async ()
   assert.equal(result.data.nextStep?.label, "Open my profile");
 });
 
+test("Layer B (LLM mode) host prompt carries the user's actual phrases as captured-brief context", async () => {
+  // When a host has been giving brief context across turns, the LLM
+  // prompt for the next reply should include those captured values
+  // verbatim so the model can reflect them in user-voice rather than
+  // category-label voice. This is the Layer B contract in LLM mode.
+  let capturedPrompt = "";
+  let capturedInstructions = "";
+
+  const history = [
+    {
+      role: "user" as const,
+      content:
+        "I want to throw a formal ball inspired by Love and Deepspace in LA in July",
+    },
+    {
+      role: "assistant" as const,
+      content: "Got it — a formal ball, in LA, in July. What's the rest?",
+    },
+  ];
+
+  await generateAgentReply({
+    persona: "host",
+    history,
+    latestMessage:
+      "Probably 150 people. Romantic, elegant, space-inspired. Budget is around $15k.",
+    mode: "active_live",
+    apiKey: "test-key",
+    liveStructuredCall: async (input) => {
+      capturedPrompt = input.prompt;
+      capturedInstructions = input.instructions;
+      return {
+        ok: true,
+        responseId: "resp_layer_b_test",
+        data: {
+          message:
+            "Formal ball, LA, July, 150 people, romantic and elegant — that's enough for a brief. I'll sketch it on your project page.",
+          nextStep: null,
+        },
+      };
+    },
+  });
+
+  // System prompt carries Layer B rules.
+  assert.match(
+    capturedInstructions,
+    /use the user's own words/i,
+    "system prompt should instruct LLM to use user's own words",
+  );
+  assert.match(
+    capturedInstructions,
+    /cultural object|recognizable cultural/i,
+    "system prompt should mention cultural-reference anchoring",
+  );
+  assert.match(
+    capturedInstructions,
+    /Vary your openers/i,
+    "system prompt should discourage repeated 'Got it' openers",
+  );
+
+  // User prompt carries a Captured-brief context block with the
+  // user's own values.
+  assert.match(
+    capturedPrompt,
+    /Captured brief so far/i,
+    "user prompt should include the captured-brief block",
+  );
+  assert.match(capturedPrompt, /formal ball/i);
+  assert.match(capturedPrompt, /Love and Deepspace/i);
+  assert.match(capturedPrompt, /Los Angeles|LA/);
+  assert.match(capturedPrompt, /July/);
+  assert.match(capturedPrompt, /150 people/);
+  assert.match(capturedPrompt, /\$15k/);
+  assert.match(capturedPrompt, /romantic/i);
+});
+
+test("Layer B host prompt omits the captured-brief block when nothing is captured yet", async () => {
+  // First-turn behavior: don't bloat the prompt with empty category
+  // labels. The captured-brief block only appears when there's
+  // something to reflect.
+  let capturedPrompt = "";
+
+  await generateAgentReply({
+    persona: "host",
+    history: [],
+    latestMessage: "hey",
+    mode: "active_live",
+    apiKey: "test-key",
+    liveStructuredCall: async (input) => {
+      capturedPrompt = input.prompt;
+      return {
+        ok: true,
+        responseId: "resp_first_turn",
+        data: { message: "What are you thinking of making?", nextStep: null },
+      };
+    },
+  });
+
+  assert.equal(
+    /Captured brief so far/i.test(capturedPrompt),
+    false,
+    "empty intake shouldn't pad the prompt with a captured-brief block",
+  );
+});
+
+test("Layer B host prompt omits the captured-brief block for non-host personas", async () => {
+  // Layer B is host-specific (the brief is the host's spine). Other
+  // personas have their own intake contracts and don't share the
+  // brief-context format.
+  let capturedPrompt = "";
+
+  await generateAgentReply({
+    persona: "creative",
+    history: [],
+    latestMessage: "I'm a photographer in LA looking for anime event gigs.",
+    mode: "active_live",
+    apiKey: "test-key",
+    liveStructuredCall: async (input) => {
+      capturedPrompt = input.prompt;
+      return {
+        ok: true,
+        responseId: "resp_creative",
+        data: { message: "Where can I see your work?", nextStep: null },
+      };
+    },
+  });
+
+  assert.equal(
+    /Captured brief so far/i.test(capturedPrompt),
+    false,
+    "creative persona shouldn't get the host-specific captured-brief block",
+  );
+});
+
 test("getConfiguredModel falls back to a real model when env var is a known-invalid string", () => {
   const original = process.env.OPENAI_MODEL;
   const originalWarn = console.warn;
