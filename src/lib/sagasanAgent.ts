@@ -72,6 +72,12 @@ export type AgentReply = {
   persona: Persona | null;
   extractedFields: StoredExtractedFields;
   diagnostics: AgentDiagnostics;
+  // PR #65: raw signals the LLM extracted from the user's latest
+  // message (only populated on the live LLM path; null/undefined for
+  // deterministic / mock-mode replies). The chat route in PR #67
+  // routes these into `upsertSessionIdentitySignals` so fandoms /
+  // interests captured by the LLM land on Person.
+  llmExtractedSignals?: LiveAgentExtractedSignals | null;
 };
 
 type OpenAiStructuredResult<T> =
@@ -115,9 +121,78 @@ const GENERIC_PERSONA_STARTERS = new Set(
   PERSONA_OPTIONS.map((option) => option.firstTurn.toLowerCase()),
 );
 
+/**
+ * LLM-extracted signals from the user's latest message (PR #65).
+ *
+ * The LLM is the brain. The deterministic regex layer (`buildMockAgentReply`)
+ * is the safety net that fills gaps when the LLM doesn't return a field
+ * or when the LLM is unavailable. Every field is `.nullable()` per
+ * OpenAI structured-output strict-mode rules — the API requires "all
+ * fields must be required, use null for absent values" rather than
+ * `.optional()`. See
+ * https://platform.openai.com/docs/guides/structured-outputs?api-mode=responses#all-fields-must-be-required
+ *
+ * Schema philosophy:
+ *   - Identity-graph signals (fandoms, interests, city) apply to every
+ *     persona and feed `Person.fandoms` / `Person.interests` from PR #63/64.
+ *   - Persona-specific fields populate the existing extractedFields
+ *     shape (StoredExtractedFields) which downstream surfaces already
+ *     read from — brief review, candidate review, /me, /spaces, /feed.
+ *   - `personaSignal` is advisory: the LLM can suggest a persona based
+ *     on what the user said, but application code still respects the
+ *     existing sticky-persona contract until we explicitly handle drift.
+ *
+ * Every field stays a primitive (string or string[]) so the schema stays
+ * legible to OpenAI's structured-output validator and survives Phase 2
+ * convergence into apps/app-server without changes.
+ */
+const liveAgentExtractedSignalsSchema = z.object({
+  // Advisory persona classification — surfaced for telemetry; doesn't
+  // override the sticky-persona contract today.
+  personaSignal: z
+    .enum(["host", "creative", "venue", "fan", "unknown"])
+    .nullable(),
+  // Identity-graph fields — every persona contributes to these.
+  fandoms: z.array(z.string()).nullable(),
+  interests: z.array(z.string()).nullable(),
+  city: z.string().nullable(),
+  // Host-persona brief signals.
+  projectIdea: z.string().nullable(),
+  timing: z.string().nullable(),
+  format: z.string().nullable(),
+  themeVibe: z.string().nullable(),
+  expectedAttendance: z.string().nullable(),
+  lineupStatus: z.string().nullable(),
+  helpNeeded: z.string().nullable(),
+  budget: z.string().nullable(),
+  desiredTalentRoles: z.array(z.string()).nullable(),
+  inspirationReferences: z.array(z.string()).nullable(),
+  // Creative-persona profile signals.
+  creativeRole: z.string().nullable(),
+  portfolioStatus: z.string().nullable(),
+  availability: z.string().nullable(),
+  rates: z.string().nullable(),
+  // Venue-persona profile signals.
+  venueType: z.string().nullable(),
+  venueCapacity: z.string().nullable(),
+  venueOpenDates: z.string().nullable(),
+  venueNeighborhood: z.string().nullable(),
+});
+
+export type LiveAgentExtractedSignals = z.infer<
+  typeof liveAgentExtractedSignalsSchema
+>;
+
 const liveAgentReplySchema = z.object({
   message: z.string().trim().min(1),
-  nextStep: z.unknown().nullable().optional(),
+  nextStep: z.unknown().nullable(),
+  // PR #65: the LLM returns structured signals it extracted from the
+  // user's latest message. Nullable (not optional) per OpenAI's
+  // strict-mode requirement. When the LLM returns null OR all fields
+  // inside are null, the deterministic regex extractor's output is
+  // used unchanged (the merge step in mergeLlmExtractedSignals
+  // tolerates both shapes).
+  extractedSignals: liveAgentExtractedSignalsSchema.nullable(),
 });
 
 const PERSONA_ROUTE_MAP: Record<Persona, string> = {
@@ -1709,6 +1784,103 @@ export async function preflightOpenAiModelAccess({
   }
 }
 
+/**
+ * Merge LLM-extracted signals on top of the deterministic regex
+ * baseline (PR #65). The LLM is the primary brain; regex is the
+ * safety net that fills gaps when the LLM doesn't return a field.
+ *
+ * Merge rules:
+ *   - Scalar fields (city, projectIdea, venueType, etc.) — LLM wins
+ *     when non-empty, else keep regex value. Trims whitespace; treats
+ *     empty string as "LLM didn't return this field" so empty strings
+ *     never overwrite a regex catch.
+ *   - Array fields (fandoms, interests, roles, etc.) — union with
+ *     case-insensitive dedup. Preserves the FIRST-seen capitalization
+ *     so "Love and Deepspace" wins over "love and deepspace" if
+ *     regex saw the canonical form first.
+ *
+ * `llmSignals` may be undefined or any subset of the schema — every
+ * field is independently optional. Passing `undefined` (which is the
+ * shape the OLD pre-PR-65 deployments returned) collapses to "regex
+ * alone," giving us a clean rollback path.
+ *
+ * Pure function — no I/O, no Prisma. Liftable.
+ */
+export function mergeLlmExtractedSignals(
+  regex: StoredExtractedFields,
+  llmSignals: LiveAgentExtractedSignals | null | undefined,
+): StoredExtractedFields {
+  if (!llmSignals) return regex;
+  return {
+    ...regex,
+    // Scalar fields — LLM trump-card.
+    city: pickScalar(llmSignals.city, regex.city),
+    projectIdea: pickScalar(llmSignals.projectIdea, regex.projectIdea),
+    venueType: pickScalar(llmSignals.venueType, regex.venueType),
+    scopeFormat: pickScalar(llmSignals.format, regex.scopeFormat),
+    themeVibe: pickScalar(llmSignals.themeVibe, regex.themeVibe),
+    audience: pickScalar(llmSignals.expectedAttendance, regex.audience),
+    lineupStatus: pickScalar(llmSignals.lineupStatus, regex.lineupStatus),
+    helpNeeded: pickScalar(llmSignals.helpNeeded, regex.helpNeeded),
+    budget: pickScalar(llmSignals.budget, regex.budget),
+    portfolio: pickScalar(llmSignals.portfolioStatus, regex.portfolio),
+    availability: pickScalar(llmSignals.availability, regex.availability),
+    rates: pickScalar(llmSignals.rates, regex.rates),
+    dateWindow: pickScalar(llmSignals.timing, regex.dateWindow),
+    neighborhood: pickScalar(llmSignals.venueNeighborhood, regex.neighborhood),
+    scale: pickScalar(llmSignals.venueCapacity, regex.scale),
+    // Array fields — union with case-insensitive dedup, regex first
+    // so its capitalization sticks when both saw the same item.
+    interests: unionArrays(regex.interests, llmSignals.interests),
+    desiredTalentRoles: unionArrays(
+      regex.desiredTalentRoles,
+      llmSignals.desiredTalentRoles,
+    ),
+    inspirationReferences: unionArrays(
+      regex.inspirationReferences,
+      llmSignals.inspirationReferences,
+    ),
+    roles: unionArrays(
+      regex.roles,
+      llmSignals.creativeRole ? [llmSignals.creativeRole] : undefined,
+    ),
+    // `fandoms` doesn't live on StoredExtractedFields (its destination
+    // is Person.fandoms via upsertSessionIdentitySignals — PR #67 wires
+    // the LLM-extracted fandoms into that pipeline). For now we leave
+    // StoredExtractedFields unchanged on the fandom axis; the LLM's
+    // fandoms ride along in extractedSignals on the agent reply and
+    // route.ts picks them up in PR #67.
+  };
+}
+
+function pickScalar(
+  llmValue: string | null | undefined,
+  regexValue: string | null,
+): string | null {
+  const trimmed = typeof llmValue === "string" ? llmValue.trim() : "";
+  if (trimmed) return trimmed;
+  return regexValue ?? null;
+}
+
+function unionArrays(
+  base: string[] | null | undefined,
+  incoming: string[] | null | undefined,
+): string[] {
+  const result: string[] = [];
+  const seen = new Set<string>();
+  for (const list of [base ?? [], incoming ?? []]) {
+    for (const item of list) {
+      const trimmed = item.trim();
+      if (!trimmed) continue;
+      const key = trimmed.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(trimmed);
+    }
+  }
+  return result;
+}
+
 export async function generateAgentReply({
   persona,
   history,
@@ -1823,11 +1995,22 @@ export async function generateAgentReply({
     };
   }
 
-  const extractedFields = extractStructuredFields({
+  // Run the deterministic extractor as a baseline. PR #65 inverts
+  // the original arrangement: the regex output is the SAFETY NET; the
+  // LLM's `extractedSignals` is the primary source. mergeLlmExtractedSignals
+  // prefers the LLM's value field-by-field, falling back to regex when
+  // the LLM didn't return a value for a given field. Array fields
+  // (fandoms, interests, roles, etc.) are union'd so we don't lose
+  // either side's catches.
+  const regexFields = extractStructuredFields({
     persona,
     history,
     latestMessage,
   });
+  const extractedFields = mergeLlmExtractedSignals(
+    regexFields,
+    response.data.extractedSignals,
+  );
   const sanitizedNextStep =
     sanitizeNextStepPayload(response.data.nextStep) ||
     deriveNextStep(persona, history, latestMessage);
@@ -1843,6 +2026,11 @@ export async function generateAgentReply({
         ...extractedFields,
         nextRoute: sanitizedNextStep?.route || extractedFields.nextRoute,
       },
+      // PR #65: surface the raw LLM-extracted signals so the chat
+      // route can route the fandoms / interests through
+      // `upsertSessionIdentitySignals` (PR #67) without re-parsing the
+      // user message. Undefined for the non-LLM paths.
+      llmExtractedSignals: response.data.extractedSignals,
       diagnostics: {
         operation: persona ? `sagasan_${persona}_intake` : "sagasan_router",
         selectedReplySource: "openai_selected",
