@@ -198,6 +198,40 @@ Application code (`upsertOutboundDraft`) catches P2002 and retries
 through the update branch, so the schema constraint never surfaces
 as a 500 to users.
 
+## WebSession TTL cleanup (recurring, after PR #61)
+
+PR #61 added `scripts/cleanup-web-sessions.ts` plus a framework-agnostic
+`cleanupStaleSessions` helper. It deletes `WebSession` rows whose
+`lastSeenAt` is older than the TTL (default 90 days, override via
+`WEB_SESSION_TTL_DAYS` env or `--ttl-days=N`) AND either carry no
+project link OR are bound to a project whose journey is at
+`archived`. WebChatMessage rows cascade away with the session via
+the existing `onDelete: Cascade`. Sessions with active projects
+(intake / brief_ready / crew_reviewing / outreach_*) are never
+touched.
+
+Defaults to **dry-run**. Pass `--apply` to actually delete. The
+audit log records every run (action `web_session.cleanup`).
+
+```bash
+# Dry-run (safe, just reports):
+DATABASE_URL="<neon-url>" POSTGRES_URL_NON_POOLING="<neon-direct-url>" \
+  npm run cleanup:web-sessions
+
+# Apply against staging Neon:
+DATABASE_URL="<neon-url>" POSTGRES_URL_NON_POOLING="<neon-direct-url>" \
+  npm run cleanup:web-sessions -- --apply
+
+# Custom TTL:
+npm run cleanup:web-sessions -- --apply --ttl-days=180
+```
+
+Recommended cadence: weekly during the design-partner phase, monthly
+once usage stabilises. A Vercel Cron Job is the natural place to
+wire it when the team is ready — see `vercel.json` (not yet
+created) or any external scheduler that can run `npm run
+cleanup:web-sessions -- --apply` with the Neon env vars set.
+
 ## Composite talent seed (one-time, after PR #51)
 
 PR #51 added the `DEMO_COMPOSITE` value to `PersonSource` (migration
