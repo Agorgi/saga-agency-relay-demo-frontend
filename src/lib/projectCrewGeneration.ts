@@ -125,7 +125,7 @@ export async function generateCrewForProject(
   //
   // De-duped case-insensitively against project fandoms so a fandom
   // mentioned in both places doesn't double-count.
-  const understanding = await enrichUnderstandingWithOwnerFandoms({
+  const { understanding, ownerOnlyFandoms } = await enrichUnderstandingWithOwnerFandoms({
     db,
     baseUnderstanding,
     organizerPersonId: project.organizerPersonId,
@@ -241,16 +241,17 @@ export async function generateCrewForProject(
     };
   }
 
-  // Score CreatorProfile pool against roles. Chat-created Projects don't
-  // set `organizerPersonId`, so proximity scoring falls back to UNKNOWN
-  // for all candidates — that's correct: we have no relationship-graph
-  // context for these projects today.
+  // Score CreatorProfile pool against roles. `ownerOnlyFandoms` is the
+  // subset of owner's `Person.fandoms` that's NOT in the brief — used
+  // by scoring (PR #69) to emit a distinct "Shared fandom with you"
+  // matching reason instead of blurring it into the brief-driven one.
   const candidatePool = await loadCreatorPool(project.organizerPersonId);
   const recommendations = recommendInternalCandidates(
     understanding,
     roleMap,
     sourcingPlan,
     candidatePool,
+    { ownerOnlyFandoms },
   );
 
   // Batch candidate persistence (PR #60). Previously this was a per-row
@@ -382,10 +383,16 @@ function buildUnderstandingForTracerProject(project: {
  * the project side (so the brief's "Love and Deepspace" stays
  * canonical even if the Person row has "love and deepspace").
  *
+ * Returns BOTH the enriched understanding AND the subset of owner
+ * fandoms that were NEW (didn't already exist on the brief). PR #69
+ * uses `ownerOnlyFandoms` to surface those as a distinct matching
+ * reason ("Shared fandom with you: X") rather than blurring them
+ * into the brief-driven "Fandom/community fit: X" line.
+ *
  * No-op when there's no `organizerPersonId` (legacy chat-created
  * projects pre-PR #68) or when the owner's Person has no fandoms.
  * Defensive: a DB error here must not break crew generation — log
- * and return the unenriched understanding.
+ * and return the unenriched understanding with empty owner list.
  */
 async function enrichUnderstandingWithOwnerFandoms({
   db,
@@ -395,8 +402,13 @@ async function enrichUnderstandingWithOwnerFandoms({
   db: PrismaClient;
   baseUnderstanding: ProjectUnderstanding;
   organizerPersonId: string | null;
-}): Promise<ProjectUnderstanding> {
-  if (!organizerPersonId) return baseUnderstanding;
+}): Promise<{
+  understanding: ProjectUnderstanding;
+  ownerOnlyFandoms: string[];
+}> {
+  if (!organizerPersonId) {
+    return { understanding: baseUnderstanding, ownerOnlyFandoms: [] };
+  }
 
   let ownerFandoms: string[] = [];
   try {
@@ -410,13 +422,16 @@ async function enrichUnderstandingWithOwnerFandoms({
       "[crew-generation] failed to read owner fandoms; continuing without identity-graph boost",
       error,
     );
-    return baseUnderstanding;
+    return { understanding: baseUnderstanding, ownerOnlyFandoms: [] };
   }
-  if (ownerFandoms.length === 0) return baseUnderstanding;
+  if (ownerFandoms.length === 0) {
+    return { understanding: baseUnderstanding, ownerOnlyFandoms: [] };
+  }
 
   const projectFandoms = baseUnderstanding.fandoms ?? [];
   const seen = new Set(projectFandoms.map((f) => f.toLowerCase()));
   const merged = [...projectFandoms];
+  const ownerOnlyFandoms: string[] = [];
   for (const fandom of ownerFandoms) {
     const trimmed = fandom.trim();
     if (!trimmed) continue;
@@ -424,8 +439,12 @@ async function enrichUnderstandingWithOwnerFandoms({
     if (seen.has(key)) continue;
     seen.add(key);
     merged.push(trimmed);
+    ownerOnlyFandoms.push(trimmed);
   }
-  return { ...baseUnderstanding, fandoms: merged };
+  return {
+    understanding: { ...baseUnderstanding, fandoms: merged },
+    ownerOnlyFandoms,
+  };
 }
 
 async function loadCreatorPool(

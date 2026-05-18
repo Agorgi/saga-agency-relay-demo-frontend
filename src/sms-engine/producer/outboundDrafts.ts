@@ -447,8 +447,12 @@ function pickReasonSentence(
 }
 
 function phraseFromReason(raw: string, role: string): string {
+  // PR #69 added "Shared fandom with you:" as a sibling of the existing
+  // "Fandom/community fit:" line. Both phrase identically in outreach
+  // copy — the brief-vs-owner distinction only matters for the
+  // admin/host-facing rationale, not for the candidate.
   const match = raw.match(
-    /^(Role match|Skill fit|Fandom\/community fit|Same city):\s*(.+)$/i,
+    /^(Role match|Skill fit|Fandom\/community fit|Shared fandom with you|Same city):\s*(.+)$/i,
   );
   if (!match) {
     return `Your ${raw.toLowerCase()} caught my eye for the ${role} slot.`;
@@ -466,7 +470,7 @@ function phraseFromReason(raw: string, role: string): string {
       .join(" and ");
     return `Your ${skills} experience felt like a fit for the ${role} slot.`;
   }
-  if (/fandom/i.test(label)) {
+  if (/fandom/i.test(label) || /shared fandom/i.test(label)) {
     return `Your ${value} background felt like a fit for the ${role} slot.`;
   }
   if (/same city/i.test(label)) {

@@ -106,6 +106,28 @@ test("composeCandidateOutreachBody drops the duplicate fandom reason when the sa
   );
 });
 
+test("composeCandidateOutreachBody phrases 'Shared fandom with you' the same as 'Fandom/community fit' (PR #69)", () => {
+  // The brief-vs-owner distinction only matters for the host's
+  // rationale UI; the candidate-facing outreach body should phrase
+  // both the same way. Plus the anchor de-dup must still fire so the
+  // fandom isn't mentioned twice.
+  const body = composeCandidateOutreachBody(
+    approvedInput({
+      projectFandoms: ["Genshin Impact"],
+      candidateFandoms: ["Genshin Impact"],
+      matchingReasons: ["Shared fandom with you: Genshin Impact"],
+    }),
+  );
+  const occurrences = body.match(/Genshin Impact/g) ?? [];
+  assert.equal(
+    occurrences.length,
+    1,
+    `expected one mention of Genshin Impact, got ${occurrences.length} in: ${body}`,
+  );
+  // Body must not leak the internal-facing prefix.
+  assert.doesNotMatch(body, /Shared fandom with you/);
+});
+
 test("composeCandidateOutreachBody picks a skill-fit reason when there's no fandom overlap", () => {
   const body = composeCandidateOutreachBody(
     approvedInput({

@@ -464,6 +464,18 @@ test("generateCrewForProject pulls owner's Person.fandoms into understanding (PR
       mayaTop > jordanTop,
       `Maya (shares owner's Genshin Impact fandom) should outscore Jordan (no overlap). Got Maya=${mayaTop}, Jordan=${jordanTop}.`,
     );
+
+    // PR #69: Maya's matchingReasons should label the Genshin Impact
+    // overlap as a "Shared fandom with you" line (owner-driven), not
+    // a generic "Fandom/community fit" line. This is the visible
+    // rationale story the host sees in the candidate review UI.
+    const mayaTopRec = mayaRecs.find((r) => r.score === mayaTop)!;
+    const mayaReasonsStr = mayaTopRec.matchingReasons.join(" | ");
+    assert.match(
+      mayaReasonsStr,
+      /Shared fandom with you:\s*Genshin Impact/,
+      `expected "Shared fandom with you: Genshin Impact" in Maya's reasons; got: ${mayaReasonsStr}`,
+    );
   });
 });
 

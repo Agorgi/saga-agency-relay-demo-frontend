@@ -96,10 +96,12 @@ function scoreCandidateForRole({
   profile,
   role,
   understanding,
+  ownerOnlyFandoms = [],
 }: {
   profile: CandidatePoolItem;
   role: RoleMap["requiredRoles"][number];
   understanding: ProjectUnderstanding;
+  ownerOnlyFandoms?: string[];
 }): InternalCandidateRecommendation | null {
   if (profile.optedOut || profile.consentStatus === "OPTED_OUT") return null;
   if (profile.reviewStatus === "REJECTED") return null;
@@ -129,13 +131,53 @@ function scoreCandidateForRole({
     matchingReasons.push(`Skill fit: ${skillMatches.slice(0, 3).join(", ")}`);
   }
 
-  const fandomMatches = overlap(
-    [...understanding.fandoms, ...role.preferredFandoms],
-    [...(profile.fandoms || []), ...(profile.communities || [])],
-  );
-  if (fandomMatches.length > 0) {
-    scoreBreakdown.fandomFit += Math.min(10, fandomMatches.length * 4);
-    matchingReasons.push(`Fandom/community fit: ${fandomMatches.slice(0, 3).join(", ")}`);
+  // PR #69: split fandom matches into brief-driven vs owner-driven so
+  // the matchingReasons text tells the right story. We can't simply
+  // subtract ownerOnlyFandoms from understanding.fandoms because
+  // `role.preferredFandoms` (derived from the enriched understanding)
+  // also carries owner-only fandoms. Instead: bucket each matched
+  // fandom by source (owner-only vs brief) as we walk all project-side
+  // fandoms once. Dedup along the way so a fandom appearing on both
+  // understanding.fandoms and role.preferredFandoms only counts once.
+  // Both buckets still feed the same scoring weight — the split only
+  // changes the human-readable rationale, not the score.
+  const ownerOnlySet = new Set(ownerOnlyFandoms.map(canonical));
+  const profileFandoms = [
+    ...(profile.fandoms || []),
+    ...(profile.communities || []),
+  ];
+  const profileFandomSet = new Set(profileFandoms.map(canonical));
+  const allProjectSideFandoms = [
+    ...understanding.fandoms,
+    ...role.preferredFandoms,
+  ];
+  const briefFandomMatches: string[] = [];
+  const ownerFandomMatches: string[] = [];
+  const seenMatch = new Set<string>();
+  for (const fandom of allProjectSideFandoms) {
+    const key = canonical(fandom);
+    if (seenMatch.has(key)) continue;
+    if (!profileFandomSet.has(key)) continue;
+    seenMatch.add(key);
+    if (ownerOnlySet.has(key)) {
+      ownerFandomMatches.push(fandom);
+    } else {
+      briefFandomMatches.push(fandom);
+    }
+  }
+  const totalFandomMatches = briefFandomMatches.length + ownerFandomMatches.length;
+  if (totalFandomMatches > 0) {
+    scoreBreakdown.fandomFit += Math.min(10, totalFandomMatches * 4);
+    if (briefFandomMatches.length > 0) {
+      matchingReasons.push(
+        `Fandom/community fit: ${briefFandomMatches.slice(0, 3).join(", ")}`,
+      );
+    }
+    if (ownerFandomMatches.length > 0) {
+      matchingReasons.push(
+        `Shared fandom with you: ${ownerFandomMatches.slice(0, 3).join(", ")}`,
+      );
+    }
   } else if (understanding.fandoms.length > 0) {
     missingInfo.push("No clear fandom/community overlap");
   }
@@ -199,15 +241,19 @@ export function recommendInternalCandidates(
   roleMap: RoleMap,
   _sourcingPlan: SourcingPlan,
   candidatePool: CandidatePoolItem[] = [],
+  options: { ownerOnlyFandoms?: string[] } = {},
 ) {
   if (understanding.sourceKind !== "organizer_project") {
     return [];
   }
 
+  const { ownerOnlyFandoms = [] } = options;
   const roles = [...roleMap.requiredRoles, ...roleMap.optionalRoles];
   return roles.flatMap((role) =>
     candidatePool
-      .map((profile) => scoreCandidateForRole({ profile, role, understanding }))
+      .map((profile) =>
+        scoreCandidateForRole({ profile, role, understanding, ownerOnlyFandoms }),
+      )
       .filter((item): item is InternalCandidateRecommendation => Boolean(item))
       .sort((left, right) => right.score - left.score)
       .slice(0, 5),
