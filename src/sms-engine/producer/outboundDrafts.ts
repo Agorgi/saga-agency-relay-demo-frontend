@@ -94,6 +94,14 @@ export type CandidateOutreachDraftInput = {
   matchingReasons?: string[];
   risks?: string[];
   optedOut?: boolean;
+  // PR #52 — personalization inputs. Optional so existing callers
+  // keep working without change; when present, the body composer
+  // anchors on fandom overlap and the project's vibe instead of
+  // emitting the generic template.
+  projectFandoms?: string[];
+  candidateFandoms?: string[];
+  projectDescription?: string | null;
+  candidateBio?: string | null;
 };
 
 export type OutboundDraftApprovalInput = {
@@ -317,23 +325,163 @@ export function generateOrganizerShortlistMessageDraft(
   };
 }
 
+/**
+ * Compose the body of a candidate outreach SMS draft.
+ *
+ * Personalization layers, applied in order of strength:
+ *  1. Project anchor — prefer the project's actual title (e.g., "Formal
+ *     ball inspired by Love and Deepspace in Los Angeles") over the
+ *     generic "a creative project" fallback.
+ *  2. Fandom anchor — when the project's fandoms overlap the candidate's
+ *     fandoms, name the shared signal explicitly. This is the strongest
+ *     "Saga knows me" moment and design partners screenshot drafts that
+ *     hit on it.
+ *  3. Reason sentence — pulled from the producer's matching reasons (role
+ *     match, skill fit, location, etc.) and rewritten as a natural-language
+ *     phrase, skipping any reason that would duplicate the fandom anchor.
+ *
+ * Hard constraints (enforced by checkProducerDraftSafety so coordinate
+ * before changing the close):
+ *  - Body MUST contain "open" or "interested" AND "considered".
+ *  - Body MUST NOT contain forbidden-claim words like "confirmed",
+ *    "booked", "available" except in negated forms (handled by the
+ *    forbidden-claims pattern list).
+ *  - SMS-shape: aim for a single short paragraph under ~320 chars.
+ *
+ * Exported so the layer is unit-testable without touching the DB
+ * persister.
+ */
+export function composeCandidateOutreachBody(
+  input: CandidateOutreachDraftInput,
+): string {
+  const role = safeText(input.role, "this role");
+  const city = input.city?.trim() || null;
+  const name = safeText(input.displayName, "there");
+
+  const title = input.projectTitle?.trim() || null;
+  const type = input.projectType?.trim() || null;
+  const cityClause = city ? ` in ${city}` : "";
+  const projectAnchor = title || type || "a creative project";
+  const projectClause = `${projectAnchor}${cityClause}`;
+
+  const overlap = findFandomOverlap(
+    input.projectFandoms,
+    input.candidateFandoms,
+  );
+
+  // If the project title itself already names the overlap fandom (e.g.
+  // "Formal ball inspired by Love and Deepspace"), don't echo it in a
+  // dedicated anchor sentence — the user already saw it in the opener.
+  const fandomAlreadyInTitle =
+    !!overlap &&
+    !!title &&
+    title.toLowerCase().includes(overlap.toLowerCase());
+  const useFandomAnchor = !!overlap && !fandomAlreadyInTitle;
+
+  const cleanReasons = (input.matchingReasons || []).filter(
+    (r) => r.trim() && !containsRawContactInfo(r),
+  );
+  const reasonSentence = pickReasonSentence(cleanReasons, overlap, role);
+
+  const opener = `Hey ${name} — Saga is helping an organizer plan ${projectClause}.`;
+  const fandomAnchor = useFandomAnchor
+    ? ` They're building it around ${overlap} and your work felt aligned.`
+    : "";
+  const reasonLine = reasonSentence
+    ? ` ${reasonSentence}`
+    : useFandomAnchor
+      ? "" // dedicated fandom anchor already carried the personalization
+      : ` Your work felt like a fit for the ${role} slot.`;
+  // The close is load-bearing for the safety check ("open" + "considered").
+  // Don't trim it without also updating checkProducerDraftSafety.
+  const close = ` Open to being considered for the team if the organizer moves forward?`;
+
+  return `${opener}${fandomAnchor}${reasonLine}${close}`;
+}
+
+function findFandomOverlap(
+  projectFandoms: string[] | undefined,
+  candidateFandoms: string[] | undefined,
+): string | null {
+  if (!projectFandoms?.length || !candidateFandoms?.length) return null;
+  const candidateSet = new Set(
+    candidateFandoms
+      .map((f) => f.trim().toLowerCase())
+      .filter((f) => f.length > 0),
+  );
+  for (const f of projectFandoms) {
+    const lower = f.trim().toLowerCase();
+    if (lower && candidateSet.has(lower)) return f.trim();
+  }
+  return null;
+}
+
+function pickReasonSentence(
+  reasons: string[],
+  overlap: string | null,
+  role: string,
+): string | null {
+  const overlapLower = overlap?.toLowerCase().trim();
+  for (const raw of reasons) {
+    const lower = raw.toLowerCase();
+    // Skip the fandom reason if we already mentioned that fandom in
+    // the dedicated anchor — repeating it sounds robotic.
+    if (
+      overlapLower &&
+      lower.includes("fandom") &&
+      lower.includes(overlapLower)
+    ) {
+      continue;
+    }
+    // Skip generic-trust signals — they don't say anything specific.
+    if (/profile reviewed|portfolio or social proof/i.test(lower)) continue;
+    // Skip pure-proximity reasons; the organizer's network graph isn't
+    // a story we want to lead with in candidate-facing copy.
+    if (/^proximity:/i.test(lower)) continue;
+
+    const phrase = phraseFromReason(raw, role);
+    if (phrase) return phrase;
+  }
+  return null;
+}
+
+function phraseFromReason(raw: string, role: string): string {
+  const match = raw.match(
+    /^(Role match|Skill fit|Fandom\/community fit|Same city):\s*(.+)$/i,
+  );
+  if (!match) {
+    return `Your ${raw.toLowerCase()} caught my eye for the ${role} slot.`;
+  }
+  const [, label, valueRaw] = match;
+  const value = valueRaw.trim();
+  if (/role match/i.test(label)) {
+    return `Your ${value} portfolio felt like a fit for the ${role} slot.`;
+  }
+  if (/skill fit/i.test(label)) {
+    const skills = value
+      .split(/,\s*/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .join(" and ");
+    return `Your ${skills} experience felt like a fit for the ${role} slot.`;
+  }
+  if (/fandom/i.test(label)) {
+    return `Your ${value} background felt like a fit for the ${role} slot.`;
+  }
+  if (/same city/i.test(label)) {
+    return `Being in ${value} is part of why — they want someone local for this one.`;
+  }
+  return `Your work felt like a fit for the ${role} slot.`;
+}
+
 export function generateCandidateOutreachDraft(
   input: CandidateOutreachDraftInput,
 ): ProducerOutboundDraft {
   const role = safeText(input.role, "this role");
-  const city = safeText(input.city, "the project city");
-  const projectType = safeText(
-    input.projectType || input.projectTitle,
-    "a creative project",
-  );
-  const name = safeText(input.displayName, "there");
-  const reason =
-    input.matchingReasons?.find((item) => !containsRawContactInfo(item)) ||
-    `your fit for ${role}`;
   const blocked = input.status !== "APPROVED_FOR_SHORTLIST" || Boolean(input.optedOut);
   const body = blocked
     ? "Blocked draft: candidate must be approved for shortlist and not opted out before outreach copy is prepared."
-    : `Hey ${name} - Saga is helping explore ${projectType} in ${city}. Your work looks like it could be a fit for ${role} based on ${reason}. Would you be open to being considered for the team if the organizer moves forward?`;
+    : composeCandidateOutreachBody(input);
   const safety = checkProducerDraftSafety({
     type: "CANDIDATE_OUTREACH",
     body,
@@ -514,6 +662,13 @@ function candidateInputForDraft(
     matchingReasons: recommendation.matchingReasons,
     risks: recommendation.risks,
     optedOut: recommendation.person.optedOut,
+    // PR #52 — personalization fields. The composer uses these to
+    // pick a fandom anchor and a candidate-specific reason instead
+    // of the generic "your fit for {role}" fallback.
+    projectFandoms: project.fandoms,
+    candidateFandoms: profile?.fandoms ?? [],
+    projectDescription: project.description,
+    candidateBio: profile?.bio ?? null,
   };
 }
 
