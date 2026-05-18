@@ -163,6 +163,13 @@ test("bindNextStepToProject is a no-op when nextStep is null", () => {
   assert.equal(after, null);
 });
 
+test("bindNextStepToProject normalises undefined input to null", () => {
+  // Helper's contract is WebChatNextStep | null (never undefined),
+  // so route.ts can assign the result directly into assistantMeta.nextStep.
+  const after = bindNextStepToProject(undefined, "cm0abc123def456ghi789jkl");
+  assert.equal(after, null);
+});
+
 test("bindNextStepToProject is a no-op when route is not /projects/new", () => {
   const meStep: WebChatNextStep = {
     label: "Open my profile",

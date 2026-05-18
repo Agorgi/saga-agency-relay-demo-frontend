@@ -277,6 +277,19 @@ export async function POST(req: NextRequest) {
         history,
         latestMessage,
       });
+
+      // Persist + bind BEFORE appendTurn so the assistant message
+      // stored in WebChatMessage carries the bound /projects/<cuid>
+      // route. Restoring a conversation via GET would otherwise
+      // serve the stale /projects/new route from message metadata,
+      // even though this POST response was rewritten.
+      const { projectId, journey } = await persistBriefAndAdvanceJourney({
+        sessionId: session.session.id,
+        persona,
+        extractedFields: holdingReply.extractedFields,
+      });
+      const boundNextStep = bindNextStepToProject(holdingReply.nextStep, projectId);
+
       const turn = await appendTurn({
         sessionId: session.session.id,
         conversationId,
@@ -286,8 +299,8 @@ export async function POST(req: NextRequest) {
         sessionPersona: persona,
         assistantMeta: {
           persona,
-          route: holdingReply.nextStep?.route ?? null,
-          nextStep: holdingReply.nextStep,
+          route: boundNextStep?.route ?? null,
+          nextStep: boundNextStep,
           extractedFields: holdingReply.extractedFields,
           operation: holdingReply.diagnostics.operation,
           selectedReplySource: "holding_template",
@@ -298,17 +311,6 @@ export async function POST(req: NextRequest) {
           effectiveMode: "holding",
         },
       });
-
-      const { projectId, journey } = await persistBriefAndAdvanceJourney({
-        sessionId: session.session.id,
-        persona,
-        extractedFields: holdingReply.extractedFields,
-      });
-
-      // Once persistence has a real Project id, rewrite the chat
-      // CTA from /projects/new to /projects/<id> so the "Review brief"
-      // button lands on the server-rendered brief page.
-      const boundNextStep = bindNextStepToProject(holdingReply.nextStep, projectId);
 
       return successResponse({
         conversationId,
@@ -355,6 +357,18 @@ export async function POST(req: NextRequest) {
         ? "holding"
         : "autonomous";
 
+    // Persist + bind BEFORE appendTurn so the assistant message
+    // stored in WebChatMessage carries the bound /projects/<cuid>
+    // route. Restoring a conversation via GET would otherwise serve
+    // the stale /projects/new route from message metadata, even
+    // though this POST response was rewritten.
+    const { projectId, journey } = await persistBriefAndAdvanceJourney({
+      sessionId: session.session.id,
+      persona: result.data.persona,
+      extractedFields: result.data.extractedFields,
+    });
+    const boundNextStep = bindNextStepToProject(result.data.nextStep, projectId);
+
     const turn = await appendTurn({
       sessionId: session.session.id,
       conversationId,
@@ -364,8 +378,8 @@ export async function POST(req: NextRequest) {
       sessionPersona: result.data.persona,
       assistantMeta: {
         persona: result.data.persona,
-        route: result.data.nextStep?.route ?? null,
-        nextStep: result.data.nextStep,
+        route: boundNextStep?.route ?? null,
+        nextStep: boundNextStep,
         extractedFields: result.data.extractedFields,
         operation: result.data.diagnostics.operation,
         selectedReplySource: result.data.diagnostics.selectedReplySource,
@@ -376,16 +390,6 @@ export async function POST(req: NextRequest) {
         effectiveMode: result.data.diagnostics.effectiveMode,
       },
     });
-
-    const { projectId, journey } = await persistBriefAndAdvanceJourney({
-      sessionId: session.session.id,
-      persona: result.data.persona,
-      extractedFields: result.data.extractedFields,
-    });
-
-    // Bind /projects/new → /projects/<projectId> when persistence succeeded.
-    // See bindNextStepToProject contract.
-    const boundNextStep = bindNextStepToProject(result.data.nextStep, projectId);
 
     return successResponse({
       conversationId,

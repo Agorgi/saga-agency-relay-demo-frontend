@@ -344,11 +344,11 @@ export function getPersonaFromNextStep(nextStep: WebChatNextStep | null | undefi
 export function bindNextStepToProject(
   nextStep: WebChatNextStep | null | undefined,
   projectId: string | null,
-): WebChatNextStep | null | undefined {
-  if (!nextStep || !projectId) {
-    return nextStep;
+): WebChatNextStep | null {
+  if (!nextStep) {
+    return null;
   }
-  if (nextStep.route !== "/projects/new") {
+  if (!projectId || nextStep.route !== "/projects/new") {
     return nextStep;
   }
   return {

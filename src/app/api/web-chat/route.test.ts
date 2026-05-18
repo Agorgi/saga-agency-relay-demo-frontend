@@ -468,6 +468,29 @@ test("web chat persistence regression — nextStep route uses the persisted proj
   // cuid is 25 chars; the regex is loose enough to survive cuid2
   // length changes.)
   assert.match(data.nextStep?.route || "", /^\/projects\/[a-z0-9]{8,}$/);
+
+  // Codex caught a deeper subset of the same regression: even with
+  // the POST response correctly rewritten, if the BOUND nextStep
+  // isn't persisted into the WebChatMessage metadata, a session
+  // reload reconstructs history from the DB and serves the stale
+  // /projects/new route. The bind must happen BEFORE appendTurn.
+  const assistantMessage = await readLatestAssistantMessage();
+  assert.ok(assistantMessage);
+  const storedNextStep = assistantMessage?.nextStep as
+    | { route?: string }
+    | null
+    | undefined;
+  assert.equal(
+    storedNextStep?.route,
+    `/projects/${data.projectId}`,
+    "stored assistantMessage.nextStep must carry the bound route, not /projects/new",
+  );
+  // Same for the route column (used by some legacy session-restore paths).
+  assert.equal(
+    assistantMessage?.route,
+    `/projects/${data.projectId}`,
+    "stored assistantMessage.route must carry the bound route",
+  );
 });
 
 test("legacy GET session payload keeps assistant content even when metadata columns are unavailable", async () => {
