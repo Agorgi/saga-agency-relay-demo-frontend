@@ -1067,6 +1067,7 @@ model Person {
   llmReviewItems               LlmReviewItem[]
   talentCandidates             TalentCandidate[]
   conversationAutonomySettings ConversationAutonomySetting[]
+  webSessions                  WebSession[]                  @relation("WebSessionPerson")
 
   @@index([city])
   @@index([source])
@@ -1874,12 +1875,22 @@ model WebSession {
   ipHash     String?
   persona    String?
   projectId  String?
+  // Identity anchor (PR #64). One Person row per session captures
+  // fandoms / interests / city across every chat turn regardless
+  // of persona, so signals from a host's brief, a creative's
+  // intake, a venue's intake, and a fan's intake all land on the
+  // same row. Created lazily on the first identity-bearing turn
+  // by `ensureSessionPerson`. Nullable because pre-PR-64 sessions
+  // exist without an identity row.
+  personId   String?
+  person     Person?          @relation("WebSessionPerson", fields: [personId], references: [id], onDelete: SetNull)
   messages   WebChatMessage[]
   project    Project?         @relation("WebSessionProject", fields: [projectId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
   @@index([persona])
   @@index([projectId])
+  @@index([personId])
 }
 
 model AdminSession {

@@ -896,3 +896,60 @@ test("watch parties + screenings + movie nights resolve to Fan event so the even
     assert.equal(reply.persona, "host", message);
   }
 });
+
+test("venue extraction recognises 'nightclub' as a Nightclub (PR #64 user-screenshotted bug)", () => {
+  // Bug from 2026-05-18: user said "I run a space." → Sagasan asked
+  // "what kind of space" → user said "a nightclub" → Sagasan asked
+  // the same question again because `\bclub\b` in
+  // VENUE_TYPE_PATTERNS didn't match the embedded "club" in
+  // "nightclub". PR #64 added an explicit pattern.
+  const result = buildMockAgentReply({
+    persona: "venue",
+    history: [
+      { role: "user", content: "I run a space." },
+      { role: "assistant", content: "Got it — what kind of space is it?" },
+    ],
+    latestMessage: "a nightclub",
+  });
+  assert.equal(
+    result.extractedFields.venueType,
+    "Nightclub",
+    `venueType must be captured as "Nightclub"; got ${JSON.stringify(result.extractedFields.venueType)}`,
+  );
+  // Sagasan should NOT re-ask the same question now that the
+  // field is captured.
+  assert.doesNotMatch(
+    result.reply,
+    /what kind of space/i,
+    "venue type captured → Sagasan should not re-ask the same question",
+  );
+});
+
+test("venue extraction recognises expanded patterns (rooftop, dive bar, coffee shop, etc.)", () => {
+  // PR #64 extended VENUE_TYPE_PATTERNS to cover the realistic
+  // spectrum of spaces design partners run. Lock down a
+  // representative set so future edits to the pattern list don't
+  // silently regress them.
+  const cases: Array<[string, string]> = [
+    ["a rooftop", "Rooftop venue"],
+    ["dive bar in Brooklyn", "Dive bar"],
+    ["coffee shop with events", "Coffee shop"],
+    ["small record store", "Record store"],
+    ["independent bookshop", "Bookshop"],
+    ["theater venue", "Theater"],
+    ["lounge in LA", "Lounge"],
+    ["our restaurant", "Restaurant"],
+  ];
+  for (const [input, expected] of cases) {
+    const result = buildMockAgentReply({
+      persona: "venue",
+      history: [],
+      latestMessage: input,
+    });
+    assert.equal(
+      result.extractedFields.venueType,
+      expected,
+      `${JSON.stringify(input)} → expected venueType="${expected}"; got ${JSON.stringify(result.extractedFields.venueType)}`,
+    );
+  }
+});

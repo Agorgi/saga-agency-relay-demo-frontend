@@ -232,6 +232,28 @@ wire it when the team is ready — see `vercel.json` (not yet
 created) or any external scheduler that can run `npm run
 cleanup:web-sessions -- --apply` with the Neon env vars set.
 
+## WebSession.personId migration (one-time, after PR #64)
+
+PR #64 added `WebSession.personId` (nullable FK → Person) so every
+session has an anchor identity row that accumulates fandoms /
+interests across chat turns. Migration:
+`20260518050000_add_web_session_person`.
+
+Existing sessions stay with `personId = NULL` until they next chat.
+Backfill is not required — the user-visible behavior
+(cross-fandom matching via PR #68) only depends on sessions that
+have a non-null `personId`. Old sessions get one lazily on their
+next chat message.
+
+```bash
+DATABASE_URL="<neon-url>" POSTGRES_URL_NON_POOLING="<neon-direct-url>" \
+  npx prisma migrate deploy
+```
+
+Safe — additive nullable column + index. The `Person.fandoms` /
+`Person.interests` arrays added in PR #63 are the destination for
+the writes.
+
 ## Person identity-graph schema (one-time, after PR #63)
 
 PR #63 added `fandoms` and `interests` columns to `Person` plus GIN

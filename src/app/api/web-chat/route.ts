@@ -29,6 +29,7 @@ import {
   recordSystemHoldingFallback,
 } from "@/lib/webChatRuntimeSettings";
 import { upsertProjectFromBrief } from "@/lib/projectBriefUpsert";
+import { upsertSessionIdentitySignals } from "@/lib/sessionPersonStore";
 import type { ProjectJourney } from "@/lib/journey/types";
 import { captureServerError } from "@/lib/observability";
 import {
@@ -295,6 +296,32 @@ export async function POST(req: NextRequest) {
     latestMessage,
   });
   const sessionCookieValue = session.isNew ? session.session.id : undefined;
+
+  // Identity-signal capture (PR #64). Runs on every chat turn,
+  // every persona — fandoms / interests mentioned in the user's
+  // message accumulate on the session's anchor Person row regardless
+  // of whether they came in through host / creative / venue / fan
+  // intake. The matching helper in PR #68 reads from these arrays;
+  // PR #65's de-robot templates read from them to reflect captured
+  // signals back at the user.
+  //
+  // Defensive: failure to capture must not break chat. A DB outage
+  // here would normally throw and surface as a 500; we log it as
+  // a server error (Sentry-tagged) and let the chat reply continue.
+  try {
+    await upsertSessionIdentitySignals({
+      sessionId: session.session.id,
+      message: latestMessage,
+    });
+  } catch (error) {
+    captureServerError("upsertSessionIdentitySignals", error, {
+      tags: {
+        persona: persona ?? "unknown",
+        route: "/api/web-chat",
+        operation: "identitySignals",
+      },
+    });
+  }
 
   try {
     const effectiveAutonomous = await getEffectiveAutonomous();
