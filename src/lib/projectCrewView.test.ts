@@ -62,7 +62,13 @@ test("loadCrewView returns null when the project doesn't exist", async () => {
   });
 });
 
-test("loadCrewView auto-advances brief_ready → crew_reviewing and shows researching state when no roles exist", async () => {
+test("loadCrewView auto-advances brief_ready → crew_reviewing and materializes roles on first load", async () => {
+  // PR #50 wires the producer engine into loadCrewView's first-load
+  // path, so a fresh brief_ready project now arrives with roles
+  // already persisted — the "researching" empty state is reserved
+  // for projects with no brief signal at all (no title, no
+  // description, no fandoms) and for the rare case where the
+  // generator skips because of sourceKind mismatch.
   await withFreshDb(async (db) => {
     const session = await db.webSession.create({ data: {} });
     const upsert = await upsertProjectFromBrief({
@@ -75,8 +81,11 @@ test("loadCrewView auto-advances brief_ready → crew_reviewing and shows resear
     const data = await loadCrewView(upsert.projectId!);
     assert.ok(data);
     assert.equal(data?.journey.step, "crew_reviewing");
-    assert.equal(data?.roles.length, 0);
-    assert.equal(data?.state, "researching");
+    assert.ok(
+      (data?.roles.length ?? 0) > 0,
+      "first /crew visit materializes producer roles",
+    );
+    assert.equal(data?.state, "ready");
 
     // Brief snapshot pulled from the Project columns.
     const factLabels = data?.briefSnapshot.facts.map((f) => f.label) ?? [];
