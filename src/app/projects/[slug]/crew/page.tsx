@@ -5,14 +5,16 @@
  * journey from brief_ready → crew_reviewing on first visit. Render
  * BuildMyCrewView with the loaded data.
  *
- * Returns notFound() when the slug doesn't resolve to a Project — keeps the
- * legacy fixture browsing (/projects/[slug]) from spilling into the tracer
- * URL space.
+ * Returns notFound() when the slug doesn't resolve to a Project — and now
+ * also when `loadCrewView` throws (e.g. DB unreachable). Mirrors the
+ * defensive pattern PR #35 added to /projects/[slug]; closes the rest of
+ * Cowork's P1 finding about blank chrome on env-misconfig.
  */
 
 import { notFound } from "next/navigation";
 import { BuildMyCrewView } from "@/components/projects/BuildMyCrewView";
-import { loadCrewView } from "@/lib/projectCrewView";
+import { loadCrewView, type CrewViewData } from "@/lib/projectCrewView";
+import { logServerError } from "@/sms-engine/safeLogging";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +24,17 @@ export default async function ProjectCrewPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const data = await loadCrewView(slug);
+
+  let data: CrewViewData | null = null;
+  try {
+    data = await loadCrewView(slug);
+  } catch (error) {
+    // DB unreachable / Prisma throw — surface as 404 rather than
+    // letting the error escape to a blank screen.
+    logServerError("loadCrewView", error);
+    data = null;
+  }
+
   if (!data) {
     notFound();
   }
