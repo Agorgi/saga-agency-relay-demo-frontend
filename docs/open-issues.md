@@ -48,14 +48,14 @@ Audit found no bare "Great." / "Love this." openers in the current Sagasan fallb
 ### ~~P2-OI-16~~ — closed in PR #38
 Code already standardizes on em-dashes (—) for parentheticals across all four Sagasan reply files. PR #38 adds a regression-prevention rule to `scripts/lint-copy.ts` that scans `sagasanAgent.ts`, `sagasanOrganizerIntake.ts`, `sagasanSystemPrompt.ts`, and `hostBriefHandoff.ts` for ` - ` (space-hyphen-space) inside string literals and fails the lint if found. Comment-stripped first so example copy in comments doesn't trigger.
 
-### P2-OI-17 — /admin/observability fallback-rate widget shows 0 while RECENT FALLBACKS = 27
-Operator dashboard misleading. **Fix:** Either rate calc is wrong or time-window mismatch — resolve.
+### ~~P2-OI-17~~ — closed in PR #46
+Was: `fallbackRate = fallbackUsed / callStarted` in `observabilitySummary.ts`. With LLM gated off (no `llm.call_started` events) but every reply still logging `llm.fallback_used`, the operator saw "Recent fallbacks: 27 / Fallback rate: 0" — the widget reported zero exactly when every reply was a fallback. PR #46 extracts a pure `computeLlmFallbackRate({ callStarted, callFailed, fallbackUsed })` helper that uses `callStarted + max(0, fallbackUsed − callFailed)` as the denominator. LLM gated off → rate = 1.00. All-success → rate = 0.00. 7 unit tests in `observabilitySummary.test.ts` lock the contract.
 
-### P2-OI-18 — /admin/llm-review header packs three concepts into one |-delimited string
-**Fix:** Label fields explicitly: `Selected reply | Configured model | Fallback reason`.
+### ~~P2-OI-18~~ — verified closed in PR #46
+Audit confirmed `/admin/(dashboard)/llm-review/page.tsx` already renders each meta concept on its own line with an explicit label (`Provider:`, `Model:`, `Mode:`, `Selected reply:`, `Fallback reason:`, `Forbidden claims:`). No |-delimited concatenation remains in the file.
 
-### P2-OI-19 — "LLM output: Not captured" conflates "never called OpenAI" and "called and failed"
-**Fix:** Distinguish the two failure modes in `/admin/llm-review`.
+### ~~P2-OI-19~~ — verified closed in PR #46
+Audit confirmed `llmEmptyState()` in `/admin/(dashboard)/llm-review/page.tsx:38` already distinguishes four cases: `deterministic_fallback` with reason → "OpenAI not selected. Deterministic fallback was used because {reason}."; `fallbackUsed` with reason → "OpenAI output missing. Fallback was used because {reason}."; `mode !== "active_live"` → "OpenAI not called because active_live was not enabled for this operation."; generic → "OpenAI output was not captured for this operation."
 
 ### ~~P2-OI-20~~ — closed in PR #45
 Both `relayItems` and `inboundItems` in `src/components/ForMeView.tsx` filter the same `conversations` array — `relayItems` by `viewerProfile.activeProjectIds.includes(conversation.projectId)` and `inboundItems` by `viewerProfile.inboundOpportunityIds.includes(conversation.id)`. A single conversation could land in both lists, producing two cards (one "Opportunity", one "Saga outreach") with identical summary copy. PR #45 adds a `relayConversationIds` Set built from the relay items and filters those conversation ids out of `inboundItems` before mapping. Active-project conversations now render only as Saga outreach; conversations that are inbound-only (e.g. for a project the viewer doesn't own yet) keep their Opportunity surface.
