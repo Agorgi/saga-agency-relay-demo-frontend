@@ -152,11 +152,25 @@ const INTEREST_PATTERNS: Array<[RegExp, string]> = [
 ];
 
 const VENUE_TYPE_PATTERNS: Array<[RegExp, string]> = [
+  // Pattern order matters: more specific multi-word phrases must
+  // come BEFORE shorter ones that would partially match (e.g.,
+  // "coffee shop" before "shop", "dive bar" before "bar").
   [/\bevent space\b/i, "Event space"],
+  [/\bnight ?club\b|\bnightclub\b/i, "Nightclub"],
+  [/\bdive bar\b/i, "Dive bar"],
+  [/\bcoffee shop\b|\bcoffeehouse\b/i, "Coffee shop"],
+  [/\brecord store\b/i, "Record store"],
+  [/\bbook ?shop\b|\bbookstore\b/i, "Bookshop"],
+  [/\brooftop\b/i, "Rooftop venue"],
+  [/\blounge\b/i, "Lounge"],
+  [/\btheater\b|\btheatre\b/i, "Theater"],
+  [/\bart space\b/i, "Art space"],
   [/\bwarehouse\b/i, "Warehouse"],
   [/\bstudio\b/i, "Studio"],
-  [/\bcafe\b/i, "Cafe"],
+  [/\bcafe\b|\bcaf[eé]\b/i, "Cafe"],
   [/\bgallery\b/i, "Gallery"],
+  [/\brestaurant\b/i, "Restaurant"],
+  [/\bvenue\b/i, "Venue"],
   [/\bclub\b/i, "Club"],
   [/\bbar\b/i, "Bar"],
   [/\bstorefront\b/i, "Storefront"],
