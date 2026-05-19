@@ -1303,8 +1303,19 @@ function buildHostNextStep(fields: StoredExtractedFields): WebChatNextStep | nul
     organizerFields.scopeFormat ||
     inferHostEventType(projectType, organizerFields.projectIdea || fields.projectIdea || "");
   const city = organizerFields.locationMarket || fields.city;
+  const projectIdea =
+    organizerFields.projectIdea || fields.projectIdea || "";
 
-  if (!readiness.enoughInfoForDraftBrief || !city) {
+  // PR #72: gate on host-intent + city, not on full draft-brief
+  // readiness. /projects/new IS the intake page that collects the
+  // missing fields (timing, budget, etc.) — gating navigation on
+  // already having those fields is circular. The pre-PR-72 LLM
+  // bypassed this gate by emitting nextStep directly; after PR #72
+  // dropped LLM-side nextStep, the gate is the only voice and was
+  // refusing perfectly routeable messages. `readinessStage` and
+  // `missingRequiredFields` still flow through the prefill payload
+  // so the intake page can prompt for the rest.
+  if (!projectIdea || !city) {
     return null;
   }
 
