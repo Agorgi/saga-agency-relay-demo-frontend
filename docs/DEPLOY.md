@@ -63,8 +63,8 @@ Set in Vercel project settings → Environment Variables. Restart deployment aft
 |---|---|---|
 | `OPENAI_API_KEY` | Set | Keep set when flipping to live LLM mode |
 | `OPENAI_MODEL` | Was `gpt-5.4-mini` (invalid) — code now defends with fallback to `gpt-4o-mini` | **Update to `gpt-4o-mini` or unset** so the warning stops firing |
-| `LLM_ACTIVE_LIVE_DISABLED` | `true` (LLM gated off) | Flip to `false` only after structured-output reliability is verified |
-| `ACTIVE_LIVE_ALLOWED` | `false` | Flip to `true` only after end-to-end pilot validation |
+| `LLM_ACTIVE_LIVE_ALLOWED` | unset / not `"true"` (LLM gated off) | Set to literal `"true"` after `/api/admin/llm-smoke-test` returns `ok: true`. Opt-in, default off. PR #71 made this env-driven; previously the gate was hardcoded. |
+| `INTERNAL_API_KEY` | Set | Required to auth `/api/admin/*` routes (smoke test, test-error). Random secret; rotate if leaked. |
 | `CONVERSATION_ENGINE_ACTIVE` | not set / `shadow` | Don't enable without A2P approval |
 | `TWILIO_API_CALLS_FORBIDDEN` | `true` (SMS kill switch) | Leave on until A2P approval + design-partner consent is in place |
 | `PUBLIC_BETA_ENABLED`, `PUBLIC_LAUNCH_ENABLED` | `false` | Leave off; design-partner phase only |

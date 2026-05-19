@@ -282,7 +282,13 @@ export function getLlmConfigPresence() {
     warnings.push("openai_api_key_missing");
   }
 
-  if (modeConfigured === "active_live") {
+  // PR #71: the active-live gate is now opt-in via env. Setting
+  // `LLM_ACTIVE_LIVE_ALLOWED=true` on the deployment lets the LLM
+  // path actually run. Anything else (unset, "false", "no", a typo)
+  // resolves to false — keeps the safe default.
+  const activeLiveAllowed = process.env.LLM_ACTIVE_LIVE_ALLOWED === "true";
+
+  if (modeConfigured === "active_live" && !activeLiveAllowed) {
     modeEffective = "fallback";
     warnings.push("active_live_disabled");
   }
@@ -305,7 +311,7 @@ export function getLlmConfigPresence() {
     model: cleanEnvText(modelEnv.value) || "gpt-4o-mini",
     customBaseUrlConfigured: Boolean(cleanEnvText(baseUrlEnv.value)),
     shadowMode: modeEffective === "shadow",
-    activeLiveAllowed: false,
+    activeLiveAllowed,
     warnings,
   };
 }
