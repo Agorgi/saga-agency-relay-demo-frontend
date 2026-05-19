@@ -127,10 +127,15 @@ function SagaLandingBody() {
     <section className="flex flex-1 flex-col items-center justify-center px-5 pb-24 pt-8 sm:px-8 sm:pt-10">
       <div className="mx-auto flex w-full max-w-[560px] flex-col items-center gap-6 text-center">
         {!isConversationOpen ? (
-          <h1 data-copy-lint="header" className="saga-display-hero">
-            <span className="hero-word">tribal</span>
-            <span className="serif-it">by nature</span>
-          </h1>
+          <>
+            <h1 data-copy-lint="header" className="saga-display-hero">
+              <span className="hero-word">tribal</span>
+              <span className="serif-it">by nature</span>
+            </h1>
+            <p data-copy-lint="subhead" className="saga-hero-subtitle">
+              Tell us what you&apos;re making.
+            </p>
+          </>
         ) : null}
 
         <div className="w-full">

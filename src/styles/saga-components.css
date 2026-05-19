@@ -188,25 +188,27 @@
 }
 
 /* ---- Hero typography helpers ----
- * Figma 2:2: two lines, stacked. Word 1 ("tribal") is the bold sans display;
- * line 2 ("by nature") is Instrument Serif italic in cyan. */
-.saga-display-hero {
+ * Figma 2:2: two stacked lines + a one-line subtitle. The selector is
+ * scoped to .saga so it beats the more-specific `.saga h1` base style
+ * defined in saga-tokens.css (which would otherwise force 24px Inter). */
+.saga .saga-display-hero {
   display: flex;
   flex-direction: column;
   align-items: center;
   font-family: var(--saga-font-display);
   font-weight: 400;
-  font-size: clamp(56px, 14vw, 120px);
-  line-height: 0.92;
+  font-size: clamp(64px, 16vw, 96px);
+  line-height: 0.9;
   letter-spacing: -0.02em;
   color: var(--saga-fg-primary);
   text-wrap: balance;
-  gap: 4px;
+  gap: 6px;
+  margin: 0;
 }
-.saga-display-hero .hero-word {
+.saga .saga-display-hero .hero-word {
   display: block;
 }
-.saga-display-hero .serif-it {
+.saga .saga-display-hero .serif-it {
   display: block;
   font-family: "Instrument Serif", Georgia, serif;
   font-style: italic;
@@ -215,14 +217,15 @@
   letter-spacing: -0.005em;
   font-size: 0.82em;
 }
-.saga-hero-subtitle {
+.saga .saga-hero-subtitle {
   font-family: var(--saga-font-sans);
   font-weight: 400;
-  font-size: clamp(15px, 2.2vw, 18px);
+  font-size: clamp(14px, 2vw, 16px);
   line-height: 1.5;
   letter-spacing: var(--saga-track-tight);
-  color: var(--saga-fg-secondary);
+  color: var(--saga-fg-tertiary);
   text-wrap: balance;
+  margin: 4px 0 0;
 }
 
 /* ---- Intent chip (quick-select pill on Landing) ---- */
@@ -513,7 +516,7 @@ a.saga-cta-outline:hover {
 /* Reply composer (Chat) */
 .saga-chat-composer {
   position: relative;
-  padding: 12px 16px;
+  padding: 12px 16px 56px;
   border-top: 1px solid var(--saga-bg-border);
   background: var(--saga-bg-base);
   z-index: 2;
@@ -1247,6 +1250,28 @@ html:has(.saga.saga-cyan-mode) body::after {
   background: none !important;
 }
 
+/* ---- Natural page scroll for AppFrame-wrapped routes ----
+ * Legacy pages wrap content in `<div className="absolute inset-0">` and
+ * the content inside owns `.brand-page absolute inset-0 overflow-y-auto`.
+ * That builds an inner scroll container of fixed height so the page
+ * itself doesn't grow with content — touch scroll on mobile becomes
+ * cramped. Inside the saga scope, render these wrappers statically so
+ * the SagaShell's natural document scroll takes over. Landing isn't
+ * affected: it doesn't use AppFrame, so the absolute pattern isn't
+ * present and the hero stays locked. */
+.saga.saga-cyan-mode .flex-1 > .absolute.inset-0,
+.saga.saga-cyan-mode .flex-1 > .absolute.inset-0 > .brand-page,
+.saga.saga-cyan-mode .flex-1 > .absolute.inset-0 .overflow-y-auto {
+  position: static !important;
+  inset: auto !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* The legacy .brand-page already ships with pb-32 (128px); that's
+ * enough breathing room above the fixed page-toggle, so we don't
+ * override padding-bottom here. */
+
 /* Cards / pills the legacy components depend on — give them a calm
  * dark-surface look so even unmodified components look coherent. */
 .saga.saga-cyan-mode .brand-surface,
@@ -1293,13 +1318,23 @@ html:has(.saga.saga-cyan-mode) body::after {
   color: var(--saga-fg-primary);
 }
 
-/* Legacy input fields: dark surface with cyan focus */
-.saga.saga-cyan-mode input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]),
-.saga.saga-cyan-mode textarea,
-.saga.saga-cyan-mode select {
+/* Legacy input fields: dark surface with cyan focus.
+ * EXCEPT inputs that opt out via `bg-transparent` — the saga launcher
+ * and chat composer use a transparent input on top of a styled pill so
+ * the pill itself carries the visible surface. */
+.saga.saga-cyan-mode input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]):not(.bg-transparent),
+.saga.saga-cyan-mode textarea:not(.bg-transparent),
+.saga.saga-cyan-mode select:not(.bg-transparent) {
   background-color: var(--saga-bg-surface-2);
   border-color: var(--saga-bg-border-soft);
   color: var(--saga-fg-primary);
+}
+.saga.saga-cyan-mode input.bg-transparent,
+.saga.saga-cyan-mode textarea.bg-transparent,
+.saga.saga-cyan-mode .saga-chat-composer-row input,
+.saga.saga-cyan-mode .saga-launcher input {
+  background-color: transparent !important;
+  border: none;
 }
 .saga.saga-cyan-mode input::placeholder,
 .saga.saga-cyan-mode textarea::placeholder {

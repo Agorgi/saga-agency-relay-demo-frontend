@@ -17,7 +17,6 @@ export const PAGE_TOGGLE_ENTRIES: PageToggleEntry[] = [
   { href: "/projects", label: "Projects (live)" },
   { href: "/projects/new", label: "New brief (live)" },
   { href: "/me", label: "Me" },
-  { href: "/profile", label: "Profile" },
   { href: "/feed", label: "Feed" },
   { href: "/explore", label: "Explore" },
   { href: "/spaces", label: "Spaces" },

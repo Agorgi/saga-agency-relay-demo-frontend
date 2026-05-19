@@ -1,27 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 
 type ChatTurn = {
   role: "user" | "saga";
   text: string;
 };
-
-const DEMO_TURNS: ChatTurn[] = [
-  { role: "user", text: "Formal ball in July. Romantic, otherworldly." },
-  {
-    role: "saga",
-    text: "Got it. To shape the crew — where, how many, what should we help with?",
-  },
-  {
-    role: "user",
-    text: "LA, ~150. Need a producer, stylist, venue lead, and performers. $15k all in.",
-  },
-  {
-    role: "saga",
-    text: "Locked in. $15k is tight but workable in LA in July — pulled it into a brief.",
-  },
-];
 
 const BRIEF_FIELDS = [
   "Idea",
@@ -34,12 +19,38 @@ const BRIEF_FIELDS = [
   "Existing crew",
 ];
 
+/**
+ * Demo-only Sagasan replies. The page is a static visual mock per Figma
+ * 7:2 — every user message gets the same canned reply so the bubbles
+ * land cleanly without wiring real chat. Real chat lives in the Landing
+ * (HeroChatMorph) and the production /projects flow.
+ */
+const SAGA_DEMO_REPLY =
+  "Got it. To shape the crew — where, how many, what should we help with?";
+
 export function SagaChatView() {
+  const [turns, setTurns] = useState<ChatTurn[]>([]);
+  const [draft, setDraft] = useState("");
+
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    const text = draft.trim();
+    if (!text) return;
+    setTurns((current) => [
+      ...current,
+      { role: "user", text },
+      { role: "saga", text: SAGA_DEMO_REPLY },
+    ]);
+    setDraft("");
+  }
+
+  const hasMessages = turns.length > 0;
+
   return (
     <div className="relative flex flex-1 flex-col">
       <SagaRhizomeChat />
       <div className="saga-chat-thread">
-        {DEMO_TURNS.map((turn, idx) => (
+        {turns.map((turn, idx) => (
           <div
             key={idx}
             className={`saga-chat-row ${turn.role === "user" ? "is-user" : "is-saga"}`}
@@ -55,34 +66,37 @@ export function SagaChatView() {
           </div>
         ))}
 
-        <div className="saga-brief-card">
-          <div className="bc-header">
-            <span>Brief — what we have</span>
-            <span className="bc-count">8 of 8</span>
-          </div>
-          <div className="bc-grid">
-            {BRIEF_FIELDS.map((field) => (
-              <span key={field} className="bc-field">
-                {field}
-              </span>
-            ))}
-          </div>
-        </div>
+        {hasMessages ? (
+          <>
+            <div className="saga-brief-card">
+              <div className="bc-header">
+                <span>Brief — what we have</span>
+                <span className="bc-count">{Math.min(turns.length, 8)} of 8</span>
+              </div>
+              <div className="bc-grid">
+                {BRIEF_FIELDS.map((field) => (
+                  <span key={field} className="bc-field">
+                    {field}
+                  </span>
+                ))}
+              </div>
+            </div>
 
-        <Link href="/demo/brief" className="saga-cta-outline">
-          view your project <span className="arrow">→</span>
-        </Link>
+            <Link href="/demo/brief" className="saga-cta-outline">
+              view your project <span className="arrow">→</span>
+            </Link>
+          </>
+        ) : null}
       </div>
 
-      <form
-        className="saga-chat-composer"
-        onSubmit={(event) => event.preventDefault()}
-      >
+      <form className="saga-chat-composer" onSubmit={handleSubmit}>
         <div className="saga-chat-composer-row">
           <input
             type="text"
             placeholder="reply to Sagasan…"
             aria-label="Reply to Sagasan"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
           />
           <button type="submit" aria-label="Send">
             ↑
