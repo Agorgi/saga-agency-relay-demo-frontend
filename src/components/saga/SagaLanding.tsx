@@ -13,15 +13,45 @@ import type { Persona } from "@/lib/sagasanPersonas";
 type IntentChip = {
   label: string;
   persona: Persona;
-  hint: string;
+  welcome: string;
 };
 
 const INTENT_CHIPS: IntentChip[] = [
-  { label: "I'm hosting", persona: "host", hint: "host" },
-  { label: "I'm a creative", persona: "creative", hint: "creative" },
-  { label: "I run a space", persona: "venue", hint: "venue" },
-  { label: "I'm a fan", persona: "fan", hint: "fan" },
+  {
+    label: "I'm hosting",
+    persona: "host",
+    welcome: "Tell me what you're planning.",
+  },
+  {
+    label: "I'm a creative",
+    persona: "creative",
+    welcome: "What kind of work are you chasing?",
+  },
+  {
+    label: "I run a space",
+    persona: "venue",
+    welcome: "Tell me about your space.",
+  },
+  {
+    label: "I'm a fan",
+    persona: "fan",
+    welcome: "Tell me what you're into.",
+  },
 ];
+
+const INTENT_PARAM_TO_PERSONA: Record<string, Persona> = {
+  host: "host",
+  creative: "creative",
+  venue: "venue",
+  fan: "fan",
+};
+
+function welcomeForPersona(persona: Persona | null): string {
+  if (!persona) return "";
+  return (
+    INTENT_CHIPS.find((chip) => chip.persona === persona)?.welcome ?? ""
+  );
+}
 
 export function SagaLanding() {
   return (
@@ -69,8 +99,9 @@ function SagaTopBar() {
 function SagaLandingBody() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const hostIntent = searchParams.get("intent") === "host";
-  const [hostIntentActive, setHostIntentActive] = useState(false);
+  const intentParam = searchParams.get("intent") ?? "";
+  const activeIntentPersona: Persona | null =
+    INTENT_PARAM_TO_PERSONA[intentParam] ?? null;
   const [isConversationOpen, setIsConversationOpen] = useState(false);
   const [resetKey, setResetKey] = useState(0);
 
@@ -91,15 +122,11 @@ function SagaLandingBody() {
   }, []);
 
   useEffect(() => {
-    if (!hostIntent) {
-      setHostIntentActive(false);
-      return;
-    }
-    requestWebChatReset("host");
-    setHostIntentActive(true);
+    if (!activeIntentPersona) return;
+    requestWebChatReset(activeIntentPersona);
     setIsConversationOpen(true);
     setResetKey((current) => current + 1);
-  }, [hostIntent]);
+  }, [activeIntentPersona]);
 
   const contextNote = decodedPrefill
     ? {
@@ -118,7 +145,7 @@ function SagaLandingBody() {
 
   function handleIntent(chip: IntentChip) {
     const params = new URLSearchParams(searchParams.toString());
-    params.set("intent", chip.hint);
+    params.set("intent", chip.persona);
     router.push(`/?${params.toString()}`);
   }
 
@@ -142,11 +169,9 @@ function SagaLandingBody() {
         <div className="w-full">
           <HeroChatMorph
             key={resetKey}
-            fallbackPersona={hostIntentActive ? "host" : null}
-            initialExpanded={hostIntentActive}
-            welcomeMessage={
-              hostIntentActive ? "Tell me what you're planning." : ""
-            }
+            fallbackPersona={activeIntentPersona}
+            initialExpanded={activeIntentPersona !== null}
+            welcomeMessage={welcomeForPersona(activeIntentPersona)}
             contextNote={contextNote}
             onExpandedChange={(expanded) => {
               setIsConversationOpen(expanded);
