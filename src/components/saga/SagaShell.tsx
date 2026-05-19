@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { SagaPageToggle } from "@/components/saga/SagaPageToggle";
+import { SagaStarMenu } from "@/components/saga/SagaStarMenu";
 
 type SagaShellProps = {
   state?: string;
@@ -14,7 +14,7 @@ type SagaShellProps = {
   atmosphere?: boolean;
   /** Status-bar time. Defaults to the canonical 9:41 from the Figma. */
   time?: string;
-  /** Render the internal page-toggle navigator at the bottom. Default on. */
+  /** Render the internal QA navigator (star button + drawer). Default on. */
   pageToggle?: boolean;
   /** Render solid Saga background. Off when wrapping a legacy
    *  AppFrame that brings its own background. */
@@ -72,7 +72,7 @@ export function SagaShell({
         {underline ? <div className="saga-app-underline" aria-hidden="true" /> : null}
         {children}
       </div>
-      {pageToggle ? <SagaPageToggle /> : null}
+      {pageToggle ? <SagaStarMenu /> : null}
     </div>
   );
 }
