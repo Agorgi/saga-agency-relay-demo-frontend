@@ -1,26 +1,36 @@
 "use client";
 
-import { AppChrome } from "@/components/AppChrome";
 import { PostComposerModal } from "@/components/PostComposerModal";
+import { SagaShell } from "@/components/saga/SagaShell";
 
+/**
+ * Outer frame for every consumer page outside the Figma-spec screens
+ * (Landing / Chat / Brief / Crew / Candidates). Wraps content in
+ * SagaShell so the saga design tokens + cyan-mode + status / session
+ * chrome cascade everywhere. The legacy AppChrome top + bottom nav is
+ * deliberately not rendered here — the page-toggle delivered by
+ * SagaShell is the QA navigator, and the persona-aware nav will be
+ * rebuilt against the new design system when the Figma covers it.
+ *
+ * `chrome` is kept on the signature for callsite compatibility; the
+ * value is currently ignored.
+ */
 export function AppFrame({
   children,
-  chrome = true,
   composer = true,
+  sessionState = "ACTIVE",
 }: {
   children: React.ReactNode;
   chrome?: boolean;
   composer?: boolean;
+  sessionState?: string;
 }) {
   return (
-    <main className="brand-page relative min-h-screen w-full overflow-x-hidden">
-      <div className="app-atmosphere pointer-events-none fixed inset-0" />
-      <div className="pointer-events-none fixed inset-x-0 top-[-10vh] z-0 h-[42vh] bg-[radial-gradient(circle_at_top,rgba(255,79,158,0.14),transparent_58%)] blur-3xl" />
-      <div className="pointer-events-none fixed bottom-[-12vh] left-[-8vw] z-0 h-[34vh] w-[34vw] min-w-[280px] rounded-full bg-[radial-gradient(circle,rgba(71,37,255,0.14),transparent_68%)] blur-3xl" />
-      <div className="pointer-events-none fixed right-[-10vw] top-[18vh] z-0 h-[34vh] w-[34vw] min-w-[280px] rounded-full bg-[radial-gradient(circle,rgba(126,164,255,0.18),transparent_66%)] blur-3xl" />
-      {chrome ? <AppChrome /> : null}
-      {children}
-      {composer ? <PostComposerModal /> : null}
-    </main>
+    <SagaShell state={sessionState}>
+      <div className="relative w-full flex-1">
+        {children}
+        {composer ? <PostComposerModal /> : null}
+      </div>
+    </SagaShell>
   );
 }

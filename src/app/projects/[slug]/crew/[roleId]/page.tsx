@@ -16,6 +16,7 @@
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { CandidateReviewView } from "@/components/projects/CandidateReviewView";
+import { SagaShell } from "@/components/saga/SagaShell";
 import {
   loadCandidateReview,
   type CandidateReviewData,
@@ -50,5 +51,9 @@ export default async function ProjectCandidateReviewPage({
   if (!data) {
     notFound();
   }
-  return <CandidateReviewView data={data} />;
+  return (
+    <SagaShell state="CANDIDATES">
+      <CandidateReviewView data={data} />
+    </SagaShell>
+  );
 }

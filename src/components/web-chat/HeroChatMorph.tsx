@@ -27,6 +27,21 @@ type HeroChatMorphProps = {
   fallbackPersona?: Persona | null;
   initialExpanded?: boolean;
   welcomeMessage?: string;
+  collapsedPlaceholder?: string;
+  /** Hide the internal persona-picker chip row. SagaLanding provides
+   *  its own intent-chip row above the launcher, so the duplicate
+   *  picker needs to be suppressed there. Default false preserves
+   *  legacy behavior for any other caller. */
+  hidePersonaPicker?: boolean;
+  /** Style the collapsed launcher with the saga cyan-dark surface
+   *  instead of the legacy white-glass surface. Used by the Landing
+   *  per the Figma. */
+  sagaSurface?: boolean;
+  /** When true, do NOT auto-expand on mount even if there is a stored
+   *  conversation. Landing uses this so a returning visitor sees the
+   *  hero ("tribal / by nature") and not the chat thread they were in
+   *  last time — they expand by clicking the launcher. */
+  disableAutoExpand?: boolean;
   contextNote?: {
     title: string;
     lines: string[];
@@ -38,6 +53,10 @@ export function HeroChatMorph({
   fallbackPersona = null,
   initialExpanded = false,
   welcomeMessage = DEFAULT_WELCOME_MESSAGE,
+  collapsedPlaceholder = "Tell Sagasan what you need.",
+  hidePersonaPicker = false,
+  sagaSurface = false,
+  disableAutoExpand = false,
   contextNote = null,
 }: HeroChatMorphProps) {
   const router = useRouter();
@@ -70,10 +89,11 @@ export function HeroChatMorph({
   }, [initialExpanded, isRestoring]);
 
   useEffect(() => {
+    if (disableAutoExpand) return;
     if (!isRestoring && hasActiveConversation) {
       setIsExpanded(true);
     }
-  }, [hasActiveConversation, isRestoring]);
+  }, [disableAutoExpand, hasActiveConversation, isRestoring]);
 
   useEffect(() => {
     onExpandedChange?.(isExpanded);
@@ -183,9 +203,11 @@ export function HeroChatMorph({
       <motion.section
         layout
         transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
-        className={`brand-surface-strong w-full overflow-hidden rounded-[34px] border border-[color:var(--surface-border)] shadow-[0_24px_70px_rgba(64,44,128,0.14)] ${
-          isExpanded ? "max-w-[520px]" : ""
-        }`}
+        className={`${
+          sagaSurface && !isExpanded
+            ? "w-full"
+            : "brand-surface-strong w-full overflow-hidden rounded-[34px] border border-[color:var(--surface-border)] shadow-[0_24px_70px_rgba(64,44,128,0.14)]"
+        } ${isExpanded ? "max-w-[520px]" : ""}`}
       >
         <AnimatePresence initial={false}>
           {isExpanded ? (
@@ -321,7 +343,11 @@ export function HeroChatMorph({
             >
               <form
                 onSubmit={handleLauncherSubmit}
-                className="flex w-full items-center gap-3 rounded-[28px] border border-[color:var(--surface-border)] bg-white/78 px-4 py-3"
+                className={
+                  sagaSurface
+                    ? "saga-launcher-form flex w-full items-center gap-3 px-4 py-3"
+                    : "flex w-full items-center gap-3 rounded-[28px] border border-[color:var(--surface-border)] bg-white/78 px-4 py-3"
+                }
               >
                 <div className="min-w-0 flex-1">
                   <label className="sr-only" htmlFor="hero-chat-launcher">
@@ -331,19 +357,27 @@ export function HeroChatMorph({
                     id="hero-chat-launcher"
                     type="text"
                     value={draft}
-                    placeholder="Tell Sagasan what you need."
+                    placeholder={collapsedPlaceholder}
                     disabled={isRestoring || isSending}
                     onChange={(event) => {
                       setDraft(event.target.value);
                     }}
-                    className="w-full bg-transparent text-[15px] leading-7 text-ink outline-none placeholder:text-ink-light/80 disabled:cursor-not-allowed disabled:opacity-70"
+                    className={
+                      sagaSurface
+                        ? "w-full bg-transparent text-[15px] leading-7 text-white outline-none placeholder:text-white/45 disabled:cursor-not-allowed disabled:opacity-70"
+                        : "w-full bg-transparent text-[15px] leading-7 text-ink outline-none placeholder:text-ink-light/80 disabled:cursor-not-allowed disabled:opacity-70"
+                    }
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={isRestoring || isSending || draft.trim().length === 0}
-                  className="brand-button-primary flex h-12 w-12 shrink-0 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-55"
+                  className={
+                    sagaSurface
+                      ? "saga-launcher-send flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-55"
+                      : "brand-button-primary flex h-12 w-12 shrink-0 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-55"
+                  }
                   aria-label="Start chat"
                 >
                   <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -358,26 +392,28 @@ export function HeroChatMorph({
                 </button>
               </form>
 
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                {PERSONA_OPTIONS.map((option) => {
-                  const isActive = chipPersona === option.persona;
-                  return (
-                    <button
-                      key={option.persona}
-                      type="button"
-                      onClick={() => void handlePersonaClick(option)}
-                      disabled={isRestoring || isSending}
-                      className={`rounded-pill px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
-                        isActive
-                          ? "bg-[linear-gradient(135deg,rgba(95,69,255,0.16),rgba(255,79,158,0.16))] text-ink shadow-[0_10px_24px_rgba(66,47,145,0.12)]"
-                          : "brand-chip text-ink hover:text-ink"
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  );
-                })}
-              </div>
+              {hidePersonaPicker ? null : (
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                  {PERSONA_OPTIONS.map((option) => {
+                    const isActive = chipPersona === option.persona;
+                    return (
+                      <button
+                        key={option.persona}
+                        type="button"
+                        onClick={() => void handlePersonaClick(option)}
+                        disabled={isRestoring || isSending}
+                        className={`rounded-pill px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                          isActive
+                            ? "bg-[linear-gradient(135deg,rgba(95,69,255,0.16),rgba(255,79,158,0.16))] text-ink shadow-[0_10px_24px_rgba(66,47,145,0.12)]"
+                            : "brand-chip text-ink hover:text-ink"
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
               <p
                 className="min-h-[18px] px-1 pt-3 text-center text-[11px] text-ink-light"
