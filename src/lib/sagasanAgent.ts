@@ -1420,14 +1420,8 @@ function buildFanNextStep(fields: StoredExtractedFields): WebChatNextStep | null
 
 export function deriveNextStep(
   persona: Persona | null,
-  history: ChatMessage[],
-  latestMessage: string,
+  fields: StoredExtractedFields,
 ) {
-  const fields = extractStructuredFields({
-    persona,
-    history,
-    latestMessage,
-  });
   if (persona === "host") {
     return sanitizeNextStepPayload(buildHostNextStep(fields));
   }
@@ -1617,7 +1611,7 @@ function buildDeterministicReply({
     };
   }
 
-  const nextStep = deriveNextStep(persona, history, latestMessage);
+  const nextStep = deriveNextStep(persona, extractedFields);
   const organizerReadiness =
     persona === "host"
       ? evaluateOrganizerBriefReadiness(organizerFieldsFromStored(extractedFields))
@@ -2064,8 +2058,12 @@ export async function generateAgentReply({
     response.data.extractedSignals,
   );
   // PR #72: nextStep is computed deterministically from extracted
-  // fields, not from the LLM. See the schema comment above for why.
-  const sanitizedNextStep = deriveNextStep(persona, history, latestMessage);
+  // fields, not from the LLM. Pass the LLM-merged `extractedFields`
+  // (not raw regex output) so the readiness check uses the same
+  // signal quality the brief composer does — otherwise a host
+  // message that the LLM correctly parses produces no nextStep
+  // because the regex extractor alone can't fill required fields.
+  const sanitizedNextStep = deriveNextStep(persona, extractedFields);
 
   const reply = trimSentence(response.data.message, 260);
   return {
