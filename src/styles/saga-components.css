@@ -308,22 +308,26 @@
  * for visual inspection. */
 .saga-page-toggle {
   position: fixed;
-  bottom: 84px;
+  bottom: 12px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 6px;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: var(--saga-radius-pill);
-  background: rgba(12, 14, 18, 0.72);
+  background: rgba(12, 14, 18, 0.78);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--saga-bg-border-soft);
   z-index: 50;
-  max-width: calc(100% - 32px);
+  max-width: calc(100% - 24px);
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+.saga-page-toggle::-webkit-scrollbar { display: none; }
 .saga-page-toggle .pt-label {
   font-family: var(--saga-font-mono);
   font-size: 9px;
@@ -336,8 +340,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
   border-radius: 50%;
   border: 1px solid var(--saga-bg-border);
   background: transparent;
@@ -1117,3 +1122,468 @@ a.saga-role-pill-reviewed:hover {
   border: 1px solid rgba(240, 68, 56, 0.35);
 }
 .saga-decision-pass:hover { background: rgba(240, 68, 56, 0.26); }
+
+/* ==========================================================================
+   BODY BACKGROUND OVERRIDE
+   When a saga shell is mounted anywhere on the page, kill the legacy
+   body bg + atmosphere art so semi-transparent cards (bg-white/80 et al)
+   sit on saga-bg-base rather than cream. Uses :has() — modern browsers
+   only, which matches our deploy target (demo.try-saga.com).
+   ========================================================================== */
+html:has(.saga.saga-cyan-mode) body {
+  background: var(--saga-bg-base) !important;
+  background-image: none !important;
+  color: var(--saga-fg-primary);
+}
+html:has(.saga.saga-cyan-mode) body::before,
+html:has(.saga.saga-cyan-mode) body::after {
+  display: none !important;
+}
+
+/* ==========================================================================
+   LEGACY COMPAT LAYER
+   Maps legacy `globals.css` variables + Tailwind utility classes onto
+   saga tokens so any page wrapped in SagaShell (= every page that
+   imports AppFrame, plus the five Figma slides) renders coherently in
+   dark cyan-mode regardless of which token system its interior uses.
+   Scope is `.saga.saga-cyan-mode` so legacy-only pages are unaffected
+   if SagaShell is ever stripped. !important is used selectively against
+   Tailwind utilities that ship hardcoded colors.
+   ========================================================================== */
+.saga.saga-cyan-mode {
+  /* Legacy globals.css variables — remap to saga surfaces */
+  --app-bg:               var(--saga-bg-base);
+  --app-bg-secondary:     var(--saga-bg-surface-1);
+  --app-text:             var(--saga-fg-primary);
+  --app-text-muted:       var(--saga-fg-tertiary);
+  --surface:              var(--saga-bg-surface-1);
+  --surface-strong:       var(--saga-bg-surface-2);
+  --surface-soft:         var(--saga-bg-surface-1);
+  --surface-deep:         var(--saga-bg-surface-2);
+  --surface-border:       var(--saga-bg-border-soft);
+  --surface-border-strong: var(--saga-bg-border);
+  --surface-shadow:       var(--saga-shadow-card);
+  --brand-blue:           var(--saga-accent-cyan);
+  --brand-indigo:         var(--saga-brand-primary);
+  --brand-pink:           var(--saga-accent-magenta);
+  --brand-yellow:         var(--saga-accent-gold);
+  --brand-orange:         var(--saga-accent-ember);
+  --brand-ink:            var(--saga-fg-primary);
+  --selection-bg:         var(--saga-brand-tint-hi);
+  --selection-text:       var(--saga-fg-primary);
+  --atmosphere-1:         rgba(229, 68, 109, 0.10);
+  --atmosphere-2:         rgba(100, 200, 255, 0.14);
+  --atmosphere-3:         rgba(12, 14, 18, 0.55);
+  --background-art-opacity: 0;
+  --halftone-opacity:     0;
+}
+
+/* Tailwind utility overrides — these classes carry hardcoded colors
+ * from tailwind.config.ts (text-ink: #181126, etc). Inside the saga
+ * scope, redirect them to saga foreground/surface tokens. */
+.saga.saga-cyan-mode .text-ink         { color: var(--saga-fg-primary)   !important; }
+.saga.saga-cyan-mode .text-ink-light   { color: var(--saga-fg-secondary) !important; }
+.saga.saga-cyan-mode .text-ink-muted   { color: var(--saga-fg-tertiary)  !important; }
+.saga.saga-cyan-mode .text-canvas      { color: var(--saga-fg-primary)   !important; }
+.saga.saga-cyan-mode .text-canvas-dark { color: var(--saga-fg-secondary) !important; }
+.saga.saga-cyan-mode .text-accent      { color: var(--saga-accent-cyan)  !important; }
+.saga.saga-cyan-mode .text-accent-bright { color: var(--saga-accent-magenta) !important; }
+.saga.saga-cyan-mode .text-accent-signal { color: var(--saga-accent-gold) !important; }
+.saga.saga-cyan-mode .text-black       { color: var(--saga-fg-primary)   !important; }
+
+.saga.saga-cyan-mode .bg-ink           { background-color: var(--saga-bg-surface-2) !important; }
+.saga.saga-cyan-mode .bg-canvas        { background-color: var(--saga-bg-base)      !important; }
+.saga.saga-cyan-mode .bg-canvas-dark   { background-color: var(--saga-bg-surface-1) !important; }
+.saga.saga-cyan-mode [class*="bg-canvas/"] { background-color: rgba(19, 22, 27, 0.84) !important; }
+.saga.saga-cyan-mode .bg-white         { background-color: var(--saga-bg-surface-1) !important; }
+.saga.saga-cyan-mode [class*="bg-white/"] { background-color: rgba(19, 22, 27, 0.82) !important; }
+.saga.saga-cyan-mode .bg-black         { background-color: var(--saga-bg-base)      !important; }
+.saga.saga-cyan-mode [class*="bg-black/"] { background-color: rgba(12, 14, 18, 0.82) !important; }
+.saga.saga-cyan-mode .bg-accent        { background-color: var(--saga-accent-cyan)  !important; }
+.saga.saga-cyan-mode .bg-accent-bright { background-color: var(--saga-accent-magenta) !important; }
+
+.saga.saga-cyan-mode .border-white,
+.saga.saga-cyan-mode [class*="border-white/"],
+.saga.saga-cyan-mode .border-black,
+.saga.saga-cyan-mode [class*="border-black/"],
+.saga.saga-cyan-mode .border-ink,
+.saga.saga-cyan-mode [class*="border-ink/"] {
+  border-color: var(--saga-bg-border-soft) !important;
+}
+.saga.saga-cyan-mode .border-canvas,
+.saga.saga-cyan-mode [class*="border-canvas/"] {
+  border-color: var(--saga-bg-border-soft) !important;
+}
+.saga.saga-cyan-mode .border-accent,
+.saga.saga-cyan-mode [class*="border-accent/"] {
+  border-color: rgba(100, 200, 255, 0.32) !important;
+}
+
+/* Divide / outline colors (Tailwind) */
+.saga.saga-cyan-mode [class*="divide-white/"],
+.saga.saga-cyan-mode [class*="divide-black/"],
+.saga.saga-cyan-mode [class*="divide-ink/"] {
+  --tw-divide-color: var(--saga-bg-border-soft) !important;
+  border-color: var(--saga-bg-border-soft) !important;
+}
+
+/* Tailwind ring utilities (focus states etc.) */
+.saga.saga-cyan-mode .ring-accent,
+.saga.saga-cyan-mode [class*="ring-accent/"] {
+  --tw-ring-color: rgba(100, 200, 255, 0.5) !important;
+}
+
+/* Gradient-text legacy class (brand-gradient-text) — re-tint with saga hero gradient */
+.saga.saga-cyan-mode .brand-gradient-text {
+  background-image: var(--saga-gradient-hero) !important;
+}
+
+/* Suppress the legacy body atmosphere (radial halos + halftone + bg art)
+ * inside the saga scope so saga's own halo / sparkles / rhizome read
+ * cleanly. Body pseudo-elements are global so we kill them via the html
+ * saga-cyan-mode marker. */
+.saga.saga-cyan-mode .app-atmosphere,
+.saga.saga-cyan-mode .brand-page {
+  background: none !important;
+}
+
+/* Cards / pills the legacy components depend on — give them a calm
+ * dark-surface look so even unmodified components look coherent. */
+.saga.saga-cyan-mode .brand-surface,
+.saga.saga-cyan-mode .brand-surface-strong,
+.saga.saga-cyan-mode .brand-surface-deep,
+.saga.saga-cyan-mode .brand-surface-inset {
+  background: var(--saga-bg-surface-1) !important;
+  border-color: var(--saga-bg-border-soft) !important;
+  box-shadow: var(--saga-shadow-card) !important;
+  backdrop-filter: none !important;
+}
+.saga.saga-cyan-mode .brand-chip {
+  background: var(--saga-bg-surface-2) !important;
+  border-color: var(--saga-bg-border) !important;
+  color: var(--saga-fg-primary);
+  backdrop-filter: none !important;
+}
+.saga.saga-cyan-mode .brand-chip-signal {
+  background: var(--saga-brand-tint-hi) !important;
+  border-color: rgba(100, 200, 255, 0.4) !important;
+  color: var(--saga-accent-cyan) !important;
+}
+.saga.saga-cyan-mode .brand-button-primary {
+  background-image: var(--saga-gradient-button-outline) !important;
+  color: var(--saga-fg-primary) !important;
+  box-shadow: var(--saga-glow-primary) !important;
+}
+.saga.saga-cyan-mode .brand-button-secondary {
+  background: var(--saga-bg-surface-2) !important;
+  border-color: var(--saga-bg-border) !important;
+  color: var(--saga-fg-primary) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+.saga.saga-cyan-mode .brand-kicker {
+  color: var(--saga-accent-cyan) !important;
+  font-family: var(--saga-font-mono);
+  letter-spacing: var(--saga-track-caps);
+}
+.saga.saga-cyan-mode .brand-accent-serif {
+  font-family: "Instrument Serif", "Cormorant Garamond", Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--saga-fg-primary);
+}
+
+/* Legacy input fields: dark surface with cyan focus */
+.saga.saga-cyan-mode input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="submit"]):not([type="button"]),
+.saga.saga-cyan-mode textarea,
+.saga.saga-cyan-mode select {
+  background-color: var(--saga-bg-surface-2);
+  border-color: var(--saga-bg-border-soft);
+  color: var(--saga-fg-primary);
+}
+.saga.saga-cyan-mode input::placeholder,
+.saga.saga-cyan-mode textarea::placeholder {
+  color: var(--saga-fg-muted);
+}
+.saga.saga-cyan-mode input:focus,
+.saga.saga-cyan-mode textarea:focus,
+.saga.saga-cyan-mode select:focus {
+  border-color: var(--saga-accent-cyan);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(100, 200, 255, 0.22);
+}
+
+/* ---- Tailwind grayscale palettes inside saga scope ----
+ * Pages often use bare Tailwind grays (text-zinc-900, bg-gray-100, etc).
+ * Those carry a "dark text on light bg" assumption; under saga's dark
+ * surface they invert. Remap by lightness bucket so all shades fall onto
+ * saga foreground/surface tokens. */
+
+/* Dark text (700-950) — primary foreground */
+.saga.saga-cyan-mode [class*="text-zinc-7"],
+.saga.saga-cyan-mode [class*="text-zinc-8"],
+.saga.saga-cyan-mode [class*="text-zinc-9"],
+.saga.saga-cyan-mode [class*="text-gray-7"],
+.saga.saga-cyan-mode [class*="text-gray-8"],
+.saga.saga-cyan-mode [class*="text-gray-9"],
+.saga.saga-cyan-mode [class*="text-slate-7"],
+.saga.saga-cyan-mode [class*="text-slate-8"],
+.saga.saga-cyan-mode [class*="text-slate-9"],
+.saga.saga-cyan-mode [class*="text-neutral-7"],
+.saga.saga-cyan-mode [class*="text-neutral-8"],
+.saga.saga-cyan-mode [class*="text-neutral-9"],
+.saga.saga-cyan-mode [class*="text-stone-7"],
+.saga.saga-cyan-mode [class*="text-stone-8"],
+.saga.saga-cyan-mode [class*="text-stone-9"] {
+  color: var(--saga-fg-primary) !important;
+}
+
+/* Medium text (500-600) — secondary foreground */
+.saga.saga-cyan-mode .text-zinc-500,
+.saga.saga-cyan-mode .text-zinc-600,
+.saga.saga-cyan-mode .text-gray-500,
+.saga.saga-cyan-mode .text-gray-600,
+.saga.saga-cyan-mode .text-slate-500,
+.saga.saga-cyan-mode .text-slate-600,
+.saga.saga-cyan-mode .text-neutral-500,
+.saga.saga-cyan-mode .text-neutral-600,
+.saga.saga-cyan-mode .text-stone-500,
+.saga.saga-cyan-mode .text-stone-600 {
+  color: var(--saga-fg-secondary) !important;
+}
+
+/* Light text (300-400) — tertiary / muted */
+.saga.saga-cyan-mode .text-zinc-300,
+.saga.saga-cyan-mode .text-zinc-400,
+.saga.saga-cyan-mode .text-gray-300,
+.saga.saga-cyan-mode .text-gray-400,
+.saga.saga-cyan-mode .text-slate-300,
+.saga.saga-cyan-mode .text-slate-400,
+.saga.saga-cyan-mode .text-neutral-300,
+.saga.saga-cyan-mode .text-neutral-400,
+.saga.saga-cyan-mode .text-stone-300,
+.saga.saga-cyan-mode .text-stone-400 {
+  color: var(--saga-fg-tertiary) !important;
+}
+
+/* Very light text (50-200) on dark = keep as faint foreground */
+.saga.saga-cyan-mode .text-zinc-50,
+.saga.saga-cyan-mode .text-zinc-100,
+.saga.saga-cyan-mode .text-zinc-200,
+.saga.saga-cyan-mode .text-gray-50,
+.saga.saga-cyan-mode .text-gray-100,
+.saga.saga-cyan-mode .text-gray-200,
+.saga.saga-cyan-mode .text-slate-50,
+.saga.saga-cyan-mode .text-slate-100,
+.saga.saga-cyan-mode .text-slate-200,
+.saga.saga-cyan-mode .text-neutral-50,
+.saga.saga-cyan-mode .text-neutral-100,
+.saga.saga-cyan-mode .text-neutral-200,
+.saga.saga-cyan-mode .text-stone-50,
+.saga.saga-cyan-mode .text-stone-100,
+.saga.saga-cyan-mode .text-stone-200 {
+  color: var(--saga-fg-primary) !important;
+}
+
+/* Light bg (50-200) → saga surface 1. Pages use these for cards meant
+ * to read as "paper" against a darker page bg. */
+.saga.saga-cyan-mode [class*="bg-zinc-1"],
+.saga.saga-cyan-mode [class*="bg-zinc-2"],
+.saga.saga-cyan-mode .bg-zinc-50,
+.saga.saga-cyan-mode [class*="bg-gray-1"],
+.saga.saga-cyan-mode [class*="bg-gray-2"],
+.saga.saga-cyan-mode .bg-gray-50,
+.saga.saga-cyan-mode [class*="bg-slate-1"],
+.saga.saga-cyan-mode [class*="bg-slate-2"],
+.saga.saga-cyan-mode .bg-slate-50,
+.saga.saga-cyan-mode [class*="bg-neutral-1"],
+.saga.saga-cyan-mode [class*="bg-neutral-2"],
+.saga.saga-cyan-mode .bg-neutral-50,
+.saga.saga-cyan-mode [class*="bg-stone-1"],
+.saga.saga-cyan-mode [class*="bg-stone-2"],
+.saga.saga-cyan-mode .bg-stone-50 {
+  background-color: var(--saga-bg-surface-1) !important;
+  color: var(--saga-fg-primary);
+}
+
+/* Medium bg (300-500) → saga surface 2 */
+.saga.saga-cyan-mode [class*="bg-zinc-3"],
+.saga.saga-cyan-mode [class*="bg-zinc-4"],
+.saga.saga-cyan-mode [class*="bg-zinc-5"],
+.saga.saga-cyan-mode [class*="bg-gray-3"],
+.saga.saga-cyan-mode [class*="bg-gray-4"],
+.saga.saga-cyan-mode [class*="bg-gray-5"],
+.saga.saga-cyan-mode [class*="bg-slate-3"],
+.saga.saga-cyan-mode [class*="bg-slate-4"],
+.saga.saga-cyan-mode [class*="bg-slate-5"],
+.saga.saga-cyan-mode [class*="bg-neutral-3"],
+.saga.saga-cyan-mode [class*="bg-neutral-4"],
+.saga.saga-cyan-mode [class*="bg-neutral-5"],
+.saga.saga-cyan-mode [class*="bg-stone-3"],
+.saga.saga-cyan-mode [class*="bg-stone-4"],
+.saga.saga-cyan-mode [class*="bg-stone-5"] {
+  background-color: var(--saga-bg-surface-2) !important;
+}
+
+/* Dark bg (700-950) → saga base or surface 2 (already dark, keep neutral) */
+.saga.saga-cyan-mode [class*="bg-zinc-7"],
+.saga.saga-cyan-mode [class*="bg-zinc-8"],
+.saga.saga-cyan-mode [class*="bg-zinc-9"],
+.saga.saga-cyan-mode [class*="bg-gray-7"],
+.saga.saga-cyan-mode [class*="bg-gray-8"],
+.saga.saga-cyan-mode [class*="bg-gray-9"],
+.saga.saga-cyan-mode [class*="bg-slate-7"],
+.saga.saga-cyan-mode [class*="bg-slate-8"],
+.saga.saga-cyan-mode [class*="bg-slate-9"],
+.saga.saga-cyan-mode [class*="bg-neutral-7"],
+.saga.saga-cyan-mode [class*="bg-neutral-8"],
+.saga.saga-cyan-mode [class*="bg-neutral-9"],
+.saga.saga-cyan-mode [class*="bg-stone-7"],
+.saga.saga-cyan-mode [class*="bg-stone-8"],
+.saga.saga-cyan-mode [class*="bg-stone-9"] {
+  background-color: var(--saga-bg-surface-2) !important;
+}
+
+/* Borders — all light grayscale shades collapse to saga's soft border */
+.saga.saga-cyan-mode [class*="border-zinc-"],
+.saga.saga-cyan-mode [class*="border-gray-"],
+.saga.saga-cyan-mode [class*="border-slate-"],
+.saga.saga-cyan-mode [class*="border-neutral-"],
+.saga.saga-cyan-mode [class*="border-stone-"] {
+  border-color: var(--saga-bg-border) !important;
+}
+
+/* Divide colors — same treatment */
+.saga.saga-cyan-mode [class*="divide-zinc-"],
+.saga.saga-cyan-mode [class*="divide-gray-"],
+.saga.saga-cyan-mode [class*="divide-slate-"],
+.saga.saga-cyan-mode [class*="divide-neutral-"],
+.saga.saga-cyan-mode [class*="divide-stone-"] {
+  --tw-divide-color: var(--saga-bg-border) !important;
+  border-color: var(--saga-bg-border) !important;
+}
+
+/* ---- Arbitrary Tailwind hex classes (bg-[#xxx] / text-[#xxx]) ----
+ * Several legacy components ship hardcoded hex values. Light bgs become
+ * unreadable on saga's dark scope; dark text becomes invisible on saga's
+ * dark surfaces. Remap each problematic value to the closest saga token.
+ * Generated by sweeping `grep -rho 'bg-\[#xxx\]'` against src/. */
+
+/* Light arbitrary backgrounds → saga surface 1 */
+.saga.saga-cyan-mode .bg-\[\#d7d0eb\],
+.saga.saga-cyan-mode .bg-\[\#d9e9fb\],
+.saga.saga-cyan-mode .bg-\[\#e5edf8\],
+.saga.saga-cyan-mode .bg-\[\#edf5ff\],
+.saga.saga-cyan-mode .bg-\[\#eef1ff\],
+.saga.saga-cyan-mode .bg-\[\#f4f1eb\],
+.saga.saga-cyan-mode .bg-\[\#f6f4ee\],
+.saga.saga-cyan-mode .bg-\[\#f7f4ee\] {
+  background-color: var(--saga-bg-surface-1) !important;
+  color: var(--saga-fg-primary);
+}
+
+/* Mid/light cyan & purple arbitrary bgs → surface 2 with subtle tint */
+.saga.saga-cyan-mode .bg-\[\#7bc6ff\],
+.saga.saga-cyan-mode .bg-\[\#7cc7ff\] {
+  background-color: var(--saga-accent-cyan) !important;
+  color: #0C0E12;
+}
+.saga.saga-cyan-mode .bg-\[\#4e76f3\],
+.saga.saga-cyan-mode .bg-\[\#5d68ff\] {
+  background-color: var(--saga-brand-primary) !important;
+}
+
+/* Dark arbitrary backgrounds — already dark; collapse to surface-1 for consistency */
+.saga.saga-cyan-mode .bg-\[\#090d16\],
+.saga.saga-cyan-mode .bg-\[\#0c1018\],
+.saga.saga-cyan-mode .bg-\[\#0c111c\],
+.saga.saga-cyan-mode .bg-\[\#0d1320\],
+.saga.saga-cyan-mode .bg-\[\#0d1526\],
+.saga.saga-cyan-mode .bg-\[\#0f1420\],
+.saga.saga-cyan-mode .bg-\[\#101624\],
+.saga.saga-cyan-mode .bg-\[\#111624\],
+.saga.saga-cyan-mode .bg-\[\#11192b\],
+.saga.saga-cyan-mode .bg-\[\#121827\],
+.saga.saga-cyan-mode .bg-\[\#131a2b\],
+.saga.saga-cyan-mode .bg-\[\#141826\],
+.saga.saga-cyan-mode .bg-\[\#141d31\] {
+  background-color: var(--saga-bg-surface-1) !important;
+}
+.saga.saga-cyan-mode .bg-\[\#252c48\],
+.saga.saga-cyan-mode .bg-\[\#2c466a\],
+.saga.saga-cyan-mode .bg-\[\#3b345c\] {
+  background-color: var(--saga-bg-surface-2) !important;
+}
+
+/* Dark arbitrary text colors (invisible on dark bg) → saga foreground */
+.saga.saga-cyan-mode .text-\[\#08111f\],
+.saga.saga-cyan-mode .text-\[\#0b1423\],
+.saga.saga-cyan-mode .text-\[\#0f1728\],
+.saga.saga-cyan-mode .text-\[\#101624\],
+.saga.saga-cyan-mode .text-\[\#111827\],
+.saga.saga-cyan-mode .text-\[\#131722\],
+.saga.saga-cyan-mode .text-\[\#141826\],
+.saga.saga-cyan-mode .text-\[\#151923\] {
+  color: var(--saga-fg-primary) !important;
+}
+
+/* Mid-tone text colors → saga secondary */
+.saga.saga-cyan-mode .text-\[\#163b68\],
+.saga.saga-cyan-mode .text-\[\#173250\],
+.saga.saga-cyan-mode .text-\[\#4756d6\],
+.saga.saga-cyan-mode .text-\[\#4c5567\],
+.saga.saga-cyan-mode .text-\[\#596173\],
+.saga.saga-cyan-mode .text-\[\#626a79\],
+.saga.saga-cyan-mode .text-\[\#677082\],
+.saga.saga-cyan-mode .text-\[\#6f7683\],
+.saga.saga-cyan-mode .text-\[\#7f8796\] {
+  color: var(--saga-fg-secondary) !important;
+}
+
+/* Light-tone text colors already read on dark — coerce to tertiary so
+ * they don't compete with primary headings. */
+.saga.saga-cyan-mode .text-\[\#8da0b7\] {
+  color: var(--saga-fg-tertiary) !important;
+}
+
+/* ---- Arbitrary linear-gradient backgrounds ----
+ * Several legacy cards ship light cream/blue gradients via
+ * bg-[linear-gradient(...,#cream-hex,#cream-hex)]. Replace with a
+ * subtle saga gradient so the card surface reads on dark. Dark
+ * gradients are left alone — they were already correct. */
+.saga.saga-cyan-mode .bg-\[linear-gradient\(180deg\,\#eef6ff\,\#f8fafc\)\],
+.saga.saga-cyan-mode .bg-\[linear-gradient\(135deg\,\#fbfaf7\,\#eef6ff\,\#f4f1ea\)\],
+.saga.saga-cyan-mode .bg-\[linear-gradient\(135deg\,\#d7d2cb\,\#f6f3ee\)\],
+.saga.saga-cyan-mode .bg-\[linear-gradient\(135deg\,\#ddd5cb\,\#f0ece6\)\],
+.saga.saga-cyan-mode .bg-\[linear-gradient\(135deg\,\#ddd5cb\,\#f1efe9\)\],
+.saga.saga-cyan-mode .bg-\[linear-gradient\(135deg\,\#ddd5cb\,\#f5f3ef\)\],
+.saga.saga-cyan-mode .bg-\[linear-gradient\(135deg\,\#dfd9cf\,\#f6f3ee\)\],
+.saga.saga-cyan-mode .bg-\[linear-gradient\(180deg\,rgba\(255\,255\,255\,0\.58\)\,rgba\(247\,241\,255\,0\.38\)\)\] {
+  background-image: linear-gradient(180deg, var(--saga-bg-surface-1), var(--saga-bg-surface-2)) !important;
+  color: var(--saga-fg-primary);
+}
+
+/* Purple/pink translucent gradients (decorative) — keep visible but tone
+ * down + remove the white-leaning blend so they read on dark. */
+.saga.saga-cyan-mode .bg-\[linear-gradient\(135deg\,rgba\(255\,79\,158\,0\.05\)\,rgba\(123\,198\,255\,0\.18\)\)\],
+.saga.saga-cyan-mode .bg-\[linear-gradient\(135deg\,rgba\(255\,79\,158\,0\.08\)\,rgba\(126\,164\,255\,0\.16\)\)\],
+.saga.saga-cyan-mode .bg-\[linear-gradient\(135deg\,rgba\(255\,79\,158\,0\.08\)\,rgba\(95\,120\,255\,0\.16\)\)\] {
+  background-image: linear-gradient(135deg, rgba(229, 68, 109, 0.10), rgba(100, 200, 255, 0.16)) !important;
+}
+
+/* Solid light-cream / off-white arbitrary fills used as page surfaces */
+.saga.saga-cyan-mode .bg-\[\#fbfaf7\],
+.saga.saga-cyan-mode .bg-\[\#f4f1ea\] {
+  background-color: var(--saga-bg-base) !important;
+}
+
+/* Shadow utilities that ship dark/heavy values look wrong on dark surface.
+ * Most legacy components carry `shadow-[0_16px_40px_rgba(17,17,17,0.06)]`
+ * style declarations; collapse those to the saga card shadow. */
+.saga.saga-cyan-mode [class*="shadow-["][class*="rgba(17,17,17"],
+.saga.saga-cyan-mode [class*="shadow-["][class*="rgba(0,0,0"],
+.saga.saga-cyan-mode [class*="shadow-["][class*="rgba(6,10,18"],
+.saga.saga-cyan-mode [class*="shadow-["][class*="rgba(69,42,149"],
+.saga.saga-cyan-mode [class*="shadow-["][class*="rgba(95,120,255"] {
+  box-shadow: var(--saga-shadow-card) !important;
+}
