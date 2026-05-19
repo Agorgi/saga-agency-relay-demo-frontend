@@ -142,6 +142,7 @@ function SagaLandingBody() {
             collapsedPlaceholder="tell us what to make..."
             hidePersonaPicker
             sagaSurface
+            disableAutoExpand
             contextNote={contextNote}
             onExpandedChange={(expanded) => {
               setIsConversationOpen(expanded);

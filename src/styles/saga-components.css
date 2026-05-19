@@ -137,11 +137,26 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
+}
+.saga-app-header .ah-dot-cyan::before {
   background: var(--saga-brand-primary);
   box-shadow: 0 0 8px var(--saga-brand-primary);
 }
+.saga-app-header .ah-dot-ember::before {
+  background: var(--saga-accent-ember);
+  box-shadow: 0 0 8px var(--saga-accent-ember);
+}
 .saga-app-header .ah-version {
   color: var(--saga-fg-tertiary);
+}
+
+/* 1px hairline under the app-header used by Chat / Brief / Crew /
+ * Candidates per the Figma. */
+.saga-app-underline {
+  height: 1px;
+  width: 100%;
+  background: var(--saga-bg-border);
+  opacity: 0.6;
 }
 
 /* ---- Sparkles (small white dots used as ornament) ---- */
@@ -293,7 +308,7 @@
  * for visual inspection. */
 .saga-page-toggle {
   position: fixed;
-  bottom: 16px;
+  bottom: 84px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -350,3 +365,755 @@
   outline: 2px solid var(--saga-brand-primary);
   outline-offset: 2px;
 }
+
+/* ==========================================================================
+   CHAT (slide 7 — Figma node 7:2)
+   ========================================================================== */
+
+.saga-chat-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.saga-chat-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.saga-chat-row.is-user {
+  justify-content: flex-end;
+}
+.saga-chat-row.is-saga {
+  justify-content: flex-start;
+}
+
+.saga-chat-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--saga-accent-ember);
+  flex-shrink: 0;
+  margin-top: 4px;
+  box-shadow:
+    0 0 10px rgba(255, 138, 30, 0.55),
+    0 0 2px rgba(255, 138, 30, 0.9);
+}
+
+.saga-chat-bubble {
+  max-width: 280px;
+  padding: 11px 14px;
+  border-radius: 18px;
+  font-size: 13px;
+  line-height: 1.45;
+  letter-spacing: var(--saga-track-tight);
+}
+.saga-chat-bubble.is-user {
+  background: #6CC8FF;
+  color: #0C1A2A;
+  border-bottom-right-radius: 6px;
+  box-shadow: 0 4px 16px rgba(100, 200, 255, 0.18);
+}
+.saga-chat-bubble.is-saga {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--saga-fg-secondary);
+  border: 1px solid var(--saga-bg-border);
+  border-bottom-left-radius: 6px;
+}
+
+/* Brief progress card — slide 7 inline brief summary */
+.saga-brief-card {
+  margin-top: 4px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--saga-bg-border);
+}
+.saga-brief-card .bc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--saga-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--saga-fg-tertiary);
+  margin-bottom: 12px;
+}
+.saga-brief-card .bc-header .bc-count {
+  color: var(--saga-fg-secondary);
+}
+.saga-brief-card .bc-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 24px;
+}
+.saga-brief-card .bc-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--saga-fg-secondary);
+}
+.saga-brief-card .bc-field::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--saga-brand-primary);
+  box-shadow: 0 0 6px rgba(100, 200, 255, 0.55);
+  flex-shrink: 0;
+}
+
+/* "view your project" CTA — gradient outline pill */
+.saga a.saga-cta-outline,
+a.saga-cta-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: var(--saga-radius-pill);
+  position: relative;
+  cursor: pointer;
+  font-family: var(--saga-font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--saga-fg-primary);
+  text-decoration: none;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(#0C0E12, #0C0E12) padding-box,
+    var(--saga-gradient-button-outline) border-box;
+}
+.saga a.saga-cta-outline:hover,
+a.saga-cta-outline:hover {
+  color: var(--saga-fg-primary);
+  text-decoration: none;
+  filter: brightness(1.1);
+}
+.saga-cta-outline .arrow {
+  color: var(--saga-brand-primary);
+  font-size: 16px;
+}
+
+/* Reply composer (Chat) */
+.saga-chat-composer {
+  position: relative;
+  padding: 12px 16px;
+  border-top: 1px solid var(--saga-bg-border);
+  background: var(--saga-bg-base);
+  z-index: 2;
+}
+.saga-chat-composer-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 42px;
+  padding: 0 6px 0 18px;
+  border-radius: var(--saga-radius-pill);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--saga-bg-border);
+}
+.saga-chat-composer-row:focus-within {
+  border-color: rgba(100, 200, 255, 0.45);
+  box-shadow: 0 0 0 3px rgba(100, 200, 255, 0.12);
+}
+.saga-chat-composer-row input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: var(--saga-fg-primary);
+}
+.saga-chat-composer-row input::placeholder {
+  color: var(--saga-fg-tertiary);
+}
+.saga-chat-composer-row button {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--saga-brand-primary);
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #0C0E12;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.saga-chat-composer-row button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Rhizome ambient labels (YOU / SAGASAN) under the chat thread */
+.saga-rhizome-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.saga-rhizome-labels .label {
+  position: absolute;
+  font-family: var(--saga-font-mono);
+  font-size: 8px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.saga-rhizome-labels .label::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.saga-rhizome-labels .label-you {
+  color: var(--saga-fg-tertiary);
+}
+.saga-rhizome-labels .label-you::before {
+  background: rgba(255, 255, 255, 0.45);
+}
+.saga-rhizome-labels .label-saga {
+  color: var(--saga-fg-tertiary);
+}
+.saga-rhizome-labels .label-saga::before {
+  background: var(--saga-accent-ember);
+  box-shadow: 0 0 6px rgba(255, 138, 30, 0.7);
+}
+.saga-rhizome-labels .label-cyan::before {
+  background: var(--saga-brand-primary);
+  box-shadow: 0 0 6px rgba(100, 200, 255, 0.7);
+}
+
+/* App-header back link variant (Brief, Crew, Candidates) */
+.saga-app-header .ah-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--saga-fg-primary);
+  text-decoration: none;
+  font-family: var(--saga-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.saga-app-header .ah-back:hover {
+  color: var(--saga-brand-primary);
+  text-decoration: none;
+}
+
+/* ==========================================================================
+   BRIEF (slide 8 — Figma node 9:2)
+   ========================================================================== */
+
+.saga-brief-page {
+  display: flex;
+  flex-direction: column;
+  padding: 20px 18px 96px;
+  gap: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.saga-brief-overline {
+  font-family: var(--saga-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--saga-brand-primary);
+}
+
+.saga-brief-display {
+  font-family: var(--saga-font-display);
+  font-weight: 400;
+  font-size: clamp(28px, 7vw, 40px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--saga-fg-primary);
+  text-wrap: balance;
+  margin-top: 2px;
+}
+.saga-brief-display .accent-it {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--saga-brand-primary);
+}
+
+.saga-brief-subtitle {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--saga-fg-secondary);
+  margin-top: 2px;
+}
+.saga-brief-subtitle .missing {
+  color: var(--saga-accent-ember);
+}
+
+.saga-divider-thin {
+  height: 1px;
+  background: var(--saga-bg-border);
+  opacity: 0.5;
+}
+
+.saga-brief-fields {
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--saga-bg-border);
+  padding: 12px 16px;
+}
+.saga-brief-fields-header {
+  display: flex;
+  gap: 8px;
+  font-family: var(--saga-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--saga-fg-tertiary);
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--saga-bg-border);
+}
+.saga-brief-fields-header .step {
+  color: var(--saga-fg-secondary);
+}
+
+.saga-brief-row {
+  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.saga-brief-row + .saga-brief-row {
+  border-top: 1px solid var(--saga-bg-border);
+}
+.saga-brief-row .row-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--saga-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--saga-fg-tertiary);
+}
+.saga-brief-row .row-value {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--saga-fg-primary);
+}
+
+.saga-missing-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--saga-radius-pill);
+  background: rgba(255, 138, 30, 0.12);
+  border: 1px solid rgba(255, 138, 30, 0.35);
+  color: var(--saga-accent-ember);
+  font-family: var(--saga-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Contract card (What comes next…) */
+.saga-contract-card {
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--saga-bg-border);
+  padding: 14px 16px;
+}
+.saga-contract-card-header {
+  display: flex;
+  gap: 8px;
+  font-family: var(--saga-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--saga-fg-tertiary);
+  margin-bottom: 10px;
+}
+.saga-contract-card-body {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--saga-fg-secondary);
+}
+
+/* Filled cyan CTA pill */
+.saga .saga-cta-filled,
+a.saga-cta-filled {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 18px;
+  height: 36px;
+  border-radius: var(--saga-radius-pill);
+  background: var(--saga-brand-primary);
+  color: #0C0E12;
+  font-family: var(--saga-font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: var(--saga-track-tight);
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+.saga .saga-cta-filled:hover,
+a.saga-cta-filled:hover {
+  background: var(--saga-brand-secondary);
+  color: #0C0E12;
+  text-decoration: none;
+}
+
+.saga a.saga-link-quiet,
+a.saga-link-quiet {
+  font-size: 12px;
+  color: var(--saga-fg-tertiary);
+  text-decoration: none;
+}
+.saga a.saga-link-quiet:hover,
+a.saga-link-quiet:hover {
+  color: var(--saga-brand-primary);
+  text-decoration: none;
+}
+
+/* Project-state chip strip (Crew, Candidates) */
+.saga-chip-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.saga-chip-strip .chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--saga-brand-primary);
+  box-shadow: 0 0 6px rgba(100, 200, 255, 0.6);
+}
+.saga-chip-strip .chip {
+  font-family: var(--saga-font-mono);
+  font-size: 11px;
+  color: var(--saga-fg-secondary);
+}
+.saga-chip-strip .chip-sep {
+  color: var(--saga-fg-muted);
+  font-family: var(--saga-font-mono);
+  font-size: 11px;
+}
+.saga-chip-strip .chip-status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--saga-font-mono);
+  font-size: 10px;
+  color: var(--saga-fg-tertiary);
+}
+.saga-chip-strip .chip-status-dot-cyan {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--saga-brand-primary);
+}
+
+/* ==========================================================================
+   CREW (slide 9 — Figma node 11:2)
+   ========================================================================== */
+
+.saga-crew-display {
+  font-family: var(--saga-font-display);
+  font-weight: 400;
+  font-size: clamp(28px, 7vw, 40px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--saga-fg-primary);
+}
+.saga-crew-display .accent-it {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-style: italic;
+  color: var(--saga-brand-primary);
+}
+
+.saga-role-card {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--saga-bg-border);
+  position: relative;
+}
+.saga-role-card .role-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.saga-role-card .role-name {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.saga-role-card .role-name-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--saga-fg-primary);
+}
+.saga-role-card .role-tag {
+  font-family: var(--saga-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--saga-fg-tertiary);
+}
+.saga-role-card .role-body {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--saga-fg-secondary);
+  margin-top: 6px;
+}
+.saga-role-card .role-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 10px;
+  font-family: var(--saga-font-mono);
+  font-size: 10px;
+  color: var(--saga-fg-tertiary);
+}
+.saga-role-card .role-meta .meta-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--saga-fg-muted);
+}
+.saga-role-card .role-meta .meta-dot-cyan {
+  background: var(--saga-brand-primary);
+  box-shadow: 0 0 4px rgba(100, 200, 255, 0.6);
+}
+
+.saga a.saga-role-pill,
+a.saga-role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: var(--saga-radius-pill);
+  background: var(--saga-brand-primary);
+  color: #0C0E12;
+  font-family: var(--saga-font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.saga a.saga-role-pill:hover,
+a.saga-role-pill:hover {
+  color: #0C0E12;
+  text-decoration: none;
+}
+.saga a.saga-role-pill-reviewed,
+a.saga-role-pill-reviewed {
+  background: rgba(100, 200, 255, 0.18);
+  color: var(--saga-brand-primary);
+  border: 1px solid rgba(100, 200, 255, 0.3);
+}
+.saga a.saga-role-pill-reviewed:hover,
+a.saga-role-pill-reviewed:hover {
+  color: var(--saga-brand-primary);
+}
+
+.saga-crew-approve-bar {
+  margin-top: 4px;
+  width: 100%;
+  height: 40px;
+  border-radius: var(--saga-radius-pill);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--saga-bg-border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--saga-fg-tertiary);
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   CANDIDATES (slide 10 — Figma node 14:2)
+   ========================================================================== */
+
+.saga-candidate-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.saga-candidate-overline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--saga-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--saga-fg-tertiary);
+}
+.saga-candidate-overline .ov-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--saga-brand-primary);
+}
+.saga-candidate-overline .ov-sep { color: var(--saga-fg-muted); }
+.saga-candidate-display {
+  font-family: var(--saga-font-display);
+  font-weight: 400;
+  font-size: clamp(28px, 7vw, 40px);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--saga-fg-primary);
+}
+
+.saga-candidate-card {
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--saga-bg-border);
+  background: rgba(255, 255, 255, 0.03);
+}
+.saga-candidate-hero {
+  position: relative;
+  height: 220px;
+  background:
+    radial-gradient(60% 50% at 60% 40%, rgba(255, 138, 30, 0.85) 0%, rgba(229, 68, 109, 0.55) 35%, transparent 65%),
+    radial-gradient(40% 30% at 30% 70%, rgba(119, 121, 237, 0.85) 0%, transparent 60%),
+    linear-gradient(180deg, #1a0f0a 0%, #0C0E12 100%);
+}
+.saga-candidate-hero .hero-tag {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: var(--saga-radius-pill);
+  background: rgba(12, 14, 18, 0.65);
+  backdrop-filter: blur(6px);
+  font-family: var(--saga-font-mono);
+  font-size: 10px;
+  color: var(--saga-fg-secondary);
+}
+
+.saga-candidate-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.saga-candidate-body .cb-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--saga-fg-primary);
+}
+.saga-candidate-body .cb-meta {
+  font-family: var(--saga-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--saga-fg-tertiary);
+}
+.saga-candidate-body .cb-blurb {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--saga-fg-secondary);
+  margin-top: 4px;
+}
+
+.saga-evidence-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.saga-evidence-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--saga-radius-pill);
+  border: 1px solid var(--saga-bg-border);
+  background: rgba(255, 255, 255, 0.04);
+  font-family: var(--saga-font-mono);
+  font-size: 10px;
+  color: var(--saga-fg-secondary);
+}
+.saga-evidence-chip .ev-kind { color: var(--saga-brand-primary); }
+
+.saga-contactability {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--saga-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--saga-success);
+}
+.saga-contactability::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--saga-success);
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.6);
+}
+
+.saga-decision-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+.saga-decision-btn {
+  height: 42px;
+  border-radius: var(--saga-radius-pill);
+  border: none;
+  font-family: var(--saga-font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.saga-decision-approve {
+  background: rgba(74, 222, 128, 0.18);
+  color: var(--saga-success);
+  border: 1px solid rgba(74, 222, 128, 0.4);
+}
+.saga-decision-approve:hover { background: rgba(74, 222, 128, 0.28); }
+.saga-decision-pass {
+  background: rgba(240, 68, 56, 0.16);
+  color: var(--saga-error);
+  border: 1px solid rgba(240, 68, 56, 0.35);
+}
+.saga-decision-pass:hover { background: rgba(240, 68, 56, 0.26); }

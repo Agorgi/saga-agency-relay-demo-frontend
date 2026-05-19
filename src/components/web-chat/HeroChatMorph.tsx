@@ -37,6 +37,11 @@ type HeroChatMorphProps = {
    *  instead of the legacy white-glass surface. Used by the Landing
    *  per the Figma. */
   sagaSurface?: boolean;
+  /** When true, do NOT auto-expand on mount even if there is a stored
+   *  conversation. Landing uses this so a returning visitor sees the
+   *  hero ("tribal / by nature") and not the chat thread they were in
+   *  last time — they expand by clicking the launcher. */
+  disableAutoExpand?: boolean;
   contextNote?: {
     title: string;
     lines: string[];
@@ -51,6 +56,7 @@ export function HeroChatMorph({
   collapsedPlaceholder = "Tell Sagasan what you need.",
   hidePersonaPicker = false,
   sagaSurface = false,
+  disableAutoExpand = false,
   contextNote = null,
 }: HeroChatMorphProps) {
   const router = useRouter();
@@ -83,10 +89,11 @@ export function HeroChatMorph({
   }, [initialExpanded, isRestoring]);
 
   useEffect(() => {
+    if (disableAutoExpand) return;
     if (!isRestoring && hasActiveConversation) {
       setIsExpanded(true);
     }
-  }, [hasActiveConversation, isRestoring]);
+  }, [disableAutoExpand, hasActiveConversation, isRestoring]);
 
   useEffect(() => {
     onExpandedChange?.(isExpanded);

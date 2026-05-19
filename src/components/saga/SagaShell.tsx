@@ -1,8 +1,12 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { SagaPageToggle } from "@/components/saga/SagaPageToggle";
 
 type SagaShellProps = {
-  state: string;
+  state?: string;
+  /** Replace the SESSION // state badge with a back link. Used by
+   *  Brief / Crew / Candidates per the Figma. */
+  back?: { href: string; label: string };
   version?: string;
   /** When true, paint brand halo + sparkle layer behind the content
    *  (matches the Figma Landing). Off by default so wrapped pages keep
@@ -15,16 +19,25 @@ type SagaShellProps = {
   /** Render solid Saga background. Off when wrapping a legacy
    *  AppFrame that brings its own background. */
   bg?: boolean;
+  /** Session-status dot color: "cyan" (Landing / Brief / Crew etc.)
+   *  or "ember" (Chat / live sessions). */
+  dot?: "cyan" | "ember";
+  /** Render a 1px hairline divider directly under the app-header.
+   *  Used on Chat / Brief / Crew / Candidates per the Figma. */
+  underline?: boolean;
   children: ReactNode;
 };
 
 export function SagaShell({
   state,
+  back,
   version = "v0.1",
   atmosphere = false,
   time = "9:41",
   pageToggle = true,
   bg = true,
+  dot = "cyan",
+  underline = false,
   children,
 }: SagaShellProps) {
   const rootClass = bg
@@ -45,9 +58,18 @@ export function SagaShell({
           <span className="sb-mark">saga</span>
         </div>
         <div className="saga-app-header">
-          <span className="ah-session">SESSION // {state}</span>
+          {back ? (
+            <Link href={back.href} className="ah-back">
+              ← {back.label}
+            </Link>
+          ) : (
+            <span className={`ah-session ah-dot-${dot}`}>
+              SESSION // {state}
+            </span>
+          )}
           <span className="ah-version">{version}</span>
         </div>
+        {underline ? <div className="saga-app-underline" aria-hidden="true" /> : null}
         {children}
       </div>
       {pageToggle ? <SagaPageToggle /> : null}

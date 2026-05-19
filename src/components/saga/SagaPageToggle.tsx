@@ -9,22 +9,22 @@ export type PageToggleEntry = {
 };
 
 export const PAGE_TOGGLE_ENTRIES: PageToggleEntry[] = [
-  { href: "/", label: "Landing" },
-  { href: "/chat", label: "Chat" },
-  { href: "/projects", label: "Projects" },
-  { href: "/projects/new", label: "New brief" },
-  { href: "/discover", label: "Discover" },
-  { href: "/explore", label: "Explore" },
-  { href: "/feed", label: "Feed" },
-  { href: "/for-me", label: "For me" },
+  { href: "/", label: "Landing (slide 6)" },
+  { href: "/chat", label: "Chat (slide 7)" },
+  { href: "/demo/brief", label: "Brief (slide 8)" },
+  { href: "/demo/crew", label: "Crew (slide 9)" },
+  { href: "/demo/candidates", label: "Candidates (slide 10)" },
+  { href: "/projects", label: "Projects (live)" },
+  { href: "/projects/new", label: "New brief (live)" },
   { href: "/me", label: "Me" },
   { href: "/profile", label: "Profile" },
-  { href: "/my-events", label: "My events" },
+  { href: "/feed", label: "Feed" },
+  { href: "/explore", label: "Explore" },
   { href: "/spaces", label: "Spaces" },
   { href: "/talent", label: "Talent" },
+  { href: "/my-events", label: "My events" },
   { href: "/relay", label: "Relay" },
-  { href: "/create", label: "Create" },
-  { href: "/post-project", label: "Post project" },
+  { href: "/create", label: "Create (redirect)" },
 ];
 
 export function SagaPageToggle({
