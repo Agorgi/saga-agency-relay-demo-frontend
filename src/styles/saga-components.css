@@ -1,0 +1,161 @@
+/* ==========================================================================
+   SAGA — Visual components (rhizome, halo, sparkles, chip)
+   Minimal component primitives consumed by the tracer screens.
+   Class names mirror HANDOFF.md § 4 (rhizome) so the spec maps 1:1.
+   ========================================================================== */
+
+/* ---- Rhizome network background ---- */
+.rhizome-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+.rhizome-bg .rline       { stroke: rgba(255, 255, 255, 0.14); stroke-width: 0.7; fill: none; }
+.rhizome-bg .rline-soft  { stroke: rgba(255, 255, 255, 0.08); stroke-width: 0.6; fill: none; }
+.rhizome-bg .rnode-d     { fill: rgba(255, 255, 255, 0.22); }
+.rhizome-bg .rnode-v     { fill: var(--saga-brand-primary); opacity: 0.85; }
+.rhizome-bg .rnode-glow-e {
+  fill: var(--saga-accent-ember);
+  filter:
+    drop-shadow(0 0 5px rgba(255, 138, 30, 0.95))
+    drop-shadow(0 0 2px rgba(255, 138, 30, 1));
+}
+.rhizome-bg .rnode-glow-v {
+  fill: var(--saga-brand-primary);
+  filter:
+    drop-shadow(0 0 5px rgba(100, 200, 255, 0.95))
+    drop-shadow(0 0 2px rgba(100, 200, 255, 1));
+}
+.rhizome-bg .rlabel {
+  font-family: var(--saga-font-mono);
+  font-size: 7px;
+  letter-spacing: 1.2px;
+  fill: rgba(255, 255, 255, 0.48);
+  text-transform: uppercase;
+}
+.rhizome-bg .rlabel-hi {
+  font-family: var(--saga-font-mono);
+  font-size: 7.5px;
+  letter-spacing: 1.4px;
+  fill: rgba(255, 138, 30, 0.85);
+  text-transform: uppercase;
+}
+
+/* Optional pulse on ember-glow nodes; freeze under reduced motion. */
+@keyframes saga-rnode-pulse {
+  0%, 100% { opacity: 0.95; }
+  50%      { opacity: 0.78; }
+}
+.rhizome-bg .rnode-glow-e,
+.rhizome-bg .rnode-glow-v {
+  animation: saga-rnode-pulse 3s var(--saga-ease-std) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rhizome-bg .rnode-glow-e,
+  .rhizome-bg .rnode-glow-v {
+    animation: none;
+  }
+}
+
+/* ---- Brand halo (radial cyan glow behind hero) ---- */
+.saga-brand-halo {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(70% 60% at 50% 30%, rgba(100, 200, 255, 0.40) 0%, transparent 65%),
+    radial-gradient(50% 40% at 80% 90%, rgba(229, 68, 109, 0.18) 0%, transparent 60%),
+    linear-gradient(180deg, #0C2A40 0%, #0C1A2A 50%, #0C0E12 100%);
+}
+
+/* ---- Sparkles (small white dots used as ornament) ---- */
+.saga-sparkles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.saga-sparkles .sp {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.85);
+  opacity: 0.6;
+}
+.saga-sparkles .sp.lg { width: 3px; height: 3px; }
+@keyframes saga-sparkle-pulse {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 0.85; }
+}
+.saga-sparkles .sp { animation: saga-sparkle-pulse 4s var(--saga-ease-std) infinite; }
+.saga-sparkles .sp:nth-child(2n) { animation-delay: 0.8s; }
+.saga-sparkles .sp:nth-child(3n) { animation-delay: 1.6s; }
+@media (prefers-reduced-motion: reduce) {
+  .saga-sparkles .sp { animation: none; opacity: 0.5; }
+}
+
+/* ---- Hero typography helpers ---- */
+.saga-display-hero {
+  font-family: var(--saga-font-display);
+  font-weight: 400;
+  font-size: clamp(56px, 12vw, 120px);
+  line-height: 0.92;
+  letter-spacing: -0.02em;
+  color: var(--saga-fg-primary);
+  text-wrap: balance;
+}
+.saga-display-hero .serif-it {
+  font-family: "Instrument Serif", Georgia, serif;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--saga-brand-primary);
+  letter-spacing: -0.005em;
+}
+.saga-hero-subtitle {
+  font-family: var(--saga-font-sans);
+  font-weight: 400;
+  font-size: clamp(15px, 2.2vw, 18px);
+  line-height: 1.5;
+  letter-spacing: var(--saga-track-tight);
+  color: var(--saga-fg-secondary);
+  text-wrap: balance;
+}
+
+/* ---- Intent chip (quick-select pill on Landing) ---- */
+.saga-intent-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  min-height: 44px;
+  border-radius: var(--saga-radius-pill);
+  border: 1px solid var(--saga-bg-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--saga-fg-primary);
+  font-family: var(--saga-font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: var(--saga-track-tight);
+  cursor: pointer;
+  transition: background var(--saga-dur-fast) var(--saga-ease-std),
+              border-color var(--saga-dur-fast) var(--saga-ease-std),
+              transform var(--saga-dur-fast) var(--saga-ease-std);
+}
+.saga-intent-chip:hover {
+  background: rgba(100, 200, 255, 0.08);
+  border-color: rgba(100, 200, 255, 0.4);
+}
+.saga-intent-chip:active {
+  transform: scale(0.97);
+}
+.saga-intent-chip:focus-visible {
+  outline: 2px solid var(--saga-brand-primary);
+  outline-offset: 4px;
+}
