@@ -17,6 +17,7 @@
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { BuildMyCrewView } from "@/components/projects/BuildMyCrewView";
+import { SagaShell } from "@/components/saga/SagaShell";
 import { loadCrewView, type CrewViewData } from "@/lib/projectCrewView";
 import { sessionOwnsProject } from "@/lib/projectAuth";
 import { WEB_SESSION_COOKIE_NAME } from "@/lib/webChatSessionStore";
@@ -50,5 +51,9 @@ export default async function ProjectCrewPage({
   if (!data) {
     notFound();
   }
-  return <BuildMyCrewView data={data} />;
+  return (
+    <SagaShell state="CREW">
+      <BuildMyCrewView data={data} />
+    </SagaShell>
+  );
 }

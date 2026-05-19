@@ -21,6 +21,7 @@
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { OutreachReviewView } from "@/components/projects/OutreachReviewView";
+import { SagaShell } from "@/components/saga/SagaShell";
 import {
   loadOutreachView,
   type OutreachViewData,
@@ -55,5 +56,9 @@ export default async function ProjectOutreachPage({
   if (!data) {
     notFound();
   }
-  return <OutreachReviewView data={data} />;
+  return (
+    <SagaShell state="OUTREACH">
+      <OutreachReviewView data={data} />
+    </SagaShell>
+  );
 }

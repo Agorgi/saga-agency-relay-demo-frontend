@@ -22,6 +22,7 @@
 
 import { cookies } from "next/headers";
 import { MyProjectsView } from "@/components/projects/MyProjectsView";
+import { SagaShell } from "@/components/saga/SagaShell";
 import {
   loadProjectsListView,
   type ProjectsListData,
@@ -43,5 +44,9 @@ export default async function ProjectsPage() {
     data = { projects: [] };
   }
 
-  return <MyProjectsView data={data} />;
+  return (
+    <SagaShell state="PROJECTS">
+      <MyProjectsView data={data} />
+    </SagaShell>
+  );
 }

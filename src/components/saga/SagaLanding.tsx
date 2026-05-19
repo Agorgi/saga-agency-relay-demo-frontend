@@ -9,33 +9,36 @@ import {
 } from "@/components/web-chat/useWebChat";
 import { decodePrefillPayload } from "@/lib/webChatNextStep";
 import type { Persona } from "@/lib/sagasanPersonas";
+import { SagaShell } from "@/components/saga/SagaShell";
 
 type IntentChip = {
   label: string;
   persona: Persona;
   welcome: string;
+  wide?: boolean;
 };
 
 const INTENT_CHIPS: IntentChip[] = [
   {
-    label: "I'm hosting",
+    label: "host something",
     persona: "host",
     welcome: "Tell me what you're planning.",
   },
   {
-    label: "I'm a creative",
+    label: "find work",
     persona: "creative",
     welcome: "What kind of work are you chasing?",
   },
   {
-    label: "I run a space",
+    label: "I run a venue",
     persona: "venue",
-    welcome: "Tell me about your space.",
+    welcome: "Tell me about your venue.",
   },
   {
-    label: "I'm a fan",
+    label: "let Saga plan your next day/night out",
     persona: "fan",
     welcome: "Tell me what you're into.",
+    wide: true,
   },
 ];
 
@@ -55,44 +58,12 @@ function welcomeForPersona(persona: Persona | null): string {
 
 export function SagaLanding() {
   return (
-    <main className="saga saga-cyan-mode relative min-h-screen w-full overflow-x-hidden bg-[var(--saga-bg-base)]">
-      <div className="saga-brand-halo" aria-hidden="true" />
-      <SagaSparkles />
+    <SagaShell state="NEW" atmosphere>
       <SagaRhizomeLanding />
-      <div className="relative z-10 flex min-h-screen w-full flex-col">
-        <SagaTopBar />
-        <Suspense fallback={null}>
-          <SagaLandingBody />
-        </Suspense>
-      </div>
-    </main>
-  );
-}
-
-function SagaTopBar() {
-  return (
-    <header className="flex items-center justify-between px-5 pt-5 sm:px-8 sm:pt-7">
-      <div
-        className="font-display text-[15px] uppercase"
-        style={{
-          fontFamily: "var(--saga-font-mono)",
-          letterSpacing: "0.18em",
-          color: "var(--saga-fg-primary)",
-        }}
-      >
-        Saga
-      </div>
-      <div
-        className="text-[10px] uppercase"
-        style={{
-          fontFamily: "var(--saga-font-mono)",
-          letterSpacing: "0.16em",
-          color: "var(--saga-fg-tertiary)",
-        }}
-      >
-        Mobile demo
-      </div>
-    </header>
+      <Suspense fallback={null}>
+        <SagaLandingBody />
+      </Suspense>
+    </SagaShell>
   );
 }
 
@@ -149,21 +120,17 @@ function SagaLandingBody() {
     router.push(`/?${params.toString()}`);
   }
 
+  const narrowChips = INTENT_CHIPS.filter((chip) => !chip.wide);
+  const wideChips = INTENT_CHIPS.filter((chip) => chip.wide);
+
   return (
-    <section className="flex flex-1 flex-col items-center justify-center px-5 pb-16 pt-8 sm:px-8 sm:pt-10">
+    <section className="flex flex-1 flex-col items-center justify-center px-5 pb-24 pt-8 sm:px-8 sm:pt-10">
       <div className="mx-auto flex w-full max-w-[560px] flex-col items-center gap-6 text-center">
         {!isConversationOpen ? (
-          <>
-            <h1
-              data-copy-lint="header"
-              className="saga-display-hero"
-            >
-              Lined up <span className="serif-it">by nature.</span>
-            </h1>
-            <p data-copy-lint="subhead" className="saga-hero-subtitle">
-              Tell us what you&apos;re making.
-            </p>
-          </>
+          <h1 data-copy-lint="header" className="saga-display-hero">
+            <span className="hero-word">tribal</span>
+            <span className="serif-it">by nature</span>
+          </h1>
         ) : null}
 
         <div className="w-full">
@@ -172,6 +139,9 @@ function SagaLandingBody() {
             fallbackPersona={activeIntentPersona}
             initialExpanded={activeIntentPersona !== null}
             welcomeMessage={welcomeForPersona(activeIntentPersona)}
+            collapsedPlaceholder="tell us what to make..."
+            hidePersonaPicker
+            sagaSurface
             contextNote={contextNote}
             onExpandedChange={(expanded) => {
               setIsConversationOpen(expanded);
@@ -180,35 +150,37 @@ function SagaLandingBody() {
         </div>
 
         {!isConversationOpen ? (
-          <div className="mt-2 flex w-full flex-wrap items-center justify-center gap-2">
-            {INTENT_CHIPS.map((chip) => (
-              <button
-                key={chip.persona}
-                type="button"
-                className="saga-intent-chip"
-                onClick={() => handleIntent(chip)}
-              >
-                {chip.label}
-              </button>
-            ))}
+          <div className="mt-2 flex w-full flex-col items-center gap-2">
+            <div className="saga-intent-row">
+              {narrowChips.map((chip) => (
+                <button
+                  key={chip.persona}
+                  type="button"
+                  className="saga-intent-chip"
+                  onClick={() => handleIntent(chip)}
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
+            {wideChips.length > 0 ? (
+              <div className="saga-intent-row">
+                {wideChips.map((chip) => (
+                  <button
+                    key={chip.persona}
+                    type="button"
+                    className="saga-intent-chip saga-intent-chip-wide"
+                    onClick={() => handleIntent(chip)}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>
     </section>
-  );
-}
-
-function SagaSparkles() {
-  return (
-    <div className="saga-sparkles" aria-hidden="true">
-      <span className="sp lg" style={{ top: "12%", left: "18%" }} />
-      <span className="sp" style={{ top: "22%", right: "16%" }} />
-      <span className="sp" style={{ top: "34%", left: "9%" }} />
-      <span className="sp lg" style={{ top: "30%", right: "22%" }} />
-      <span className="sp" style={{ top: "16%", left: "62%" }} />
-      <span className="sp" style={{ top: "44%", right: "10%" }} />
-      <span className="sp" style={{ top: "8%", left: "44%" }} />
-    </div>
   );
 }
 
@@ -225,7 +197,6 @@ function SagaRhizomeLanding() {
       preserveAspectRatio="xMidYMax slice"
       aria-hidden="true"
     >
-      {/* curves — lower half only, sporadic */}
       <path className="rline-soft" d="M30 540 Q160 470 320 560" />
       <path className="rline-soft" d="M60 620 Q230 580 380 660" />
       <path className="rline" d="M40 700 Q200 660 360 740" />
@@ -235,7 +206,6 @@ function SagaRhizomeLanding() {
       <path className="rline" d="M70 580 Q140 620 200 580" />
       <path className="rline-soft" d="M180 730 Q240 780 320 760" />
 
-      {/* dim dots — ambient "wider world out there" */}
       <circle className="rnode-d" cx="60" cy="620" r="1.4" />
       <circle className="rnode-d" cx="120" cy="560" r="1.4" />
       <circle className="rnode-d" cx="160" cy="680" r="1.6" />
@@ -248,7 +218,6 @@ function SagaRhizomeLanding() {
       <circle className="rnode-d" cx="200" cy="780" r="1.4" />
       <circle className="rnode-d" cx="340" cy="780" r="1.4" />
 
-      {/* YOU — sole ember glow */}
       <circle className="rnode-glow-e" cx="200" cy="710" r="3.2" />
       <text className="rlabel-hi" x="210" y="713">
         YOU
