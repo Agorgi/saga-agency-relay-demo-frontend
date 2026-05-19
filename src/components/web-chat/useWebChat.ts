@@ -67,6 +67,51 @@ function isChatMode(value: unknown): value is ChatMode {
   return value === "autonomous" || value === "holding";
 }
 
+type SseHandlers = {
+  onDelta: (text: string) => void;
+  onComplete: (payload: unknown) => void;
+  onError: (payload: unknown) => void;
+};
+
+async function consumeSseStream(response: Response, handlers: SseHandlers) {
+  if (!response.body) return;
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let sepIndex = buffer.indexOf("\n\n");
+    while (sepIndex >= 0) {
+      const chunk = buffer.slice(0, sepIndex);
+      buffer = buffer.slice(sepIndex + 2);
+      sepIndex = buffer.indexOf("\n\n");
+      let event = "message";
+      let data = "";
+      for (const line of chunk.split("\n")) {
+        if (line.startsWith("event:")) event = line.slice(6).trim();
+        else if (line.startsWith("data:")) data += line.slice(5).trimStart();
+      }
+      if (!data) continue;
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(data);
+      } catch {
+        continue;
+      }
+      if (event === "delta") {
+        const text = (parsed as { text?: unknown }).text;
+        if (typeof text === "string") handlers.onDelta(text);
+      } else if (event === "complete") {
+        handlers.onComplete(parsed);
+      } else if (event === "error") {
+        handlers.onError(parsed);
+      }
+    }
+  }
+}
+
 function extractReplyText(value: unknown) {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 }
@@ -689,11 +734,25 @@ export function useWebChat({
     setIsSending(true);
     setMessages(optimisticMessages);
 
+    const streamingMessageId = `assistant-stream-${Date.now()}`;
+    setMessages([
+      ...optimisticMessages,
+      {
+        id: streamingMessageId,
+        role: "assistant",
+        content: "",
+        persona: nextPersona ?? null,
+        mode: "autonomous",
+        nextStep: null,
+      },
+    ]);
+
     try {
-      const response = await fetch("/api/web-chat", {
+      const response = await fetch("/api/web-chat/stream", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Accept: "text/event-stream",
         },
         body: JSON.stringify({
           conversationId,
@@ -703,20 +762,59 @@ export function useWebChat({
         }),
       });
 
-      const data = (await response.json().catch(() => null)) as
-        | Record<string, unknown>
-        | { error?: string }
-        | null;
-      const parsed = parseWebChatResponse(data);
-      const responseConversationId = extractConversationId(data);
-
-      if (!response.ok || !parsed) {
-        const recovered = await restoreConversation(responseConversationId ?? conversationId);
+      if (!response.ok || !response.body) {
+        const recovered = await restoreConversation(conversationId);
         if (recovered) {
           setError(null);
           return true;
         }
+        setError(uiFallbackReply);
+        setMessages([
+          ...optimisticMessages,
+          {
+            id: `assistant-ui-fallback-${Date.now()}`,
+            role: "assistant",
+            content: uiFallbackReply,
+            persona: nextPersona ?? null,
+            mode: "holding",
+            nextStep: null,
+          },
+        ]);
+        return false;
+      }
 
+      let streamedContent = "";
+      let completePayload: unknown = null;
+      let streamError: unknown = null;
+
+      await consumeSseStream(response, {
+        onDelta(text) {
+          streamedContent += text;
+          setMessages((prev) =>
+            prev.map((entry) =>
+              entry.id === streamingMessageId
+                ? { ...entry, content: streamedContent }
+                : entry,
+            ),
+          );
+        },
+        onComplete(payload) {
+          completePayload = payload;
+        },
+        onError(payload) {
+          streamError = payload;
+        },
+      });
+
+      const parsed = parseWebChatResponse(completePayload);
+      if (streamError || !parsed) {
+        const recovered = await restoreConversation(
+          extractConversationId(completePayload) ?? conversationId,
+        );
+        if (recovered) {
+          setError(null);
+          return true;
+        }
         setError(uiFallbackReply);
         setMessages([
           ...optimisticMessages,
