@@ -2110,3 +2110,204 @@ export async function generateAgentReply({
     },
   };
 }
+
+export type StreamAgentReplyEvent =
+  | { type: "delta"; text: string }
+  | { type: "complete"; data: AgentReply }
+  | {
+      type: "error";
+      errorCategory: string;
+      errorMessage: string;
+      data: AgentReply;
+    };
+
+export async function* streamAgentReply({
+  persona,
+  history,
+  latestMessage,
+  mode,
+  apiKey,
+}: {
+  persona: Persona | null;
+  history: ChatMessage[];
+  latestMessage: string;
+  mode: RouteLlmMode;
+  apiKey?: string | null;
+}): AsyncGenerator<StreamAgentReplyEvent> {
+  const fallback = buildMockAgentReply({ persona, history, latestMessage });
+
+  if (mode !== "active_live" || !apiKey?.trim()) {
+    if (fallback.reply) yield { type: "delta", text: fallback.reply };
+    yield { type: "complete", data: fallback };
+    return;
+  }
+
+  const layerBContext =
+    persona === "host"
+      ? buildHostLayerBContext(
+          organizerFieldsFromStored(fallback.extractedFields),
+        )
+      : "";
+  const promptSections = [
+    `Persona: ${persona ?? "router"}`,
+    layerBContext,
+    "Conversation so far:",
+    summarizeTranscript(history, latestMessage),
+    "Reply with Sagasan's next message and include nextStep only once the brief is ready to review.",
+  ].filter((section) => section.length > 0);
+
+  const client = getOpenAiClient({
+    apiKey: apiKey.trim(),
+    baseUrl: process.env.OPENAI_BASE_URL || null,
+  });
+
+  let stream;
+  try {
+    stream = client.responses.stream({
+      model: getConfiguredModel(),
+      instructions: buildSystemPrompt(persona),
+      input: promptSections.join("\n\n"),
+      text: {
+        format: zodTextFormat(liveAgentReplySchema, "sagasan_live_reply"),
+      },
+      temperature: 0.6,
+      max_output_tokens: 400,
+    });
+  } catch (error) {
+    const classified = classifyOpenAiError(error);
+    yield {
+      type: "error",
+      errorCategory: classified.category,
+      errorMessage: classified.message,
+      data: fallback,
+    };
+    return;
+  }
+
+  let messageEmitted = "";
+  try {
+    for await (const event of stream) {
+      if (event.type === "response.output_text.delta") {
+        const snapshot =
+          (event as { snapshot?: string }).snapshot ?? "";
+        const message = extractStreamingMessage(snapshot);
+        if (message != null && message.length > messageEmitted.length) {
+          const delta = message.slice(messageEmitted.length);
+          messageEmitted = message;
+          yield { type: "delta", text: delta };
+        }
+      }
+    }
+
+    const final = await stream.finalResponse();
+    const parsed = (final as { output_parsed?: LiveAgentReply | null })
+      .output_parsed;
+    if (!parsed) {
+      yield {
+        type: "error",
+        errorCategory: "validation_failed",
+        errorMessage: "OpenAI returned no parsed output.",
+        data: fallback,
+      };
+      return;
+    }
+
+    const regexFields = extractStructuredFields({
+      persona,
+      history,
+      latestMessage,
+    });
+    const extractedFields = mergeLlmExtractedSignals(
+      regexFields,
+      parsed.extractedSignals,
+    );
+    const sanitizedNextStep = deriveNextStep(persona, extractedFields);
+    const reply = trimSentence(parsed.message, 260);
+
+    if (!messageEmitted) {
+      if (reply) yield { type: "delta", text: reply };
+    } else if (reply !== messageEmitted && reply.startsWith(messageEmitted)) {
+      yield { type: "delta", text: reply.slice(messageEmitted.length) };
+    }
+
+    yield {
+      type: "complete",
+      data: {
+        reply,
+        nextStep: sanitizedNextStep,
+        persona,
+        extractedFields: {
+          ...extractedFields,
+          nextRoute: sanitizedNextStep?.route || extractedFields.nextRoute,
+        },
+        llmExtractedSignals: parsed.extractedSignals,
+        diagnostics: {
+          operation: persona
+            ? `sagasan_${persona}_intake`
+            : "sagasan_router",
+          selectedReplySource: "openai_selected",
+          fallbackReason: null,
+          providerState: "openai_called_succeeded",
+          model: getConfiguredModel(),
+          configuredMode: "active_live",
+          effectiveMode: "autonomous_live",
+          openAiConfigured: true,
+          openAiCalled: true,
+          activeLiveAllowed: true,
+          shadowMode: false,
+          blockingGate: null,
+          publicLaunchGate: process.env.PUBLIC_LAUNCH_ENABLED === "true",
+        },
+      },
+    };
+  } catch (error) {
+    const classified = classifyOpenAiError(error);
+    yield {
+      type: "error",
+      errorCategory: classified.category,
+      errorMessage: classified.message,
+      data: fallback,
+    };
+  }
+}
+
+function extractStreamingMessage(snapshot: string): string | null {
+  const marker = '"message":"';
+  const start = snapshot.indexOf(marker);
+  if (start < 0) return null;
+  let i = start + marker.length;
+  let out = "";
+  while (i < snapshot.length) {
+    const c = snapshot[i];
+    if (c === "\\") {
+      if (i + 1 >= snapshot.length) return out;
+      const next = snapshot[i + 1];
+      switch (next) {
+        case '"': out += '"'; i += 2; break;
+        case "\\": out += "\\"; i += 2; break;
+        case "/": out += "/"; i += 2; break;
+        case "n": out += "\n"; i += 2; break;
+        case "t": out += "\t"; i += 2; break;
+        case "r": out += "\r"; i += 2; break;
+        case "b": out += "\b"; i += 2; break;
+        case "f": out += "\f"; i += 2; break;
+        case "u":
+          if (i + 6 > snapshot.length) return out;
+          out += String.fromCharCode(
+            Number.parseInt(snapshot.slice(i + 2, i + 6), 16),
+          );
+          i += 6;
+          break;
+        default:
+          out += next;
+          i += 2;
+      }
+    } else if (c === '"') {
+      return out;
+    } else {
+      out += c;
+      i += 1;
+    }
+  }
+  return out;
+}
