@@ -184,9 +184,24 @@ export type LiveAgentExtractedSignals = z.infer<
   typeof liveAgentExtractedSignalsSchema
 >;
 
+// PR #72: dropped the `nextStep` field from the LLM's structured
+// output. The prior `z.unknown().nullable()` shape serialized to
+// JSON Schema as `anyOf: [{}, {type:"null"}]`, and OpenAI's strict
+// mode rejects the empty `{}` leaf with:
+//   "400 Invalid schema for response_format 'sagasan_live_reply':
+//    In context=('properties', 'nextStep', 'anyOf', '0'),
+//    schema must have a 'type' key."
+//
+// The clean split: the LLM owns *understanding* (reply text +
+// extractedSignals); `deriveNextStep` owns *what to do next*
+// (routing + prefill, derived from extracted fields). NextStep
+// composition is operational and deterministic by design —
+// not something the model should freelance. The fallback already
+// runs unconditionally on the merge path; removing the LLM-side
+// nextStep just drops a redundant signal that the validator was
+// rejecting anyway.
 const liveAgentReplySchema = z.object({
   message: z.string().trim().min(1),
-  nextStep: z.unknown().nullable(),
   // PR #65: the LLM returns structured signals it extracted from the
   // user's latest message. Nullable (not optional) per OpenAI's
   // strict-mode requirement. When the LLM returns null OR all fields
@@ -2048,9 +2063,9 @@ export async function generateAgentReply({
     regexFields,
     response.data.extractedSignals,
   );
-  const sanitizedNextStep =
-    sanitizeNextStepPayload(response.data.nextStep) ||
-    deriveNextStep(persona, history, latestMessage);
+  // PR #72: nextStep is computed deterministically from extracted
+  // fields, not from the LLM. See the schema comment above for why.
+  const sanitizedNextStep = deriveNextStep(persona, history, latestMessage);
 
   const reply = trimSentence(response.data.message, 260);
   return {
