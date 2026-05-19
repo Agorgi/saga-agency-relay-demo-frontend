@@ -134,7 +134,7 @@ function SagaLandingBody() {
               Lined up <span className="serif-it">by nature.</span>
             </h1>
             <p data-copy-lint="subhead" className="saga-hero-subtitle">
-              Tell us what you&apos;re making. We line up your team.
+              Tell us what you&apos;re making.
             </p>
           </>
         ) : null}
