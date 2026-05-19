@@ -375,7 +375,7 @@ export function HeroChatMorph({
                   disabled={isRestoring || isSending || draft.trim().length === 0}
                   className={
                     sagaSurface
-                      ? "saga-launcher-send flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-55"
+                      ? "saga-launcher-send flex h-9 w-9 shrink-0 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-55"
                       : "brand-button-primary flex h-12 w-12 shrink-0 items-center justify-center rounded-full disabled:cursor-not-allowed disabled:opacity-55"
                   }
                   aria-label="Start chat"

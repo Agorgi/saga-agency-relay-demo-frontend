@@ -266,9 +266,10 @@
  * `sagaSurface` prop is true. */
 .saga-launcher-form {
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--saga-bg-border);
-  border-radius: 28px;
+  border: 1px solid var(--saga-bg-border-soft);
+  border-radius: var(--saga-radius-pill);
   backdrop-filter: blur(12px);
+  padding: 6px 6px 6px 18px !important;
 }
 .saga-launcher-form:focus-within {
   border-color: rgba(100, 200, 255, 0.45);
@@ -527,37 +528,49 @@
   justify-content: flex-start;
 }
 
+/* Ember orb avatar — 3D-looking sphere with radial-gradient highlight,
+ * matches the Figma 7:2 reference. The highlight at 32% 28% reads as
+ * a glossy marble lit from upper-left. */
 .saga-chat-avatar {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: var(--saga-accent-ember);
+  background:
+    radial-gradient(
+      circle at 32% 28%,
+      #FFD6A8 0%,
+      #FFA855 22%,
+      #FF6A2E 55%,
+      #C8341C 100%
+    );
   flex-shrink: 0;
   margin-top: 4px;
   box-shadow:
-    0 0 10px rgba(255, 138, 30, 0.55),
-    0 0 2px rgba(255, 138, 30, 0.9);
+    0 0 14px rgba(255, 138, 30, 0.55),
+    inset 0 -2px 4px rgba(120, 30, 0, 0.35);
 }
 
 .saga-chat-bubble {
   max-width: 280px;
-  padding: 11px 14px;
-  border-radius: 18px;
-  font-size: 13px;
-  line-height: 1.45;
-  letter-spacing: var(--saga-track-tight);
+  padding: 10px 14px;
+  border-radius: 20px;
+  font-family: var(--saga-font-sans);
+  font-size: 14px;
+  line-height: 1.4;
+  letter-spacing: -0.005em;
 }
 .saga-chat-bubble.is-user {
-  background: #6CC8FF;
+  background: #7BC6FF;
   color: #0C1A2A;
-  border-bottom-right-radius: 6px;
-  box-shadow: 0 4px 16px rgba(100, 200, 255, 0.18);
+  border-bottom-right-radius: 8px;
+  font-weight: 400;
 }
 .saga-chat-bubble.is-saga {
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--saga-fg-secondary);
-  border: 1px solid var(--saga-bg-border);
-  border-bottom-left-radius: 6px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--saga-fg-primary);
+  border: none;
+  border-bottom-left-radius: 8px;
+  font-weight: 400;
 }
 
 /* Brief progress card — slide 7 inline brief summary */
@@ -573,14 +586,13 @@
   justify-content: space-between;
   align-items: center;
   font-family: var(--saga-font-mono);
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.02em;
   color: var(--saga-fg-tertiary);
   margin-bottom: 12px;
 }
 .saga-brief-card .bc-header .bc-count {
-  color: var(--saga-fg-secondary);
+  color: var(--saga-accent-cyan);
 }
 .saga-brief-card .bc-grid {
   display: grid;
@@ -635,27 +647,27 @@ a.saga-cta-outline:hover {
   filter: brightness(1.1);
 }
 .saga-cta-outline .arrow {
-  color: var(--saga-brand-primary);
+  color: var(--saga-accent-magenta);
   font-size: 16px;
 }
 
-/* Reply composer (Chat) */
+/* Reply composer (Chat) — single thin line pill */
 .saga-chat-composer {
   position: relative;
-  padding: 12px 16px 18px;
-  border-top: 1px solid var(--saga-bg-border);
+  padding: 10px 16px 16px;
+  border-top: 1px solid var(--saga-bg-border-soft);
   background: var(--saga-bg-base);
   z-index: 2;
 }
 .saga-chat-composer-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 42px;
-  padding: 0 6px 0 18px;
+  gap: 8px;
+  height: 38px;
+  padding: 0 4px 0 16px;
   border-radius: var(--saga-radius-pill);
   background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--saga-bg-border);
+  border: 1px solid var(--saga-bg-border-soft);
 }
 .saga-chat-composer-row:focus-within {
   border-color: rgba(100, 200, 255, 0.45);
@@ -673,16 +685,16 @@ a.saga-cta-outline:hover {
   color: var(--saga-fg-tertiary);
 }
 .saga-chat-composer-row button {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: var(--saga-brand-primary);
+  background: var(--saga-accent-cyan);
   border: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: #0C0E12;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   flex-shrink: 0;
