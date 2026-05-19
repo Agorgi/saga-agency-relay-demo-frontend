@@ -1,0 +1,179 @@
+/* ==========================================================================
+   SAGA — Colors & Type
+   Foundational CSS variables for the Saga dark-mode, fandom-native UI.
+   ========================================================================== */
+
+/* Fonts are loaded from globals.css at the top of file so the
+ * @import sits before Tailwind's emitted rules per CSS spec. */
+
+:root {
+  /* ================================================================
+     COLORS — Saga is dark-first. Surface stack cascades from base 0.
+     ================================================================ */
+
+  /* Surfaces / backgrounds */
+  --saga-bg-base:        #0C0E12;   /* app background */
+  --saga-bg-surface-1:   #13161B;   /* cards, panels */
+  --saga-bg-surface-2:   #22262F;   /* elevated, modal bg */
+  --saga-bg-surface-3:   #2A2E37;   /* input hover, nested */
+  --saga-bg-border:      #373A41;   /* dividers, outlines */
+  --saga-bg-border-soft: rgba(255,255,255,0.08);
+
+  /* Brand — purple/indigo flame */
+  --saga-brand-primary:   #7779ED;   /* CTAs, active states, links */
+  --saga-brand-secondary: #565FD9;   /* hover, accents */
+  --saga-brand-deep:      #4A1FB8;   /* bold fills, halo */
+  --saga-brand-violet:    #27115F;   /* backgrounds, gradient mid */
+  --saga-brand-midnight:  #0C0940;   /* gradient start */
+  --saga-brand-tint:      rgba(119,121,237,0.10);  /* tinted surfaces */
+  --saga-brand-tint-hi:   rgba(119,121,237,0.20);
+
+  /* Mascot accent — Saga San wears orange */
+  --saga-accent-ember:    #FF8A1E;   /* ember orange from mascot */
+  --saga-accent-gold:     #FACC15;   /* warnings, highlights */
+  --saga-accent-cyan:     #64C8FF;   /* info, links secondary */
+  --saga-accent-magenta:  #E5446D;   /* pink glow for CTAs */
+
+  /* Semantic */
+  --saga-success: #4ADE80;
+  --saga-warning: #FACC15;
+  --saga-error:   #F04438;
+  --saga-info:    #64C8FF;
+
+  /* Text */
+  --saga-fg-primary:   #FFFFFF;
+  --saga-fg-secondary: #CECFD2;
+  --saga-fg-tertiary:  #94979C;
+  --saga-fg-muted:     #61656C;
+  --saga-fg-disabled:  #4A4D53;
+  --saga-fg-on-brand:  #FFFFFF;
+
+  /* Shadows + glows */
+  --saga-shadow-card:   0 1px 2px 0 rgba(255,255,255,0.02), inset 0 1px 0 0 rgba(255,255,255,0.03);
+  --saga-shadow-pop:    0 4px 16px 0 rgba(12,9,64,0.40), 0 1px 2px 0 rgba(0,0,0,0.60);
+  --saga-shadow-modal:  0 32px 64px -16px rgba(0,0,0,0.80), 0 0 0 1px var(--saga-bg-border);
+  --saga-glow-primary:  0 0 24px 0 rgba(119,121,237,0.45), 0 0 2px 0 rgba(119,121,237,0.8);
+  --saga-glow-ember:    0 0 24px 0 rgba(255,138,30,0.35);
+  --saga-glow-dual:     0 0 24px -4px rgba(229,68,109,0.5), 0 0 24px -4px rgba(119,121,237,0.5);
+
+  /* Gradients */
+  --saga-gradient-brand:  linear-gradient(135deg, #7779ED 0%, #4A1FB8 100%);
+  --saga-gradient-ember:  linear-gradient(135deg, #FF8A1E 0%, #E5446D 100%);
+  --saga-gradient-night:  linear-gradient(180deg, #0C0940 0%, #27115F 50%, #0C0E12 100%);
+  --saga-gradient-hero:   linear-gradient(90deg, #E5446D 0%, #7779ED 50%, #64C8FF 100%);
+  --saga-gradient-button-outline: linear-gradient(90deg, #E5446D 0%, #7779ED 100%);
+
+  /* ================================================================
+     TYPOGRAPHY
+     ================================================================ */
+  --saga-font-sans:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --saga-font-display: 'Dela Gothic One', 'Inter', sans-serif;      /* rare, very large */
+  --saga-font-mono:    'Syne Mono', ui-monospace, Menlo, monospace;  /* accent/overline */
+
+  /* Scale — sizes (matches Figma system) */
+  --saga-text-overline:   11px;
+  --saga-text-caption:    12px;
+  --saga-text-body-sm:    13px;
+  --saga-text-body:       14px;
+  --saga-text-body-lg:    16px;
+  --saga-text-h3:         18px;
+  --saga-text-h2:         20px;
+  --saga-text-h1:         24px;
+  --saga-text-display:    32px;
+  --saga-text-display-lg: 48px;
+  --saga-text-display-xl: 64px;
+
+  /* Line heights */
+  --saga-lh-tight:    1.0;
+  --saga-lh-snug:     1.2;
+  --saga-lh-normal:   1.4;
+  --saga-lh-relaxed:  1.55;
+
+  /* Letter spacing */
+  --saga-track-tight:   -0.02em;
+  --saga-track-normal:   0;
+  --saga-track-wide:     0.02em;
+  --saga-track-caps:     0.08em;      /* overlines */
+  --saga-track-display:  0.15em;      /* hero labels */
+
+  /* ================================================================
+     SPACING / RADII
+     ================================================================ */
+  --saga-space-1: 4px;
+  --saga-space-2: 8px;
+  --saga-space-3: 12px;
+  --saga-space-4: 16px;
+  --saga-space-5: 20px;
+  --saga-space-6: 24px;
+  --saga-space-8: 32px;
+  --saga-space-10: 40px;
+  --saga-space-12: 48px;
+  --saga-space-16: 64px;
+
+  --saga-radius-chip:   4px;
+  --saga-radius-input:  8px;
+  --saga-radius-card:   12px;
+  --saga-radius-modal:  16px;
+  --saga-radius-pill:   9999px;
+
+  /* Motion */
+  --saga-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --saga-ease-std: cubic-bezier(0.4, 0, 0.2, 1);
+  --saga-dur-fast: 120ms;
+  --saga-dur-base: 200ms;
+  --saga-dur-slow: 320ms;
+}
+
+/* ==========================================================================
+   SEMANTIC ELEMENT DEFAULTS
+   Apply `.saga` to a root and these will cascade.
+   ========================================================================== */
+
+.saga, .saga * { box-sizing: border-box; }
+
+.saga {
+  font-family: var(--saga-font-sans);
+  color: var(--saga-fg-primary);
+  background: var(--saga-bg-base);
+  font-size: var(--saga-text-body);
+  line-height: var(--saga-lh-normal);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.saga h1, .saga .h1 { font: 700 var(--saga-text-h1)/1.33 var(--saga-font-sans); letter-spacing: var(--saga-track-tight); margin: 0; }
+.saga h2, .saga .h2 { font: 600 var(--saga-text-h2)/1.4 var(--saga-font-sans); letter-spacing: -0.01em; margin: 0; }
+.saga h3, .saga .h3 { font: 600 var(--saga-text-h3)/1.55 var(--saga-font-sans); margin: 0; }
+.saga .body-lg    { font: 400 var(--saga-text-body-lg)/1.5 var(--saga-font-sans); }
+.saga .body       { font: 400 var(--saga-text-body)/1.43 var(--saga-font-sans); }
+.saga .body-sb    { font: 600 var(--saga-text-body)/1.43 var(--saga-font-sans); }
+.saga .caption    { font: 500 var(--saga-text-caption)/1.5 var(--saga-font-sans); color: var(--saga-fg-tertiary); }
+.saga .overline   { font: 600 var(--saga-text-overline)/1.45 var(--saga-font-sans); letter-spacing: var(--saga-track-caps); text-transform: uppercase; color: var(--saga-brand-primary); }
+.saga .display    { font-family: var(--saga-font-display); font-weight: 400; letter-spacing: var(--saga-track-display); }
+.saga .mono       { font-family: var(--saga-font-mono); font-weight: 400; letter-spacing: var(--saga-track-wide); }
+
+/* Links */
+.saga a { color: var(--saga-brand-primary); text-decoration: none; }
+.saga a:hover { color: var(--saga-brand-secondary); text-decoration: underline; }
+
+/* Selection */
+.saga ::selection { background: var(--saga-brand-tint-hi); color: var(--saga-fg-primary); }
+
+/* ==========================================================================
+   CYAN ACCENT MODE
+   Wrap any subtree in `class="saga-cyan-mode"` to override the purple
+   brand defaults with cyan (#64C8FF). Per HANDOFF.md § 11, cyan is the
+   primary accent for this product; the purple tokens remain for legacy.
+   ========================================================================== */
+.saga-cyan-mode {
+  --saga-brand-primary:   #64C8FF;
+  --saga-brand-secondary: #2A9FD6;
+  --saga-brand-deep:      #1A6FA8;
+  --saga-brand-violet:    #2A9FD6;
+  --saga-brand-tint:      rgba(100, 200, 255, 0.10);
+  --saga-brand-tint-hi:   rgba(100, 200, 255, 0.20);
+  --saga-glow-primary:    0 0 24px 0 rgba(100, 200, 255, 0.45), 0 0 2px 0 rgba(100, 200, 255, 0.8);
+  --saga-gradient-brand:  linear-gradient(135deg, #64C8FF 0%, #1A6FA8 100%);
+  --saga-gradient-hero:   linear-gradient(90deg, #E5446D 0%, #64C8FF 50%, #FFFFFF 100%);
+  --saga-gradient-button-outline: linear-gradient(90deg, #E5446D 0%, #64C8FF 100%);
+}
