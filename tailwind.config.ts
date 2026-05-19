@@ -20,8 +20,9 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['"Inter"', "system-ui", "sans-serif"],
-        display: ['"Space Grotesk"', '"Inter"', "system-ui", "sans-serif"],
-        serif: ['"Cormorant Garamond"', "Georgia", "serif"],
+        display: ['"Dela Gothic One"', '"Inter"', "system-ui", "sans-serif"],
+        serif: ['"Instrument Serif"', "Georgia", "serif"],
+        mono: ['"Syne Mono"', "ui-monospace", "Menlo", "monospace"],
       },
       borderRadius: {
         pill: "9999px",

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 type ChatTurn = {
   role: "user" | "saga";
@@ -29,8 +30,22 @@ const SAGA_DEMO_REPLY =
   "Got it. To shape the crew — where, how many, what should we help with?";
 
 export function SagaChatView() {
+  return (
+    <Suspense fallback={null}>
+      <SagaChatViewBody />
+    </Suspense>
+  );
+}
+
+function SagaChatViewBody() {
+  const searchParams = useSearchParams();
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [draft, setDraft] = useState("");
+
+  useEffect(() => {
+    const prefill = searchParams.get("prefill");
+    if (prefill) setDraft(prefill);
+  }, [searchParams]);
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();

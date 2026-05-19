@@ -1,123 +1,51 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
-import { HeroChatMorph } from "@/components/web-chat/HeroChatMorph";
-import {
-  requestWebChatReset,
-  WEB_CHAT_RESET_EVENT,
-} from "@/components/web-chat/useWebChat";
-import { decodePrefillPayload } from "@/lib/webChatNextStep";
-import type { Persona } from "@/lib/sagasanPersonas";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { SagaShell } from "@/components/saga/SagaShell";
 
 type IntentChip = {
   label: string;
-  persona: Persona;
-  welcome: string;
+  persona: "host" | "creative" | "venue" | "fan";
   wide?: boolean;
 };
 
 const INTENT_CHIPS: IntentChip[] = [
-  {
-    label: "host something",
-    persona: "host",
-    welcome: "Tell me what you're planning.",
-  },
-  {
-    label: "find work",
-    persona: "creative",
-    welcome: "What kind of work are you chasing?",
-  },
-  {
-    label: "I run a venue",
-    persona: "venue",
-    welcome: "Tell me about your venue.",
-  },
+  { label: "host something", persona: "host" },
+  { label: "find work", persona: "creative" },
+  { label: "I run a venue", persona: "venue" },
   {
     label: "let Saga plan your next day/night out",
     persona: "fan",
-    welcome: "Tell me what you're into.",
     wide: true,
   },
 ];
-
-const INTENT_PARAM_TO_PERSONA: Record<string, Persona> = {
-  host: "host",
-  creative: "creative",
-  venue: "venue",
-  fan: "fan",
-};
-
-function welcomeForPersona(persona: Persona | null): string {
-  if (!persona) return "";
-  return (
-    INTENT_CHIPS.find((chip) => chip.persona === persona)?.welcome ?? ""
-  );
-}
 
 export function SagaLanding() {
   return (
     <SagaShell state="NEW" atmosphere>
       <SagaRhizomeLanding />
-      <Suspense fallback={null}>
-        <SagaLandingBody />
-      </Suspense>
+      <SagaLandingBody />
     </SagaShell>
   );
 }
 
 function SagaLandingBody() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const intentParam = searchParams.get("intent") ?? "";
-  const activeIntentPersona: Persona | null =
-    INTENT_PARAM_TO_PERSONA[intentParam] ?? null;
-  const [isConversationOpen, setIsConversationOpen] = useState(false);
-  const [resetKey, setResetKey] = useState(0);
+  const [draft, setDraft] = useState("");
 
-  const decodedPrefill = useMemo(
-    () => decodePrefillPayload(searchParams.get("prefill")),
-    [searchParams],
-  );
+  function goToChat(persona?: string, prefill?: string) {
+    const params = new URLSearchParams();
+    if (persona) params.set("persona", persona);
+    if (prefill) params.set("prefill", prefill);
+    const query = params.toString();
+    router.push(query ? `/chat?${query}` : "/chat");
+  }
 
-  useEffect(() => {
-    function handleReset() {
-      setIsConversationOpen(false);
-      setResetKey((current) => current + 1);
-    }
-    window.addEventListener(WEB_CHAT_RESET_EVENT, handleReset);
-    return () => {
-      window.removeEventListener(WEB_CHAT_RESET_EVENT, handleReset);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!activeIntentPersona) return;
-    requestWebChatReset(activeIntentPersona);
-    setIsConversationOpen(true);
-    setResetKey((current) => current + 1);
-  }, [activeIntentPersona]);
-
-  const contextNote = decodedPrefill
-    ? {
-        title: "Editing your brief",
-        lines: Object.entries(decodedPrefill)
-          .slice(0, 4)
-          .map(([key, value]) => {
-            const label = key
-              .replace(/([A-Z])/g, " $1")
-              .replace(/^./, (char) => char.toUpperCase());
-            const rendered = Array.isArray(value) ? value.join(", ") : value;
-            return `${label}: ${rendered}`;
-          }),
-      }
-    : null;
-
-  function handleIntent(chip: IntentChip) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("intent", chip.persona);
-    router.push(`/?${params.toString()}`);
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    const text = draft.trim();
+    goToChat(undefined, text || undefined);
   }
 
   const narrowChips = INTENT_CHIPS.filter((chip) => !chip.wide);
@@ -126,65 +54,73 @@ function SagaLandingBody() {
   return (
     <section className="flex flex-1 flex-col items-center justify-center px-5 pb-24 pt-8 sm:px-8 sm:pt-10">
       <div className="mx-auto flex w-full max-w-[560px] flex-col items-center gap-6 text-center">
-        {!isConversationOpen ? (
-          <>
-            <h1 data-copy-lint="header" className="saga-display-hero">
-              <span className="hero-word">tribal</span>
-              <span className="serif-it">by nature</span>
-            </h1>
-            <p data-copy-lint="subhead" className="saga-hero-subtitle">
-              Tell us what you&apos;re making.
-            </p>
-          </>
-        ) : null}
+        <h1 data-copy-lint="header" className="saga-display-hero">
+          <span className="hero-word">tribal</span>
+          <span className="serif-it">by nature</span>
+        </h1>
+        <p data-copy-lint="subhead" className="saga-hero-subtitle">
+          Tell us what you&apos;re making.
+        </p>
 
-        <div className="w-full">
-          <HeroChatMorph
-            key={resetKey}
-            fallbackPersona={activeIntentPersona}
-            initialExpanded={activeIntentPersona !== null}
-            welcomeMessage={welcomeForPersona(activeIntentPersona)}
-            collapsedPlaceholder="tell us what to make..."
-            hidePersonaPicker
-            sagaSurface
-            disableAutoExpand
-            contextNote={contextNote}
-            onExpandedChange={(expanded) => {
-              setIsConversationOpen(expanded);
-            }}
+        <form
+          onSubmit={handleSubmit}
+          className="saga-launcher-form flex w-full items-center gap-3"
+        >
+          <label className="sr-only" htmlFor="saga-launcher">
+            Start with Sagasan
+          </label>
+          <input
+            id="saga-launcher"
+            type="text"
+            value={draft}
+            placeholder="tell us what to make..."
+            onChange={(event) => setDraft(event.target.value)}
+            className="bg-transparent min-w-0 flex-1 text-[15px] leading-7 text-white outline-none placeholder:text-white/45"
           />
-        </div>
+          <button
+            type="submit"
+            aria-label="Start chat"
+            className="saga-launcher-send flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
+          >
+            <svg width="16" height="16" viewBox="0 0 18 18" fill="none">
+              <path
+                d="M3.75 9H14.25M14.25 9L9.5 4.25M14.25 9L9.5 13.75"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </form>
 
-        {!isConversationOpen ? (
-          <div className="mt-2 flex w-full flex-col items-center gap-2">
+        <div className="mt-2 flex w-full flex-col items-center gap-2">
+          <div className="saga-intent-row">
+            {narrowChips.map((chip) => (
+              <button
+                key={chip.persona}
+                type="button"
+                className="saga-intent-chip"
+                onClick={() => goToChat(chip.persona)}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+          {wideChips.length > 0 ? (
             <div className="saga-intent-row">
-              {narrowChips.map((chip) => (
+              {wideChips.map((chip) => (
                 <button
                   key={chip.persona}
                   type="button"
-                  className="saga-intent-chip"
-                  onClick={() => handleIntent(chip)}
+                  className="saga-intent-chip saga-intent-chip-wide"
+                  onClick={() => goToChat(chip.persona)}
                 >
                   {chip.label}
                 </button>
               ))}
             </div>
-            {wideChips.length > 0 ? (
-              <div className="saga-intent-row">
-                {wideChips.map((chip) => (
-                  <button
-                    key={chip.persona}
-                    type="button"
-                    className="saga-intent-chip saga-intent-chip-wide"
-                    onClick={() => handleIntent(chip)}
-                  >
-                    {chip.label}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </div>
     </section>
   );

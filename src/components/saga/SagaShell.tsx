@@ -19,9 +19,10 @@ type SagaShellProps = {
   /** Render solid Saga background. Off when wrapping a legacy
    *  AppFrame that brings its own background. */
   bg?: boolean;
-  /** Session-status dot color: "cyan" (Landing / Brief / Crew etc.)
-   *  or "ember" (Chat / live sessions). */
-  dot?: "cyan" | "ember";
+  /** Session-status dot color: "cyan" (Landing / Brief / Crew etc.),
+   *  "ember" (Saga activity / orange flow), or "live" (active chat
+   *  session — matches Figma 7:2 green dot). */
+  dot?: "cyan" | "ember" | "live";
   /** Render a 1px hairline divider directly under the app-header.
    *  Used on Chat / Brief / Crew / Candidates per the Figma. */
   underline?: boolean;

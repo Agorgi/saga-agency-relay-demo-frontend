@@ -146,6 +146,10 @@
   background: var(--saga-accent-ember);
   box-shadow: 0 0 8px var(--saga-accent-ember);
 }
+.saga-app-header .ah-dot-live::before {
+  background: #34D399;
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.7);
+}
 .saga-app-header .ah-version {
   color: var(--saga-fg-tertiary);
 }
@@ -1450,7 +1454,7 @@ html:has(.saga.saga-cyan-mode) body::after {
   letter-spacing: var(--saga-track-caps);
 }
 .saga.saga-cyan-mode .brand-accent-serif {
-  font-family: "Instrument Serif", "Cormorant Garamond", Georgia, serif;
+  font-family: "Instrument Serif", Georgia, serif;
   font-style: italic;
   font-weight: 400;
   color: var(--saga-fg-primary);
