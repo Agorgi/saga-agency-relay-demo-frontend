@@ -184,9 +184,24 @@ export type LiveAgentExtractedSignals = z.infer<
   typeof liveAgentExtractedSignalsSchema
 >;
 
+// PR #72: dropped the `nextStep` field from the LLM's structured
+// output. The prior `z.unknown().nullable()` shape serialized to
+// JSON Schema as `anyOf: [{}, {type:"null"}]`, and OpenAI's strict
+// mode rejects the empty `{}` leaf with:
+//   "400 Invalid schema for response_format 'sagasan_live_reply':
+//    In context=('properties', 'nextStep', 'anyOf', '0'),
+//    schema must have a 'type' key."
+//
+// The clean split: the LLM owns *understanding* (reply text +
+// extractedSignals); `deriveNextStep` owns *what to do next*
+// (routing + prefill, derived from extracted fields). NextStep
+// composition is operational and deterministic by design —
+// not something the model should freelance. The fallback already
+// runs unconditionally on the merge path; removing the LLM-side
+// nextStep just drops a redundant signal that the validator was
+// rejecting anyway.
 const liveAgentReplySchema = z.object({
   message: z.string().trim().min(1),
-  nextStep: z.unknown().nullable(),
   // PR #65: the LLM returns structured signals it extracted from the
   // user's latest message. Nullable (not optional) per OpenAI's
   // strict-mode requirement. When the LLM returns null OR all fields
@@ -1288,8 +1303,19 @@ function buildHostNextStep(fields: StoredExtractedFields): WebChatNextStep | nul
     organizerFields.scopeFormat ||
     inferHostEventType(projectType, organizerFields.projectIdea || fields.projectIdea || "");
   const city = organizerFields.locationMarket || fields.city;
+  const projectIdea =
+    organizerFields.projectIdea || fields.projectIdea || "";
 
-  if (!readiness.enoughInfoForDraftBrief || !city) {
+  // PR #72: gate on host-intent + city, not on full draft-brief
+  // readiness. /projects/new IS the intake page that collects the
+  // missing fields (timing, budget, etc.) — gating navigation on
+  // already having those fields is circular. The pre-PR-72 LLM
+  // bypassed this gate by emitting nextStep directly; after PR #72
+  // dropped LLM-side nextStep, the gate is the only voice and was
+  // refusing perfectly routeable messages. `readinessStage` and
+  // `missingRequiredFields` still flow through the prefill payload
+  // so the intake page can prompt for the rest.
+  if (!projectIdea || !city) {
     return null;
   }
 
@@ -1405,14 +1431,8 @@ function buildFanNextStep(fields: StoredExtractedFields): WebChatNextStep | null
 
 export function deriveNextStep(
   persona: Persona | null,
-  history: ChatMessage[],
-  latestMessage: string,
+  fields: StoredExtractedFields,
 ) {
-  const fields = extractStructuredFields({
-    persona,
-    history,
-    latestMessage,
-  });
   if (persona === "host") {
     return sanitizeNextStepPayload(buildHostNextStep(fields));
   }
@@ -1602,7 +1622,7 @@ function buildDeterministicReply({
     };
   }
 
-  const nextStep = deriveNextStep(persona, history, latestMessage);
+  const nextStep = deriveNextStep(persona, extractedFields);
   const organizerReadiness =
     persona === "host"
       ? evaluateOrganizerBriefReadiness(organizerFieldsFromStored(extractedFields))
@@ -2048,9 +2068,13 @@ export async function generateAgentReply({
     regexFields,
     response.data.extractedSignals,
   );
-  const sanitizedNextStep =
-    sanitizeNextStepPayload(response.data.nextStep) ||
-    deriveNextStep(persona, history, latestMessage);
+  // PR #72: nextStep is computed deterministically from extracted
+  // fields, not from the LLM. Pass the LLM-merged `extractedFields`
+  // (not raw regex output) so the readiness check uses the same
+  // signal quality the brief composer does — otherwise a host
+  // message that the LLM correctly parses produces no nextStep
+  // because the regex extractor alone can't fill required fields.
+  const sanitizedNextStep = deriveNextStep(persona, extractedFields);
 
   const reply = trimSentence(response.data.message, 260);
   return {
