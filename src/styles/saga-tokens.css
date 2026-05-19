@@ -3,8 +3,8 @@
    Foundational CSS variables for the Saga dark-mode, fandom-native UI.
    ========================================================================== */
 
-/* ---- Fonts ---- */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Syne+Mono&family=Dela+Gothic+One&family=Instrument+Serif:ital@0;1&display=swap');
+/* Fonts are loaded from globals.css at the top of file so the
+ * @import sits before Tailwind's emitted rules per CSS spec. */
 
 :root {
   /* ================================================================
