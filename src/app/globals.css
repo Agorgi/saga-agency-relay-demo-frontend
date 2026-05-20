@@ -224,13 +224,13 @@
   }
 
   .brand-display {
-    font-family: "Space Grotesk", "Inter", system-ui, sans-serif;
+    font-family: "Dela Gothic One", "Inter", system-ui, sans-serif;
   }
 
   .brand-accent-serif {
-    font-family: "Cormorant Garamond", Georgia, serif;
+    font-family: "Instrument Serif", Georgia, serif;
     font-style: italic;
-    font-weight: 600;
+    font-weight: 400;
   }
 
   .brand-gradient-text {

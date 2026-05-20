@@ -1,27 +1,10 @@
 "use client";
 
 import Link from "next/link";
-
-type ChatTurn = {
-  role: "user" | "saga";
-  text: string;
-};
-
-const DEMO_TURNS: ChatTurn[] = [
-  { role: "user", text: "Formal ball in July. Romantic, otherworldly." },
-  {
-    role: "saga",
-    text: "Got it. To shape the crew — where, how many, what should we help with?",
-  },
-  {
-    role: "user",
-    text: "LA, ~150. Need a producer, stylist, venue lead, and performers. $15k all in.",
-  },
-  {
-    role: "saga",
-    text: "Locked in. $15k is tight but workable in LA in July — pulled it into a brief.",
-  },
-];
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef } from "react";
+import { useWebChat } from "@/components/web-chat/useWebChat";
+import type { Persona } from "@/lib/sagasanPersonas";
 
 const BRIEF_FIELDS = [
   "Idea",
@@ -34,57 +17,141 @@ const BRIEF_FIELDS = [
   "Existing crew",
 ];
 
+const PERSONA_PARAM_TO_PERSONA: Record<string, Persona> = {
+  host: "host",
+  creative: "creative",
+  venue: "venue",
+  fan: "fan",
+};
+
 export function SagaChatView() {
+  return (
+    <Suspense fallback={null}>
+      <SagaChatViewBody />
+    </Suspense>
+  );
+}
+
+function SagaChatViewBody() {
+  const searchParams = useSearchParams();
+  const personaParam = searchParams.get("persona") ?? "";
+  const fallbackPersona: Persona | null =
+    PERSONA_PARAM_TO_PERSONA[personaParam] ?? null;
+
+  const {
+    draft,
+    error,
+    isRestoring,
+    isSending,
+    messages,
+    setDraft,
+    submitCurrentDraft,
+  } = useWebChat({ fallbackPersona });
+
+  const threadRef = useRef<HTMLDivElement | null>(null);
+  const prefillApplied = useRef(false);
+
+  // Hydrate the draft from `?prefill=...` once on mount. Don't auto-submit
+  // — the user can review what they typed and hit send themselves.
+  useEffect(() => {
+    if (prefillApplied.current) return;
+    const prefill = searchParams.get("prefill");
+    if (prefill && !draft) {
+      setDraft(prefill);
+      prefillApplied.current = true;
+    }
+  }, [searchParams, draft, setDraft]);
+
+  // Keep the thread scrolled to the bottom as new turns arrive.
+  useEffect(() => {
+    threadRef.current?.scrollTo({
+      top: threadRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [messages.length]);
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!draft.trim()) return;
+    await submitCurrentDraft();
+  }
+
+  const visibleMessages = messages.filter((entry) => entry.content.trim().length > 0);
+  const hasMessages = visibleMessages.length > 0;
+  const userTurnCount = visibleMessages.filter((m) => m.role === "user").length;
+  const briefCount = Math.min(userTurnCount * 2, 8);
+
   return (
     <div className="relative flex flex-1 flex-col">
       <SagaRhizomeChat />
-      <div className="saga-chat-thread">
-        {DEMO_TURNS.map((turn, idx) => (
+      <div className="saga-chat-thread" ref={threadRef}>
+        {visibleMessages.map((entry) => (
           <div
-            key={idx}
-            className={`saga-chat-row ${turn.role === "user" ? "is-user" : "is-saga"}`}
+            key={entry.id}
+            className={`saga-chat-row ${entry.role === "user" ? "is-user" : "is-saga"}`}
           >
-            {turn.role === "saga" ? (
+            {entry.role === "assistant" ? (
               <div className="saga-chat-avatar" aria-hidden="true" />
             ) : null}
             <div
-              className={`saga-chat-bubble ${turn.role === "user" ? "is-user" : "is-saga"}`}
+              className={`saga-chat-bubble ${entry.role === "user" ? "is-user" : "is-saga"}`}
             >
-              {turn.text}
+              {entry.content}
             </div>
           </div>
         ))}
 
-        <div className="saga-brief-card">
-          <div className="bc-header">
-            <span>Brief — what we have</span>
-            <span className="bc-count">8 of 8</span>
+        {isSending ? (
+          <div className="saga-chat-row is-saga">
+            <div className="saga-chat-avatar" aria-hidden="true" />
+            <div className="saga-chat-bubble is-saga saga-chat-typing">
+              <span />
+              <span />
+              <span />
+            </div>
           </div>
-          <div className="bc-grid">
-            {BRIEF_FIELDS.map((field) => (
-              <span key={field} className="bc-field">
-                {field}
-              </span>
-            ))}
-          </div>
-        </div>
+        ) : null}
 
-        <Link href="/demo/brief" className="saga-cta-outline">
-          view your project <span className="arrow">→</span>
-        </Link>
+        {hasMessages && !isSending ? (
+          <>
+            <div className="saga-brief-card">
+              <div className="bc-header">
+                <span>Brief — what we have</span>
+                <span className="bc-count">{briefCount} of 8</span>
+              </div>
+              <div className="bc-grid">
+                {BRIEF_FIELDS.map((field) => (
+                  <span key={field} className="bc-field">
+                    {field}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <Link href="/demo/brief" className="saga-cta-outline">
+              view your project <span className="arrow">→</span>
+            </Link>
+          </>
+        ) : null}
+
+        {error ? <div className="saga-chat-error">{error}</div> : null}
       </div>
 
-      <form
-        className="saga-chat-composer"
-        onSubmit={(event) => event.preventDefault()}
-      >
+      <form className="saga-chat-composer" onSubmit={handleSubmit}>
         <div className="saga-chat-composer-row">
           <input
             type="text"
-            placeholder="reply to Sagasan…"
-            aria-label="Reply to Sagasan"
+            placeholder={hasMessages ? "reply to Sagasan…" : "tell Sagasan what you're making…"}
+            aria-label="Message Sagasan"
+            value={draft}
+            disabled={isRestoring}
+            onChange={(event) => setDraft(event.target.value)}
           />
-          <button type="submit" aria-label="Send">
+          <button
+            type="submit"
+            aria-label="Send"
+            disabled={isRestoring || isSending || draft.trim().length === 0}
+          >
             ↑
           </button>
         </div>

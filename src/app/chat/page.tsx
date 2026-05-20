@@ -6,7 +6,7 @@ export default function ChatPage() {
     <SagaShell
       state="01 · LIVE"
       version="// 01"
-      dot="ember"
+      dot="live"
       time="9:43"
       underline
     >
