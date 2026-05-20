@@ -49,38 +49,3 @@ export function normalizePersona(value: string | null | undefined): Persona | nu
   return null;
 }
 
-export function getDiscoverPath(persona: Persona | null) {
-  if (persona === "fan") {
-    return "/feed";
-  }
-
-  if (persona === "venue") {
-    return "/spaces";
-  }
-
-  if (persona === "creative" || persona === "host") {
-    return "/explore";
-  }
-
-  return null;
-}
-
-export function getPrimaryCta(persona: Persona | null) {
-  if (persona === "host") {
-    return { label: "Start your brief", href: "/?intent=host" };
-  }
-
-  if (persona === "creative") {
-    return { label: "Add portfolio piece", href: "/me" };
-  }
-
-  if (persona === "venue") {
-    return { label: "List a space", href: "/spaces" };
-  }
-
-  if (persona === "fan") {
-    return { label: "Find something tonight", href: "/feed" };
-  }
-
-  return null;
-}

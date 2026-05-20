@@ -2,10 +2,8 @@ import { z } from "zod";
 import type { Persona } from "@/lib/sagasanPersonas";
 
 export const webChatRouteSchema = z.union([
-  z.literal("/me"),
-  z.literal("/spaces"),
-  z.literal("/feed"),
-  z.literal("/explore"),
+  z.literal("/profile"),
+  z.literal("/talent"),
   z.literal("/projects/new"),
   z.string().regex(/^\/projects\/[^/?#]+$/),
 ]);
@@ -59,10 +57,6 @@ const ALLOWED_PREFILL_KEYS: Record<string, string[]> = {
     "urgency",
     "desiredTalentRoles",
   ],
-  "/me": ["city", "roles", "portfolio", "availability", "rates"],
-  "/spaces": ["city", "capacity", "neighborhood", "availabilityHint", "venueType"],
-  "/feed": ["city", "interests"],
-  "/explore": ["projectId", "role", "city"],
 };
 
 const PREFILL_PRIORITY_KEYS: Record<string, string[]> = {
@@ -292,9 +286,8 @@ export function sanitizePrefillForRoute(
 // in lockstep at the sanitization layer is cheaper than re-running
 // prompt iterations every time we rename a button.
 const CANONICAL_ROUTE_LABELS: Record<string, string> = {
-  "/me": "Open my profile",
-  "/spaces": "List my space",
-  "/feed": "Open my feed",
+  "/profile": "Open my profile",
+  "/talent": "Explore talent",
   "/projects/new": "Review brief",
 };
 
@@ -327,18 +320,6 @@ export function getPersonaFromNextStep(nextStep: WebChatNextStep | null | undefi
   // rewrites the default /projects/new to once the brief persists.
   if (nextStep.route.startsWith("/projects/")) {
     return "host";
-  }
-
-  if (nextStep.route === "/me") {
-    return "creative";
-  }
-
-  if (nextStep.route === "/spaces") {
-    return "venue";
-  }
-
-  if (nextStep.route === "/feed") {
-    return "fan";
   }
 
   return null;

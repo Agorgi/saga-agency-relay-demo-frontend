@@ -177,22 +177,22 @@ test("bindNextStepToProject normalises undefined input to null", () => {
 });
 
 test("bindNextStepToProject is a no-op when route is not /projects/new", () => {
-  const meStep: WebChatNextStep = {
+  const profileStep: WebChatNextStep = {
     label: "Open my profile",
-    route: "/me",
-    prefill: { city: "Los Angeles" },
+    route: "/profile",
+    prefill: {},
   };
-  const exploreStep: WebChatNextStep = {
-    label: "Browse talent",
-    route: "/explore",
-    prefill: { city: "Los Angeles" },
+  const talentStep: WebChatNextStep = {
+    label: "Explore talent",
+    route: "/talent",
+    prefill: {},
   };
-  const meResult = bindNextStepToProject(meStep, "cm0xyz");
-  const exploreResult = bindNextStepToProject(exploreStep, "cm0xyz");
-  assert.ok(meResult);
-  assert.ok(exploreResult);
-  assert.equal(meResult?.route, "/me");
-  assert.equal(exploreResult?.route, "/explore");
+  const profileResult = bindNextStepToProject(profileStep, "cm0xyz");
+  const talentResult = bindNextStepToProject(talentStep, "cm0xyz");
+  assert.ok(profileResult);
+  assert.ok(talentResult);
+  assert.equal(profileResult?.route, "/profile");
+  assert.equal(talentResult?.route, "/talent");
 });
 
 test("bindNextStepToProject is idempotent — already-bound routes pass through unchanged", () => {
@@ -246,13 +246,12 @@ test("getPersonaFromNextStep returns 'host' for the bound /projects/<id> route",
 test("sanitizeNextStepPayload normalises label to the canonical per-route value", () => {
   // Closes the live-mode half of P2-OI-11 (Codex finding on PR #42).
   // The LLM may emit historical / hallucinated labels like
-  // "Open my feed" → /me. The sanitizer must replace those with the
-  // current canonical label so live mode can't drift back to the
+  // "Open my feed" → /profile. The sanitizer must replace those with
+  // the current canonical label so live mode can't drift back to the
   // mismatched CTA the fallback path was just fixed to avoid.
   const cases = [
-    { input: "Open my feed", route: "/me", expected: "Open my profile" },
-    { input: "List your space", route: "/spaces", expected: "List my space" },
-    { input: "See your feed", route: "/feed", expected: "Open my feed" },
+    { input: "Open my feed", route: "/profile", expected: "Open my profile" },
+    { input: "Browse the talent grid", route: "/talent", expected: "Explore talent" },
     { input: "Build my event", route: "/projects/new", expected: "Review brief" },
   ];
 
@@ -316,7 +315,7 @@ test("conversationReferencesBoundProject scans the route field on messages", asy
     conversationReferencesBoundProject([
       { route: null },
       { route: "/projects/new" },
-      { route: "/me" },
+      { route: "/profile" },
     ]),
     false,
   );
@@ -341,7 +340,7 @@ test("conversationReferencesBoundProject scans nested nextStep.route too", async
   assert.equal(
     conversationReferencesBoundProject([
       { route: null, nextStep: null },
-      { route: null, nextStep: { route: "/me" } },
+      { route: null, nextStep: { route: "/profile" } },
       { route: null, nextStep: { route: "/projects/cm0abc123def456ghi789jkl" } },
     ]),
     true,

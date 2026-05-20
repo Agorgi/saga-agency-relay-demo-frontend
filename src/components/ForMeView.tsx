@@ -72,7 +72,7 @@ export function ForMeView({
       return fromQuery;
     }
 
-    return readPendingNextStep("/me")?.prefill ?? null;
+    return readPendingNextStep("/profile")?.prefill ?? null;
   }, [encodedPrefill]);
 
   const projectItems: FeedItem[] = viewerProfile.activeProjectIds

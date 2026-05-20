@@ -2,11 +2,7 @@
 
 import Image from "next/image";
 import { motion } from "framer-motion";
-import {
-  PUBLIC_TICKETING_COPY,
-  shouldShowPublicBackstagePanel,
-} from "@/lib/publicEventPresentation";
-import { useSagaNavigation } from "@/lib/useSagaNavigation";
+import { PUBLIC_TICKETING_COPY } from "@/lib/publicEventPresentation";
 import { useAppStore } from "@/store/useAppStore";
 
 export function ProjectDetailView({ eventSlug }: { eventSlug?: string }) {
@@ -15,7 +11,6 @@ export function ProjectDetailView({ eventSlug }: { eventSlug?: string }) {
   const viewerProfile = useAppStore((state) => state.viewerProfile);
   const toggleRsvp = useAppStore((state) => state.toggleRsvp);
   const openComposer = useAppStore((state) => state.openComposer);
-  const { openTickets, openApply, openWorkspace } = useSagaNavigation();
 
   const event =
     events.find((item) => item.id === selectedEventId) ||
@@ -128,9 +123,6 @@ export function ProjectDetailView({ eventSlug }: { eventSlug?: string }) {
             <DarkSection
               title="Vendors & Cosplayers"
               eyebrow="Be part of the production"
-              action={
-                <OutlineButton onClick={() => openApply(event.id)} label="Apply" />
-              }
             >
               <div className="grid gap-4 sm:grid-cols-2">
                 {event.vendorsAndCosplayers.map((participant) => (
@@ -212,8 +204,6 @@ export function ProjectDetailView({ eventSlug }: { eventSlug?: string }) {
               </div>
 
               <div className="mt-5 space-y-3">
-                <PrimaryButton onClick={() => openTickets(event.id)} label={PUBLIC_TICKETING_COPY.eventCta} />
-                <OutlineButton onClick={() => openApply(event.id)} label="Apply" fullWidth />
                 <button
                   onClick={() => toggleRsvp(event.id)}
                   className="w-full rounded-pill border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-medium text-white/74"
@@ -226,31 +216,10 @@ export function ProjectDetailView({ eventSlug }: { eventSlug?: string }) {
               </p>
             </DarkSection>
 
-            {shouldShowPublicBackstagePanel() ? (
-              <DarkSection title="Backstage production" eyebrow="Host demo" compact>
-              <div className="space-y-3 rounded-[24px] border border-white/8 bg-white/[0.03] p-4">
-                <StatRow label="Launch readiness" value={`${event.productionPlan.launchReadiness}%`} />
-                <StatRow label="Estimated reach" value={event.productionPlan.estimatedReach.toLocaleString()} />
-                <StatRow label="Tickets sold" value={`${event.productionPlan.ticketsSold}`} />
-                <StatRow label="Applications" value={`${event.applications.length}`} />
-              </div>
-              <p className="mt-4 text-sm leading-6 text-white/58">
-                Crew is distribution. Ticket demand, mutuals, and public applications all feed the staffing view.
-              </p>
-              <div className="mt-5">
-                <PrimaryButton onClick={() => openWorkspace(event.id)} label="Open Production Workspace" />
-              </div>
-              </DarkSection>
-            ) : null}
           </div>
         </div>
       </div>
 
-      <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-[calc(100vw-1rem)] max-w-[460px] -translate-x-1/2 md:hidden">
-        <div className="rounded-[28px] border border-white/8 bg-[#111624]/92 p-3 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl">
-          <PrimaryButton onClick={() => openTickets(event.id)} label={PUBLIC_TICKETING_COPY.eventCta} />
-        </div>
-      </div>
     </div>
   );
 }
@@ -301,17 +270,6 @@ function StatRow({ label, value }: { label: string; value: string }) {
       <span className="text-white/42">{label}</span>
       <span className="font-medium text-white/84">{value}</span>
     </div>
-  );
-}
-
-function PrimaryButton({ onClick, label }: { onClick: () => void; label: string }) {
-  return (
-    <button
-      onClick={onClick}
-      className="w-full rounded-pill bg-[linear-gradient(90deg,#ff4f9e,#687dff)] px-4 py-3 text-sm font-medium text-white shadow-[0_18px_40px_rgba(95,120,255,0.24)]"
-    >
-      {label}
-    </button>
   );
 }
 

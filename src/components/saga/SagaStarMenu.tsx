@@ -16,43 +16,27 @@ type StarMenuSection = {
 };
 
 /**
- * Single source of truth for the design-QA navigator. Organized by
- * purpose, not by route order — so reviewers can find the surface they
- * want without scanning 15 numbered circles. Duplicates (/talent ≈
- * /explore) and deprecated surfaces (/my-events) are deliberately not
- * listed to keep the index minimal.
+ * Single source of truth for the design-QA navigator. Lists the core
+ * tracer flow plus the kept utility pages. Persona-demo surfaces
+ * (/feed, /spaces, /explore, /me) and the standalone /demo design
+ * twins were removed in the pre-branch cleanup.
  */
 export const STAR_MENU_SECTIONS: StarMenuSection[] = [
   {
     label: "Tracer",
     entries: [
-      { href: "/", label: "Landing", hint: "slide 6" },
-      { href: "/chat", label: "Chat", hint: "slide 7" },
-      { href: "/demo/brief", label: "Brief", hint: "slide 8" },
-      { href: "/demo/crew", label: "Crew", hint: "slide 9" },
-      { href: "/demo/candidates", label: "Candidates", hint: "slide 10" },
-    ],
-  },
-  {
-    label: "Live flow",
-    entries: [
+      { href: "/", label: "Landing" },
+      { href: "/chat", label: "Chat" },
       { href: "/projects", label: "Projects" },
       { href: "/projects/new", label: "New brief" },
     ],
   },
   {
-    label: "Persona surfaces",
+    label: "Pages",
     entries: [
-      { href: "/feed", label: "Feed", hint: "fan" },
-      { href: "/explore", label: "Explore talent", hint: "creative" },
-      { href: "/spaces", label: "Spaces", hint: "venue" },
-    ],
-  },
-  {
-    label: "More",
-    entries: [
-      { href: "/me", label: "Me" },
-      { href: "/relay", label: "Relay" },
+      { href: "/talent", label: "Talent" },
+      { href: "/profile", label: "Profile" },
+      { href: "/my-events", label: "My events" },
     ],
   },
 ];

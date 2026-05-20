@@ -287,9 +287,9 @@ test("creative, venue, and fan routes emit next steps once routeable", () => {
     latestMessage: "I want to find cool anime and cosplay events in Brooklyn.",
   });
 
-  assert.equal(creative.nextStep?.route, "/me");
-  assert.equal(venue.nextStep?.route, "/spaces");
-  assert.equal(fan.nextStep?.route, "/feed");
+  assert.equal(creative.nextStep?.route, "/profile");
+  assert.equal(venue.nextStep?.route, "/profile");
+  assert.equal(fan.nextStep?.route, "/talent");
 });
 
 test("outbound action prompts stay in the boundary lane", () => {
@@ -332,7 +332,7 @@ test("outbound action prompts stay in the boundary lane", () => {
   });
 
   assert.equal(creativeHappyPath.persona, "creative");
-  assert.equal(creativeHappyPath.nextStep?.route, "/me");
+  assert.equal(creativeHappyPath.nextStep?.route, "/profile");
 });
 
 test("time-bound discovery prompts default to fan", () => {
@@ -359,7 +359,7 @@ test("time-bound discovery prompts default to fan", () => {
     assert.equal(persona, "fan", latestMessage);
     assert.ok(
       /city|scene|fandom|look around/i.test(reply.reply) ||
-        reply.nextStep?.route === "/feed",
+        reply.nextStep?.route === "/talent",
       latestMessage,
     );
   }
@@ -604,11 +604,10 @@ test("creative extraction does not inherit stale host event timing or vibe", () 
   });
 
   assert.equal(result.persona, "creative");
-  assert.equal(result.nextStep?.route, "/me");
-  assert.equal(result.nextStep?.prefill.city, "Los Angeles");
-  assert.deepEqual(result.nextStep?.prefill.roles, ["Photographer"]);
-  assert.equal("availability" in (result.nextStep?.prefill ?? {}), false);
-  assert.equal("rates" in (result.nextStep?.prefill ?? {}), false);
+  assert.equal(result.nextStep?.route, "/profile");
+  // Non-host personas hand off to a shared kept page with no prefill,
+  // so stale host event timing/vibe can't leak into the creative step.
+  assert.deepEqual(result.nextStep?.prefill, {});
 });
 
 test("a remembered organizer brief does not flip persona on bare role nouns", () => {
@@ -748,10 +747,10 @@ test("live reply uses the provided OpenAI call and preserves nextStep", async ()
             // simulate a real-world case where the model has been
             // trained on / hallucinates older copy. The sanitization
             // layer must normalize it to the current canonical
-            // label "Open my profile" for the /me route. This is
+            // label "Open my profile" for the /profile route. This is
             // the live-mode half of P2-OI-11 closed in PR #42.
             label: "Open my feed",
-            route: "/me",
+            route: "/profile",
             prefill: {
               city: "Los Angeles",
               roles: ["Photographer"],
@@ -774,7 +773,7 @@ test("live reply uses the provided OpenAI call and preserves nextStep", async ()
     /The goal is high-signal context, not minimum intake\./,
   );
   assert.match(capturedPrompt, /Reply with Sagasan's next message/);
-  assert.equal(result.data.nextStep?.route, "/me");
+  assert.equal(result.data.nextStep?.route, "/profile");
   // Sanitization forces the canonical label even if the LLM emitted
   // the old "Open my feed" string. Closes Codex's live-mode finding
   // on P2-OI-11.
