@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef } from "react";
+import { PersonaBadge } from "@/components/saga/PersonaBadge";
 import { useWebChat } from "@/components/web-chat/useWebChat";
 import type { Persona } from "@/lib/sagasanPersonas";
 
@@ -84,6 +85,7 @@ function SagaChatViewBody() {
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       <SagaRhizomeChat />
+      <PersonaBadge persona={fallbackPersona} />
       <div className="saga-chat-thread" ref={threadRef}>
         {visibleMessages.map((entry) => (
           <div
@@ -128,7 +130,7 @@ function SagaChatViewBody() {
               </div>
             </div>
 
-            <Link href="/demo/brief" className="saga-cta-outline">
+            <Link href="/projects" className="saga-cta-outline">
               view your project <span className="arrow">→</span>
             </Link>
           </>

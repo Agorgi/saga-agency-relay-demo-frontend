@@ -213,9 +213,9 @@ const liveAgentReplySchema = z.object({
 
 const PERSONA_ROUTE_MAP: Record<Persona, string> = {
   host: "/projects/new",
-  creative: "/me",
-  venue: "/spaces",
-  fan: "/feed",
+  creative: "/profile",
+  venue: "/profile",
+  fan: "/talent",
 };
 
 const CREATIVE_ROLE_PATTERNS: Array<[RegExp, string]> = [
@@ -1375,19 +1375,9 @@ function buildCreativeNextStep(
   }
 
   return {
-    // Was "Open my feed" — but the route is /me, which is the
-    // creative's dashboard, not a feed surface. Renaming clears the
-    // mismatch Cowork flagged in P2-OI-11. /feed remains the fan
-    // surface; that label is unchanged.
     label: "Open my profile",
-    route: "/me",
-    prefill: {
-      city: fields.city || "Flexible",
-      roles: fields.roles,
-      portfolio: fields.portfolio || "",
-      availability: fields.availability || "",
-      rates: fields.rates || "",
-    },
+    route: "/profile",
+    prefill: {},
   };
 }
 
@@ -1400,15 +1390,9 @@ function buildVenueNextStep(fields: StoredExtractedFields): WebChatNextStep | nu
   }
 
   return {
-    label: "Open my spaces",
-    route: "/spaces",
-    prefill: {
-      city: fields.city || "",
-      capacity: fields.scale || "",
-      neighborhood: fields.neighborhood || fields.city || "",
-      availabilityHint: fields.dateWindow || fields.availability || "",
-      venueType: fields.venueType || "",
-    },
+    label: "Open my dashboard",
+    route: "/profile",
+    prefill: {},
   };
 }
 
@@ -1420,12 +1404,9 @@ function buildFanNextStep(fields: StoredExtractedFields): WebChatNextStep | null
   }
 
   return {
-    label: "See events",
-    route: "/feed",
-    prefill: {
-      city: fields.city || "",
-      interests: fields.interests.length > 0 ? fields.interests : ["Events"],
-    },
+    label: "Explore talent",
+    route: "/talent",
+    prefill: {},
   };
 }
 

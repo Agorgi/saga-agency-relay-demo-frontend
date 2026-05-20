@@ -1019,6 +1019,48 @@ a.saga-link-quiet:hover {
   background: var(--saga-brand-primary);
 }
 
+/* Persona indicator — a small mono chip naming the current persona
+ * (Host / Creator / Venue / Fan). Host is the default tracer persona;
+ * the colored dot distinguishes the creator / venue / fan paths that
+ * share the same page-by-page flow. */
+.saga-persona-badge {
+  position: relative;
+  z-index: 2;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 10px 20px 2px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  font-family: var(--saga-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--saga-fg-secondary);
+}
+.saga-persona-badge .pb-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--saga-brand-primary);
+  box-shadow: 0 0 8px var(--saga-brand-primary);
+}
+.saga-persona-badge[data-persona="creative"] .pb-dot {
+  background: var(--saga-accent-ember);
+  box-shadow: 0 0 8px var(--saga-accent-ember);
+}
+.saga-persona-badge[data-persona="venue"] .pb-dot {
+  background: #7779ed;
+  box-shadow: 0 0 8px rgba(119, 121, 237, 0.7);
+}
+.saga-persona-badge[data-persona="fan"] .pb-dot {
+  background: #e5446d;
+  box-shadow: 0 0 8px rgba(229, 68, 109, 0.7);
+}
+
 /* ==========================================================================
    CREW (slide 9 — Figma node 11:2)
    ========================================================================== */

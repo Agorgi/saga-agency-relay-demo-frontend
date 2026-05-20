@@ -46,11 +46,9 @@ test("parseWebChatResponse accepts message and nested data.reply shapes", () => 
       mode: "holding",
       persona: "venue",
       nextStep: {
-        label: "List my space",
-        route: "/spaces",
-        prefill: {
-          city: "Brooklyn",
-        },
+        label: "Open my dashboard",
+        route: "/profile",
+        prefill: {},
       },
     },
   });
@@ -58,7 +56,7 @@ test("parseWebChatResponse accepts message and nested data.reply shapes", () => 
   assert.equal(topLevelMessage?.reply, "Got it. What city are you based in?");
   assert.equal(topLevelMessage?.mode, "autonomous");
   assert.equal(nestedReply?.reply, "Got it. What city is the space in?");
-  assert.equal(nestedReply?.nextStep?.route, "/spaces");
+  assert.equal(nestedReply?.nextStep?.route, "/profile");
 });
 
 test("parseWebChatHistoryResponse accepts content, reply, and message shapes", () => {
@@ -169,7 +167,7 @@ test("mergeRestoredMessages prefers backend content over weaker UI fallback", ()
         mode: "holding",
         nextStep: {
           label: "Open my profile",
-          route: "/me",
+          route: "/profile",
           prefill: {
             city: "Los Angeles",
           },
@@ -208,7 +206,7 @@ test("resolveRestoredPersona clears stale host state when server restores a crea
         mode: "holding",
         nextStep: {
           label: "Open my profile",
-          route: "/me",
+          route: "/profile",
           prefill: {
             city: "Los Angeles",
           },

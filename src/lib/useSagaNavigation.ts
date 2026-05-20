@@ -1,20 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { requestWebChatReset } from "@/components/web-chat/useWebChat";
 import { sagaRoutes, withRoleFilter } from "@/lib/sagaRoutes";
-import { buildNextStepHref, readPendingNextStep } from "@/lib/webChatNextStep";
 import { useAgencyStore } from "@/store/useAgencyStore";
-import { useAppStore } from "@/store/useAppStore";
 
 export function useSagaNavigation() {
   const router = useRouter();
-
-  const resolveLegacyEventSlug = (eventId?: string | null) => {
-    const state = useAppStore.getState();
-    const resolvedId = eventId || state.selectedEventId;
-    return state.events.find((event) => event.id === resolvedId)?.slug || null;
-  };
 
   const resolveProjectSlug = (projectId?: string | null) => {
     const state = useAgencyStore.getState();
@@ -33,12 +24,10 @@ export function useSagaNavigation() {
     goHome: () => router.push(sagaRoutes.landing),
     goTalent: (projectId?: string | null) => {
       const slug = resolveProjectSlug(projectId);
-      router.push(slug ? `${sagaRoutes.explore}?project=${slug}` : sagaRoutes.explore);
+      router.push(slug ? `${sagaRoutes.talent}?project=${slug}` : sagaRoutes.talent);
     },
-    goExplore: () => router.push(sagaRoutes.explore),
-    goFeed: () => router.push(sagaRoutes.feed),
-    goMe: () => router.push(sagaRoutes.me),
-    goSpaces: () => router.push(sagaRoutes.spaces),
+    goExplore: () => router.push(sagaRoutes.talent),
+    goMe: () => router.push(sagaRoutes.profile),
     goProjects: () => router.push(sagaRoutes.projects),
     goMyEvents: () => router.push(sagaRoutes.projects),
     goRelay: (projectId?: string | null, conversationId?: string | null) => {
@@ -50,26 +39,6 @@ export function useSagaNavigation() {
       router.push(`${sagaRoutes.relay}${suffix}`);
     },
     goProfile: () => router.push(sagaRoutes.profile),
-    openCreate: () => {
-      const pendingNextStep = readPendingNextStep("/projects/new");
-      if (pendingNextStep) {
-        router.push(buildNextStepHref(pendingNextStep));
-        return;
-      }
-
-      requestWebChatReset("host");
-      router.push("/?intent=host");
-    },
-    openPostProject: () => {
-      const pendingNextStep = readPendingNextStep("/projects/new");
-      if (pendingNextStep) {
-        router.push(buildNextStepHref(pendingNextStep));
-        return;
-      }
-
-      requestWebChatReset("host");
-      router.push("/?intent=host");
-    },
     openProject: (projectId?: string | null) => {
       const slug = resolveProjectSlug(projectId);
       if (slug) router.push(sagaRoutes.project(slug));
@@ -88,36 +57,6 @@ export function useSagaNavigation() {
           ? `${sagaRoutes.talentProfile(talentSlug)}?project=${projectSlug}`
           : sagaRoutes.talentProfile(talentSlug)
       );
-    },
-    openEvent: (eventId: string) => {
-      const slug = resolveLegacyEventSlug(eventId);
-      if (slug) router.push(sagaRoutes.event(slug));
-    },
-    openLegacyEventBySlug: (slug: string) => {
-      if (slug) router.push(sagaRoutes.event(slug));
-    },
-    openTickets: (eventId?: string | null) => {
-      const slug = resolveLegacyEventSlug(eventId);
-      if (slug) router.push(sagaRoutes.tickets(slug));
-    },
-    openTicketsBySlug: (slug?: string | null) => {
-      if (slug) router.push(sagaRoutes.tickets(slug));
-    },
-    openApply: (eventId?: string | null) => {
-      const slug = resolveLegacyEventSlug(eventId);
-      if (slug) router.push(sagaRoutes.apply(slug));
-    },
-    openWorkspace: (eventId?: string | null) => {
-      const slug = resolveLegacyEventSlug(eventId);
-      if (slug) router.push(sagaRoutes.workspace(slug));
-    },
-    openDiscover: (eventId?: string | null, role?: string | null) => {
-      const slug = resolveLegacyEventSlug(eventId);
-      if (slug) router.push(withRoleFilter(sagaRoutes.discover(slug), role));
-    },
-    openOutreach: (eventId?: string | null) => {
-      const slug = resolveLegacyEventSlug(eventId);
-      if (slug) router.push(sagaRoutes.outreach(slug));
     },
   };
 }
