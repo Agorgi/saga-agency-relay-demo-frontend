@@ -82,7 +82,7 @@ function SagaChatViewBody() {
   const briefCount = Math.min(userTurnCount * 2, 8);
 
   return (
-    <div className="relative flex flex-1 flex-col">
+    <div className="relative flex min-h-0 flex-1 flex-col">
       <SagaRhizomeChat />
       <div className="saga-chat-thread" ref={threadRef}>
         {visibleMessages.map((entry) => (

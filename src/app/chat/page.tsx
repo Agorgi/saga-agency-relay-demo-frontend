@@ -9,6 +9,7 @@ export default function ChatPage() {
       dot="live"
       time="9:43"
       underline
+      fillViewport
     >
       <SagaChatView />
     </SagaShell>

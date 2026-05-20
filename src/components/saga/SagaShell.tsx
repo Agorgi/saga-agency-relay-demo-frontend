@@ -26,6 +26,12 @@ type SagaShellProps = {
   /** Render a 1px hairline divider directly under the app-header.
    *  Used on Chat / Brief / Crew / Candidates per the Figma. */
   underline?: boolean;
+  /** Lock the shell to exactly one viewport tall with the content area
+   *  scrolling internally — the chat layout (header pinned at top,
+   *  composer pinned at bottom, message thread scrolls between them,
+   *  iMessage-style). Default false: the shell grows with content and
+   *  the document scrolls naturally. */
+  fillViewport?: boolean;
   children: ReactNode;
 };
 
@@ -39,11 +45,16 @@ export function SagaShell({
   bg = true,
   dot = "cyan",
   underline = false,
+  fillViewport = false,
   children,
 }: SagaShellProps) {
-  const rootClass = bg
-    ? "saga saga-cyan-mode relative min-h-screen w-full overflow-x-hidden bg-[var(--saga-bg-base)]"
-    : "saga saga-cyan-mode relative min-h-screen w-full overflow-x-hidden";
+  const heightClass = fillViewport
+    ? "h-[100dvh] overflow-hidden"
+    : "min-h-[100dvh]";
+  const rootClass = `saga saga-cyan-mode relative w-full overflow-x-hidden ${heightClass}${bg ? " bg-[var(--saga-bg-base)]" : ""}`;
+  const innerClass = fillViewport
+    ? "relative z-10 flex h-full w-full flex-col"
+    : "relative z-10 flex min-h-[100dvh] w-full flex-col";
   return (
     <div className={rootClass}>
       {atmosphere ? (
@@ -52,7 +63,7 @@ export function SagaShell({
           <SagaSparkles />
         </>
       ) : null}
-      <div className="relative z-10 flex min-h-screen w-full flex-col">
+      <div className={innerClass}>
         <div className="saga-top-hair" aria-hidden="true" />
         <div className="saga-status-bar">
           <span className="sb-time">{time}</span>

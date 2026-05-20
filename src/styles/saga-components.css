@@ -515,7 +515,9 @@
   gap: 12px;
   padding: 14px 16px;
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   position: relative;
   z-index: 1;
 }
